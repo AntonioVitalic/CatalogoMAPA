@@ -1,18 +1,22 @@
 # frontend/Dockerfile
-FROM node:18
 
+FROM node:18-alpine
+
+# 1) Carpeta de trabajo
 WORKDIR /app
 
-# (1) Copia package*.json que están en frontend/
+# 2) Copia solo los manifest para instalar deps
 COPY package.json package-lock.json ./
 
-# (2) Instala
-RUN npm install
+# 3) Instala deps de manera limpia
+RUN npm ci
 
-# (3) Copia el resto del código de frontend
+# 4) Copia el resto del código (sin node_modules)
 COPY . .
 
-EXPOSE 3000
+# 5) Expone el puerto donde correrá Vite
+ENV PORT=8080
+EXPOSE 8080
 
-# (4) Arranca el dev-server
-CMD ["npm", "start"]
+# 6) Arranca el dev-server de Vite escuchando en todas las interfaces
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080"]
