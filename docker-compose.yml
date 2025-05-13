@@ -1,0 +1,44 @@
+services:
+
+  neo4j:
+    image: neo4j:5.22.0
+    container_name: catalogomapa-neo4j
+    env_file:
+      - .env
+    ports:
+      - "7475:7474"    # Browser UI
+      - "7688:7687"    # Bolt
+    volumes:
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/plugins:/var/lib/neo4j/plugins
+      - ./neo4j/import:/var/lib/neo4j/import
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: catalogomapa-back
+    env_file:
+      - .env
+    environment:
+      - NEO4J_HOSTNAME=neo4j
+    ports:
+      - "8002:8000"    # expone Django en localhost:8002
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - neo4j
+
+  frontend:
+    build:
+      context: ./frontend       # ahora el contexto es la carpeta frontend
+      dockerfile: Dockerfile    # y el Dockerfile sigue dentro de frontend/
+    container_name: catalogomapa-front
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
