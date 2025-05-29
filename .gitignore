@@ -159,6 +159,7 @@ cython_debug/
 /neo4j/data
 backend/asd.py
 backend/uploaded_images/*
+imagenes/*
 
 #### Frontend
 # Logs
