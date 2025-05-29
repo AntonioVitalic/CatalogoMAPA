@@ -15,8 +15,22 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from rest_framework.routers import DefaultRouter
+from api.views import PiezaViewSet, ComponenteViewSet, ImagenViewSet
+
+router = DefaultRouter()
+router.register(r'piezas', PiezaViewSet, basename='pieza')
+router.register(r'componentes', ComponenteViewSet, basename='componente')
+router.register(r'imagenes', ImagenViewSet, basename='imagen')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include(router.urls)),   # <-- aquí tu API REST
 ]
+
+# Sólo en DEBUG, sirve archivos desde MEDIA_ROOT en la URL MEDIA_URL
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
