@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const ITEMS_PER_PAGE = 20;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const Index = () => {
   const { user, login } = useAuth();
