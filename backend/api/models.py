@@ -128,7 +128,8 @@ class Componente(models.Model):
         return f"Componente {self.pieza.numero_inventario}{self.letra or ''}"
 
 class Imagen(models.Model):
-    imagen = models.ImageField(upload_to="imagenes")  # archivo de imagen almacenado localmente
+    imagen = models.FileField(upload_to="") # puede quedarse vacío (“”) si se desea que el fichero caiga directamente bajo MEDIA_ROOT,
+                                             # pero para mayor claridad lo habitual es usar upload_to='' y confiar en MEDIA_ROOT.
     pieza = models.ForeignKey(Pieza, null=True, blank=True, on_delete=models.CASCADE, related_name="imagenes")
     componente = models.ForeignKey(Componente, null=True, blank=True, on_delete=models.CASCADE, related_name="imagenes")
     descripcion = models.CharField(max_length=255, null=True, blank=True)  # descripción/caption opcional de la foto
