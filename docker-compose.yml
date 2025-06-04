@@ -26,7 +26,9 @@ services:
     ports:
       - "8002:8000"    # expone Django en localhost:8002
     volumes:
-      - ./backend:/app
+      - ./backend:/app # el código Django
+      - "./imagenes:/imagenes" # la carpeta donde ya están todas las fotos de las piezas
+      - "./2025 Inventario Colecciones MAPA-PCMAPA.xlsx:/app/inventario.xlsx" # el Excel montado dentro de /app con el nombre simplificado inventario.xlsx.
     depends_on:
       - neo4j
 
