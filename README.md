@@ -13,6 +13,24 @@ El proyecto CatalogoMAPA utiliza los siguientes puertos en el entorno de desarro
   
 Para iniciar todos los servicios, ejecuta:  
 ```bash  
-docker-compose up --build
+docker-compose up -d
 ```
-Y luego, abre el navegador y accede a http://localhost:8080 para ver la aplicación.
+
+Este comando iniciará los contenedores de Docker necesarios para el proyecto, incluyendo el backend (Django), el frontend (Vite + React) y la base de datos Neo4j. Esto crea una imagen de Linux, que instala las librerías de python necesarias en backend\requirements.txt
+
+## Carga masiva de datos
+
+La carga masiva de datos se realiza a través de un script de Python llamado `import_mapa.py` que está en backend\api\management\commands\import_mapa.py. Este script permite importar datos desde un archivo Excel y asociar imágenes desde un directorio específico. Asegúrate de tener el archivo Excel y la carpeta de imágenes en la raíz del proyecto.
+
+Primero, hay que hacer las migraciones de la base de datos para crear las tablas necesarias:
+
+```bash	
+docker-compose exec backend python manage.py makemigrations
+docker-compose exec backend python manage.py migrate
+```
+
+Con las tablas ya creadas, puedes proceder a hacer la carga masiva de datos con el siguiente comando:
+
+```bash
+docker-compose exec backend python manage.py import_mapa --excel "/app/inventario.xlsx" --images_dir "/imagenes"                       
+```
