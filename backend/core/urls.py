@@ -33,4 +33,7 @@ urlpatterns = [
 
 # Sólo en DEBUG, sirve archivos desde MEDIA_ROOT en la URL MEDIA_URL
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT
+    )

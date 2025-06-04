@@ -12,15 +12,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR    = Path(__file__).resolve().parent.parent   # …/CatalogoMAPA/backend
+PROJECT_DIR = BASE_DIR.parent                          # …/CatalogoMAPA
 
-# Nivel arriba de backend:
-PROJECT_DIR = BASE_DIR.parent
-
-# Apunta al folder real:
-MEDIA_ROOT = PROJECT_DIR / 'imagenes'
 MEDIA_URL  = '/imagenes/'
+MEDIA_ROOT = PROJECT_DIR / 'imagenes'   # <— ahora Django subirá *dentro* de la carpeta raíz/imagenes
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -137,6 +134,8 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
