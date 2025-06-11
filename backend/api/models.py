@@ -1,4 +1,4 @@
-# catalogo/models.py
+# backend\api\models.py
 
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -95,6 +95,9 @@ class Pieza(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="piezas_creadas")
     updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="piezas_editadas")
+
+    class Meta:
+        ordering = ['id']  # o ['numero_inventario']
 
     def __str__(self):
         return f"Pieza {self.numero_inventario}"

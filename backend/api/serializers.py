@@ -1,4 +1,4 @@
-# catalogo/serializers.py
+# backend\api\serializers.py
 
 from rest_framework import serializers
 from .models import Pieza, Componente, Imagen, Pais, Localidad, Cultura, Coleccion, Autor, Exposicion, Material, Tecnica

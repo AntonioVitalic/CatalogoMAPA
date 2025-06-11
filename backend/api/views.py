@@ -1,4 +1,4 @@
-# catalogo/views.py
+# backend\api\views.py
 
 from rest_framework import viewsets, filters, permissions
 from django_filters.rest_framework import DjangoFilterBackend
@@ -24,8 +24,8 @@ class PiezaViewSet(viewsets.ModelViewSet):
         'estado_conservacion': ['exact'],
     }
     search_fields = ['numero_inventario', 'nombre_especifico', 'componentes__nombre_comun', 'componentes__nombre_atribuido', 'descripcion']
-    ordering_fields = ['numero_inventario', 'pais__nombre', 'coleccion__nombre', 'autor__nombre', 'localidad__nombre', 'fecha_creacion']
-    ordering = ['numero_inventario']  # default ordering
+    ordering_fields = ['id', 'numero_inventario']
+    ordering = ['id']  # o ['numero_inventario']
 
     def perform_create(self, serializer):
         # Asigna el usuario que crea la pieza
