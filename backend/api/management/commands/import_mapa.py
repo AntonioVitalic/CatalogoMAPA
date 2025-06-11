@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 import pandas as pd
 from pathlib import Path
 from django.core.management.base import BaseCommand
@@ -29,6 +30,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # ─── Determinar rutas ──────────────────────────────────────────
+         # ─── Iniciar cronómetro ───────────────────────────────────────
+        start_time = time.monotonic()
         BASE = Path(__file__).resolve().parents[3]
         excel_path = Path(options.get('excel')) if options.get('excel') \
             else BASE / '2025 Inventario Colecciones MAPA-PCMAPA.xlsx'
@@ -124,6 +127,7 @@ class Command(BaseCommand):
                 pieza, created = Pieza.objects.get_or_create(
                     numero_inventario=num,
                     defaults={
+                        'revision': str(row.get('Revisión', '')).strip() or None,
                         'numero_registro_anterior': str(row.get('numero_de registro_anterior', '')).strip() or None,
                         'codigo_surdoc':        str(row.get('SURDOC', '')).strip() or None,
                         'ubicacion':            row.get('ubicacion') or None,
@@ -134,6 +138,7 @@ class Command(BaseCommand):
                         'coleccion':            get_or_create(Coleccion, coleccion_cache, row.get('coleccion', '')) or Coleccion.objects.first(),
                         'clasificacion':        row.get('clasificacion') or None,
                         'conjunto':             row.get('conjunto') or None,
+                        'nombre_comun': row.get('nombre_comun') or None,
                         'nombre_especifico':    row.get('nombre_especifico') or None,
                         'autor':                get_or_create(Autor, autor_cache, row.get('autor', '')),
                         'filiacion_cultural':   get_or_create(Cultura, cultura_cache, row.get('filiacion_cultural', '')),
@@ -229,6 +234,8 @@ class Command(BaseCommand):
             img.save()
             procesadas += 1
 
+        elapsed = time.monotonic() - start_time
         self.stdout.write(self.style.SUCCESS(
-            f"✅ Import finalizado: {len(piezas_creadas)} piezas y {procesadas} imágenes procesadas."
+            f"✅ Import finalizado: {len(piezas_creadas)} piezas y {procesadas} imágenes procesadas "
+            f"en {elapsed:.2f} segundos."
         ))
