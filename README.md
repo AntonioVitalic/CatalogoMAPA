@@ -34,3 +34,8 @@ Con las tablas ya creadas, puedes proceder a hacer la carga masiva de datos con 
 ```bash
 docker-compose exec backend python manage.py import_mapa --excel "/app/inventario.xlsx" --images_dir "/imagenes"                       
 ```
+
+
+## Nota:
+
+La importación de miles de piezas y centenas de imágenes puede tardar varios minutos. Asegúrate de usar un buen equipo con buenas especificaciones. Si fueran miles de imágenes (con una cantidad similar a las de piezas), la importación podría tardar horas.
