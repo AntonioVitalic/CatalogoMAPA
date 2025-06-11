@@ -1,6 +1,6 @@
+// frontend/src/pages/Index.tsx
 import { useState, useEffect } from "react";
 import { CollectionItem, PaginationState, SearchFilters, ViewMode } from "@/types";
-import { mockItems } from "@/data/mockData";
 import Header from "@/components/Header";
 import Search from "@/components/Search";
 import FilterPanel from "@/components/FilterPanel";
@@ -8,236 +8,170 @@ import ItemGrid from "@/components/ItemGrid";
 import ExportButton from "@/components/ExportButton";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
-  DialogFooter 
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-const ITEMS_PER_PAGE = 20;
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const ITEMS_PER_PAGE = 10;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 
 const Index = () => {
   const { user, login } = useAuth();
-  
+
+  // --- Estados de login/modal ---
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
+  // --- Búsqueda simple vs avanzada ---
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({ query: "" });
-  const [filteredItems, setFilteredItems] = useState<CollectionItem[]>(mockItems);
-  const [selectedItems, setSelectedItems] = useState<CollectionItem[]>([]);
-  
+
+  // --- Datos y paginación ---
+  const [items, setItems] = useState<CollectionItem[]>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
     itemsPerPage: ITEMS_PER_PAGE,
-    totalItems: mockItems.length,
-    totalPages: Math.ceil(mockItems.length / ITEMS_PER_PAGE),
-    viewMode: 'grid'
+    totalItems: 0,
+    totalPages: 0,
+    viewMode: "grid",
   });
 
-  const [displayedItems, setDisplayedItems] = useState<CollectionItem[]>([]);
+  // --- Selección ---
+  const [selectedItems, setSelectedItems] = useState<CollectionItem[]>([]);
 
+  // Función para cargar datos de la API con filtros y paginación
+  const fetchPiezas = async (
+    page: number = 1,
+    filters: SearchFilters = searchFilters
+  ) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("page_size", String(ITEMS_PER_PAGE));
+
+      if (filters.query) params.append("search", filters.query);
+      if (filters.country)
+        filters.country.forEach(c => params.append("pais__nombre", c));
+      if (filters.collection)
+        filters.collection.forEach(c => params.append("coleccion__nombre", c));
+      if (filters.author)
+        filters.author.forEach(a => params.append("autor__nombre", a));
+      if (filters.locality)
+        filters.locality.forEach(l => params.append("localidad__nombre", l));
+      if (filters.dateFrom) params.append("fecha_creacion__gte", filters.dateFrom);
+      if (filters.dateTo) params.append("fecha_creacion__lte", filters.dateTo);
+
+      const res = await fetch(`${API_URL}/api/piezas/?${params.toString()}`);
+      if (!res.ok) throw new Error("Error en la respuesta de la red");
+      const data = await res.json();
+
+      console.log("Datos recibidos:", data);
+      setItems(data.results);
+      setPagination(p => ({
+        ...p,
+        page,
+        totalItems: data.count,
+        totalPages: Math.ceil(data.count / ITEMS_PER_PAGE),
+      }));
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al cargar piezas desde el backend");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carga inicial
   useEffect(() => {
-    applyFilters(searchFilters);
+    fetchPiezas(1);
   }, []);
 
-  const applyFilters = (filters: SearchFilters) => {
-    setLoading(true);
-    
-    // Simulate API call with setTimeout
-    setTimeout(() => {
-      let results = [...mockItems];
-      
-      // Text search
-      if (filters.query) {
-        const query = filters.query.toLowerCase();
-        results = results.filter(
-          (item) =>
-            item.commonName.toLowerCase().includes(query) ||
-            item.inventoryNumber.toLowerCase().includes(query) ||
-            (item.attributedName && item.attributedName.toLowerCase().includes(query)) ||
-            item.collectionDescription.toLowerCase().includes(query)
-        );
-      }
-      
-      // Country filter
-      if (filters.country && filters.country.length > 0) {
-        results = results.filter((item) => filters.country?.includes(item.country));
-      }
-      
-      // Collection filter
-      if (filters.collection && filters.collection.length > 0) {
-        results = results.filter((item) => filters.collection?.includes(item.collection));
-      }
-      
-      // Author filter
-      if (filters.author && filters.author.length > 0) {
-        results = results.filter((item) => item.author && filters.author?.includes(item.author));
-      }
-      
-      // Locality filter
-      if (filters.locality && filters.locality.length > 0) {
-        results = results.filter((item) => item.locality && filters.locality?.includes(item.locality));
-      }
-      
-      // Materials filter
-      if (filters.materials && filters.materials.length > 0) {
-        results = results.filter((item) => {
-          if (!item.materials) return false;
-          return filters.materials?.some(material => item.materials.includes(material));
-        });
-      }
-      
-      // Exhibitions filter
-      if (filters.exhibitions && filters.exhibitions.length > 0) {
-        results = results.filter((item) => {
-          if (!item.exhibitions) return false;
-          return filters.exhibitions?.some(exhibition => item.exhibitions?.includes(exhibition));
-        });
-      }
-      
-      // Date range filter
-      if (filters.dateFrom) {
-        results = results.filter(
-          (item) => item.creationDate && parseInt(item.creationDate) >= parseInt(filters.dateFrom || "0")
-        );
-      }
-      
-      if (filters.dateTo) {
-        results = results.filter(
-          (item) => item.creationDate && parseInt(item.creationDate) <= parseInt(filters.dateTo || "9999")
-        );
-      }
-      
-      setFilteredItems(results);
-      
-      // Update pagination
-      const totalPages = Math.ceil(results.length / ITEMS_PER_PAGE);
-      const newPage = Math.min(pagination.page, totalPages || 1);
-      
-      setPagination({
-        ...pagination,
-        page: newPage,
-        totalItems: results.length,
-        totalPages: totalPages || 1,
-      });
-      
-      // Remember filters
-      setSearchFilters(filters);
-      setLoading(false);
-    }, 500);
+  // Handlers
+  const handlePageChange = (newPage: number) => {
+    fetchPiezas(newPage);
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setPagination(p => ({ ...p, viewMode: mode }));
   };
 
   const handleSearch = (filters: SearchFilters) => {
-    // Combine new text query with existing advanced filters
-    const combinedFilters = { ...searchFilters, ...filters };
-    applyFilters(combinedFilters);
+    setSearchFilters(filters);
+    fetchPiezas(1, filters);
   };
 
   const handleAdvancedFilters = (filters: SearchFilters) => {
-    applyFilters({ ...filters });
+    setSearchFilters(filters);
+    fetchPiezas(1, filters);
   };
 
   const handleResetFilters = () => {
-    setSearchFilters({ query: "" });
-    applyFilters({ query: "" });
-  };
-
-  const handlePageChange = (page: number) => {
-    setPagination({ ...pagination, page });
-  };
-
-  const handleViewModeChange = (viewMode: ViewMode) => {
-    setPagination({ ...pagination, viewMode });
+    const empty: SearchFilters = { query: "" };
+    setSearchFilters(empty);
+    fetchPiezas(1, empty);
   };
 
   const handleSelectItem = (item: CollectionItem) => {
-    setSelectedItems((prev) => {
-      const isSelected = prev.some((selectedItem) => selectedItem.id === item.id);
-      if (isSelected) {
-        return prev.filter((selectedItem) => selectedItem.id !== item.id);
-      } else {
-        return [...prev, item];
-      }
+    setSelectedItems(prev => {
+      const exists = prev.some(i => i.id === item.id);
+      if (exists) return prev.filter(i => i.id !== item.id);
+      return [...prev, item];
     });
   };
 
   const handleSelectAll = () => {
-    // Check if all currently visible items are already selected
-    const allSelected = displayedItems.every(item => 
-      selectedItems.some(selectedItem => selectedItem.id === item.id)
-    );
-    
-    if (allSelected) {
-      // If all are selected, deselect the visible items
-      setSelectedItems(prevSelected => 
-        prevSelected.filter(selectedItem => 
-          !displayedItems.some(item => item.id === selectedItem.id)
-        )
+    const allSel = items.every(item => selectedItems.some(i => i.id === item.id));
+    if (allSel) {
+      setSelectedItems(prev =>
+        prev.filter(i => !items.some(item => item.id === i.id))
       );
-      toast.info(`Se han deseleccionado ${displayedItems.length} piezas`);
+      toast.info(`Se han deseleccionado ${items.length} piezas`);
     } else {
-      // If not all selected, select all visible items that aren't already selected
-      const newSelectedItems = [...selectedItems];
-      
-      displayedItems.forEach(item => {
-        if (!selectedItems.some(selectedItem => selectedItem.id === item.id)) {
-          newSelectedItems.push(item);
-        }
-      });
-      
-      setSelectedItems(newSelectedItems);
-      toast.success(`Se han seleccionado ${displayedItems.length} piezas`);
+      const toAdd = items.filter(item =>
+        !selectedItems.some(i => i.id === item.id)
+      );
+      setSelectedItems(prev => [...prev, ...toAdd]);
+      toast.success(`Se han seleccionado ${items.length} piezas`);
     }
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
       toast.error("Por favor ingrese email y contraseña");
       return;
     }
-    
     setLoading(true);
-    
     try {
       const success = await login(email, password);
-      
       if (success) {
         toast.success("Inicio de sesión exitoso");
         setShowLogin(false);
       } else {
         toast.error("Credenciales inválidas");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al iniciar sesión");
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update displayed items when pagination or filtered items change
-  useEffect(() => {
-    const startIndex = (pagination.page - 1) * pagination.itemsPerPage;
-    const endIndex = startIndex + pagination.itemsPerPage;
-    setDisplayedItems(filteredItems.slice(startIndex, endIndex));
-  }, [filteredItems, pagination.page, pagination.itemsPerPage]);
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header onLoginClick={() => setShowLogin(true)} />
-      
+
       <main className="flex-1 container mx-auto py-8 px-4 md:px-0">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Catálogo MAPA</h1>
@@ -246,18 +180,19 @@ const Index = () => {
           </p>
         </div>
 
+        {/* Search + Toggle Advanced */}
         <div className="mb-8">
-          <Search 
-            onSearch={handleSearch} 
+          <Search
+            onSearch={handleSearch}
             showAdvanced={showAdvancedSearch}
-            toggleAdvanced={() => setShowAdvancedSearch(!showAdvancedSearch)} 
+            toggleAdvanced={() => setShowAdvancedSearch(v => !v)}
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {showAdvancedSearch && (
             <aside className="lg:col-span-1">
-              <FilterPanel 
+              <FilterPanel
                 onApplyFilters={handleAdvancedFilters}
                 onReset={handleResetFilters}
                 initialFilters={searchFilters}
@@ -268,16 +203,13 @@ const Index = () => {
           <div className={showAdvancedSearch ? "lg:col-span-3" : "lg:col-span-4"}>
             <div className="mb-6 flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
-                Mostrando {filteredItems.length > 0 ? (pagination.page - 1) * pagination.itemsPerPage + 1 : 0}-
-                {Math.min(pagination.page * pagination.itemsPerPage, filteredItems.length)} de{" "}
-                {filteredItems.length} piezas
+                Página {pagination.page} de {pagination.totalPages} · {pagination.totalItems} piezas
               </p>
-              
               <ExportButton selectedItems={selectedItems} user={user} />
             </div>
 
             <ItemGrid
-              items={displayedItems}
+              items={items}
               loading={loading}
               pagination={pagination}
               onPageChange={handlePageChange}
@@ -285,12 +217,13 @@ const Index = () => {
               selectedItems={selectedItems}
               onSelectItem={handleSelectItem}
               onSelectAll={handleSelectAll}
-              totalItems={displayedItems.length}
+              totalItems={items.length}
             />
           </div>
         </div>
       </main>
 
+      {/* Modal de Login */}
       <Dialog open={showLogin} onOpenChange={setShowLogin}>
         <DialogContent>
           <DialogHeader>
@@ -299,7 +232,6 @@ const Index = () => {
               Ingresa tus credenciales para acceder al sistema.
             </DialogDescription>
           </DialogHeader>
-          
           <form onSubmit={handleLoginSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -308,10 +240,9 @@ const Index = () => {
                   id="email"
                   placeholder="admin@mapa.cl o editor@mapa.cl"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={e => setEmail(e.target.value)}
                 />
               </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>
                 <Input
@@ -319,11 +250,10 @@ const Index = () => {
                   type="password"
                   placeholder="Cualquier texto (demo)"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                 />
               </div>
             </div>
-            
             <DialogFooter>
               <Button type="submit" disabled={loading}>
                 {loading ? "Cargando..." : "Iniciar sesión"}
