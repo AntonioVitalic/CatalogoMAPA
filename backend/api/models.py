@@ -49,52 +49,54 @@ class Tecnica(models.Model):
         return self.nombre
 
 class Pieza(models.Model):
-    numero_inventario = models.CharField(max_length=50, unique=True)  # e.g. "2813"
-    numero_registro_anterior = models.CharField(max_length=100, null=True, blank=True)  # if any
-    codigo_surdoc = models.CharField(max_length=100, null=True, blank=True)  # código SURDOC u otro sistema
+    numero_inventario            = models.CharField(max_length=50, unique=True)  # e.g. "2813"
+    revision                     = models.CharField("Revisión", max_length=100, blank=True, null=True)
+    numero_registro_anterior     = models.CharField(max_length=100, null=True, blank=True)  # if any
+    codigo_surdoc                = models.CharField(max_length=100, null=True, blank=True)  # código SURDOC u otro sistema
     # Ubicación interna en bodega/exhibición:
-    ubicacion = models.CharField(max_length=200, null=True, blank=True)  # ubicación (sala o depósito)
-    deposito = models.CharField(max_length=100, null=True, blank=True)
-    estante = models.CharField(max_length=100, null=True, blank=True)
-    caja_actual = models.CharField(max_length=100, null=True, blank=True)
+    ubicacion                    = models.CharField(max_length=200, null=True, blank=True)  # ubicación (sala o depósito)
+    deposito                     = models.CharField(max_length=100, null=True, blank=True)
+    estante                      = models.CharField(max_length=100, null=True, blank=True)
+    caja_actual                  = models.CharField(max_length=100, null=True, blank=True)
     # Clasificación museológica:
-    tipologia = models.CharField(max_length=100, null=True, blank=True)
-    coleccion = models.ForeignKey(Coleccion, on_delete=models.PROTECT, related_name="piezas")
-    clasificacion = models.CharField(max_length=100, null=True, blank=True)
-    conjunto = models.CharField(max_length=200, null=True, blank=True)  # conjunto/serie al que pertenece, si aplica
-    nombre_especifico = models.CharField(max_length=200, null=True, blank=True)  # nombre atribuido (ej. en lengua originaria)
-    autor = models.ForeignKey(Autor, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
-    filiacion_cultural = models.ForeignKey(Cultura, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
-    pais = models.ForeignKey(Pais, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
-    localidad = models.ForeignKey(Localidad, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
-    fecha_creacion = models.CharField(max_length=100, null=True, blank=True)  # texto libre (e.g. "Siglo XX" o año aprox)
-    descripcion = models.TextField(null=True, blank=True)  # descripción física o de colección
-    marcas_inscripciones = models.TextField(null=True, blank=True)
-    contexto_historico = models.TextField(null=True, blank=True)
-    bibliografia = models.TextField(null=True, blank=True)
-    iconografia = models.TextField(null=True, blank=True)
-    notas_investigacion = models.TextField(null=True, blank=True)
-    tecnica = models.ManyToManyField(Tecnica, blank=True, related_name="piezas")
-    materiales = models.ManyToManyField(Material, blank=True, related_name="piezas")
-    exposiciones = models.ManyToManyField(Exposicion, blank=True, related_name="piezas")
-    avaluo = models.CharField(max_length=100, null=True, blank=True)  # valor o valuación
-    procedencia = models.CharField(max_length=200, null=True, blank=True)  # origen/procedencia (ej. donación, compra)
-    donante = models.CharField(max_length=200, null=True, blank=True)
-    fecha_ingreso = models.CharField(max_length=100, null=True, blank=True)
+    tipologia                    = models.CharField(max_length=100, null=True, blank=True)
+    coleccion                    = models.ForeignKey(Coleccion, on_delete=models.PROTECT, related_name="piezas")
+    clasificacion                = models.CharField(max_length=100, null=True, blank=True)
+    conjunto                     = models.CharField(max_length=200, null=True, blank=True)  # conjunto/serie al que pertenece, si aplica
+    nombre_comun                 = models.CharField("Nombre común", max_length=200, blank=True, null=True)
+    nombre_especifico            = models.CharField(max_length=200, null=True, blank=True)  # nombre atribuido (ej. en lengua originaria)
+    autor                        = models.ForeignKey(Autor, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
+    filiacion_cultural           = models.ForeignKey(Cultura, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
+    pais                         = models.ForeignKey(Pais, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
+    localidad                    = models.ForeignKey(Localidad, on_delete=models.PROTECT, null=True, blank=True, related_name="piezas")
+    fecha_creacion               = models.CharField(max_length=100, null=True, blank=True)  # texto libre (e.g. "Siglo XX" o año aprox)
+    descripcion                  = models.TextField("Descripción", null=True, blank=True)  # descripción física o de colección
+    marcas_inscripciones         = models.TextField(null=True, blank=True)
+    contexto_historico           = models.TextField(null=True, blank=True)
+    bibliografia                 = models.TextField(null=True, blank=True)
+    iconografia                  = models.TextField(null=True, blank=True)
+    notas_investigacion          = models.TextField(null=True, blank=True)
+    tecnica                      = models.ManyToManyField(Tecnica, blank=True, related_name="piezas")
+    materiales                   = models.ManyToManyField(Material, blank=True, related_name="piezas")
+    exposiciones                 = models.ManyToManyField(Exposicion, blank=True, related_name="piezas")
+    avaluo                       = models.CharField(max_length=100, null=True, blank=True)  # valor o valuación
+    procedencia                  = models.CharField(max_length=200, null=True, blank=True)  # origen/procedencia (ej. donación, compra)
+    donante                      = models.CharField(max_length=200, null=True, blank=True)
+    fecha_ingreso                = models.CharField(max_length=100, null=True, blank=True)
     # Conservación:
-    estado_conservacion = models.CharField(max_length=50, null=True, blank=True)  # e.g. "BUENO", "REGULAR", etc.
-    descripcion_conservacion = models.TextField(null=True, blank=True)  # detalles de conservación/restauración
-    responsable_conservacion = models.CharField(max_length=100, null=True, blank=True)
+    estado_conservacion          = models.CharField(max_length=50, null=True, blank=True)  # e.g. "BUENO", "REGULAR", etc.
+    descripcion_conservacion     = models.TextField(null=True, blank=True)  # detalles de conservación/restauración
+    responsable_conservacion     = models.CharField(max_length=100, null=True, blank=True)
     fecha_actualizacion_conservacion = models.CharField(max_length=100, null=True, blank=True)
-    comentarios_conservacion = models.TextField(null=True, blank=True)
+    comentarios_conservacion     = models.TextField(null=True, blank=True)
     # Meta:
-    responsable_coleccion = models.CharField(max_length=100, null=True, blank=True)  # quién es encargado de esta pieza
-    fecha_ultima_modificacion = models.CharField(max_length=100, null=True, blank=True)
+    responsable_coleccion        = models.CharField(max_length=100, null=True, blank=True)  # quién es encargado de esta pieza
+    fecha_ultima_modificacion    = models.CharField(max_length=100, null=True, blank=True)
     # Campos de trazabilidad:
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="piezas_creadas")
-    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="piezas_editadas")
+    created_at                   = models.DateTimeField(auto_now_add=True)
+    updated_at                   = models.DateTimeField(auto_now=True)
+    created_by                   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="piezas_creadas")
+    updated_by                   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="piezas_editadas")
 
     class Meta:
         ordering = ['id']  # o ['numero_inventario']

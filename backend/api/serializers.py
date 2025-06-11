@@ -32,6 +32,7 @@ class PiezaSerializer(serializers.ModelSerializer):
     exposiciones = serializers.SlugRelatedField(queryset=Exposicion.objects.all(), slug_field='titulo', many=True, allow_null=True, required=False)
     materiales = serializers.SlugRelatedField(queryset=Material.objects.all(), slug_field='nombre', many=True, allow_null=True, required=False)
     tecnica = serializers.SlugRelatedField(queryset=Tecnica.objects.all(), slug_field='nombre', many=True, allow_null=True, required=False)
+    descripcion_col = serializers.CharField(source='descripcion', allow_blank=True, read_only=True)
 
     class Meta:
         model = Pieza
@@ -40,7 +41,7 @@ class PiezaSerializer(serializers.ModelSerializer):
             'ubicacion', 'deposito', 'estante', 'caja_actual',
             'tipologia', 'coleccion', 'clasificacion', 'conjunto',
             'nombre_especifico', 'autor', 'filiacion_cultural', 'pais', 'localidad',
-            'fecha_creacion', 'descripcion', 'marcas_inscripciones',
+            'fecha_creacion', 'descripcion_col', 'marcas_inscripciones',
             'contexto_historico', 'bibliografia', 'iconografia', 'notas_investigacion',
             'tecnica', 'materiales',
             'estado_conservacion', 'descripcion_conservacion', 'responsable_conservacion',
