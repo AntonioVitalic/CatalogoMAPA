@@ -1,4 +1,4 @@
-
+// frontend/src/components/ItemDetail.tsx
 import { CollectionItem } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,6 +6,7 @@ import { ArrowLeft, Edit, DownloadIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { saveAs } from "file-saver";
 
 interface ItemDetailProps {
   item: CollectionItem;
@@ -13,14 +14,33 @@ interface ItemDetailProps {
 
 const ItemDetail = ({ item }: ItemDetailProps) => {
   const { role } = useAuth();
-  const isEditorOrAdmin = role === 'editor' || role === 'admin';
+  const isEditorOrAdmin = role === "editor" || role === "admin";
 
   const handleEdit = () => {
     toast.info("Funcionalidad de edición no implementada en esta demo");
   };
 
-  const downloadImage = () => {
-    toast.info("Descarga de imagen de alta resolución no implementada en esta demo");
+  const downloadImage = async () => {
+    if (!item.imageUrl) {
+      toast.error("No hay imagen disponible para descargar");
+      return;
+    }
+    try {
+      toast.loading("Descargando imagen...");
+      const response = await fetch(item.imageUrl);
+      if (!response.ok) throw new Error("Error al descargar la imagen");
+      const blob = await response.blob();
+      // Extraemos la extensión o usamos .jpg por defecto
+      const extension = item.imageUrl.split(".").pop()?.split(/\#|\?/)[0] || "jpg";
+      saveAs(
+        blob,
+        `${item.inventoryNumber || item.commonName || "imagen"}.${extension}`
+      );
+      toast.success("Imagen descargada correctamente");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al descargar la imagen");
+    }
   };
 
   return (
@@ -32,7 +52,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             Volver al catálogo
           </Button>
         </Link>
-        
+
         {isEditorOrAdmin && (
           <Button onClick={handleEdit} variant="secondary" size="sm">
             <Edit className="mr-2 h-4 w-4" />
@@ -45,9 +65,9 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
         <div className="space-y-4">
           <div className="bg-muted rounded-lg overflow-hidden">
             {item.imageUrl ? (
-              <img 
-                src={item.imageUrl} 
-                alt={item.commonName} 
+              <img
+                src={item.imageUrl}
+                alt={item.commonName}
                 className="w-full h-auto object-contain"
               />
             ) : (
@@ -56,10 +76,12 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
               </div>
             )}
           </div>
-          
+
           <div className="flex justify-between">
             <p className="text-sm text-muted-foreground">
-              {item.creationDate ? `Fecha de creación: ${item.creationDate}` : "Fecha desconocida"}
+              {item.creationDate
+                ? `Fecha de creación: ${item.creationDate}`
+                : "Fecha desconocida"}
             </p>
             <Button variant="ghost" size="sm" onClick={downloadImage}>
               <DownloadIcon className="mr-2 h-4 w-4" />
@@ -84,11 +106,18 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             <DetailItem label="Colección" value={item.collection} />
             <DetailItem label="País" value={item.country} />
             {item.locality && <DetailItem label="Localidad" value={item.locality} />}
-            <DetailItem 
-              label="Materialidad" 
-              value={Array.isArray(item.materials) ? item.materials.join(", ") : item.materials} 
+            <DetailItem
+              label="Materialidad"
+              value={
+                Array.isArray(item.materials)
+                  ? item.materials.join(", ")
+                  : item.materials
+              }
             />
-            <DetailItem label="Estado de conservación" value={item.conservationState} />
+            <DetailItem
+              label="Estado de conservación"
+              value={item.conservationState}
+            />
           </div>
 
           <Separator />
@@ -98,13 +127,20 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             <p className="text-sm">{item.collectionDescription}</p>
           </div>
 
-          {(item.previousRegistryNumber || item.surdoc || item.location || item.deposit || item.shelf) && (
+          {(item.previousRegistryNumber ||
+            item.surdoc ||
+            item.location ||
+            item.deposit ||
+            item.shelf) && (
             <>
               <Separator />
               <div className="space-y-4">
                 <h3 className="font-semibold">Información adicional</h3>
                 {item.previousRegistryNumber && (
-                  <DetailItem label="Número de registro anterior" value={item.previousRegistryNumber} />
+                  <DetailItem
+                    label="Número de registro anterior"
+                    value={item.previousRegistryNumber}
+                  />
                 )}
                 {item.surdoc && <DetailItem label="ID SURDOC" value={item.surdoc} />}
                 {item.location && <DetailItem label="Ubicación" value={item.location} />}
