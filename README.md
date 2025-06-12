@@ -38,4 +38,4 @@ docker-compose exec backend python manage.py import_mapa --excel "/app/inventari
 
 ## Nota:
 
-La importación de miles de piezas y centenas de imágenes puede tardar varios minutos. Asegúrate de usar un buen equipo con buenas especificaciones. Si fueran miles de imágenes (con una cantidad similar a las de piezas), la importación podría tardar horas.
+La importación de miles de piezas y centenas de imágenes puede tardar varios minutos. Asegúrate de usar un buen equipo con buenas especificaciones, pues este proyecto se está creando con un notebook Asus Vivobook 16X con Windows 11 de 64 bits, con una CPU AMD Ryzen 7 octacore, con 16 GB de RAM. Si fueran miles de imágenes (con una cantidad similar a las de piezas), la importación podría tardar horas.
