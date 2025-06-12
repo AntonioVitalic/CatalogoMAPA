@@ -1,19 +1,29 @@
+// frontend/src/pages/Index.tsx
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Header from "@/components/Header";
 import Search from "@/components/Search";
 import FilterPanel from "@/components/FilterPanel";
 import ItemGrid from "@/components/ItemGrid";
 import { CollectionItem, PaginationState, SearchFilters, ViewMode } from "@/types";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 10;
 
 export default function Index() {
+  const { page: pageParam } = useParams<{ page?: string }>();
+  const navigate = useNavigate();
+
+  const initialPage =
+    pageParam && !isNaN(Number(pageParam)) ? Number(pageParam) : 1;
+
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [loading, setLoading] = useState(false);
-
   const [pagination, setPagination] = useState<PaginationState>({
-    page: 1,
-    itemsPerPage: ITEMS_PER_PAGE,        // <— ahora obligatorio
+    page: initialPage,
+    itemsPerPage: ITEMS_PER_PAGE,
     totalItems: 0,
     totalPages: 1,
     viewMode: "grid",
@@ -32,35 +42,29 @@ export default function Index() {
     dateTo: "",
   });
 
-  // Carga de datos combinando búsqueda simple + filtros avanzados
-  const fetchPiezas = async (page = 1, filters: SearchFilters = searchFilters) => {
+  // Estado para mostrar el diálogo de login
+  const [showLogin, setShowLogin] = useState(false);
+
+  // Refrescar cada vez que cambien la URL de página o los filtros
+  useEffect(() => {
+    fetchPiezas(initialPage, searchFilters);
+  }, [pageParam, searchFilters]);
+
+  const fetchPiezas = async (page: number, filters: SearchFilters) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("page_size", ITEMS_PER_PAGE.toString());
 
-      if (filters.query) {
-        params.append("search", filters.query);
-      }
-      (filters.country || []).forEach((c) => params.append("pais__nombre", c));
-      (filters.collection || []).forEach((c) =>
-        params.append("coleccion__nombre", c)
-      );
-      (filters.author || []).forEach((a) =>
-        params.append("autor__nombre", a)
-      );
-      (filters.locality || []).forEach((l) =>
-        params.append("localidad__nombre", l)
-      );
-      (filters.materials || []).forEach((m) =>
-        params.append("materiales__nombre", m)
-      );
-      (filters.exhibitions || []).forEach((e) =>
-        params.append("exposiciones__titulo", e)
-      );
-      if (filters.dateFrom)
-        params.append("fecha_creacion_after", filters.dateFrom);
+      if (filters.query) params.append("search", filters.query);
+      filters.country?.forEach(c => params.append("pais__nombre", c));
+      filters.collection?.forEach(c => params.append("coleccion__nombre", c));
+      filters.author?.forEach(a => params.append("autor__nombre", a));
+      filters.locality?.forEach(l => params.append("localidad__nombre", l));
+      filters.materials?.forEach(m => params.append("materiales__nombre", m));
+      filters.exhibitions?.forEach(e => params.append("exposiciones__titulo", e));
+      if (filters.dateFrom) params.append("fecha_creacion_after", filters.dateFrom);
       if (filters.dateTo) params.append("fecha_creacion_before", filters.dateTo);
 
       const res = await fetch(`${API_URL}/api/piezas/?${params.toString()}`);
@@ -83,11 +87,11 @@ export default function Index() {
           locality: p.localidad || "",
           creationDate: p.fecha_creacion || "",
           materials: p.materiales ?? [],
-          collectionDescription: p.descripcion || "",
+          collectionDescription: p.descripcion_col || "",
           conservationState: p.estado_conservacion || "",
-          location: undefined,
-          deposit: undefined,
-          shelf: undefined,
+          location: p.ubicacion || "",
+          deposit: p.deposito || "",
+          shelf: p.estante || "",
           imageUrl,
           thumbnailUrl: imageUrl,
           collection: p.coleccion || "",
@@ -97,7 +101,7 @@ export default function Index() {
       });
 
       setItems(mapped);
-      setPagination((prev) => ({
+      setPagination(prev => ({
         ...prev,
         page,
         totalItems: data.count,
@@ -110,15 +114,8 @@ export default function Index() {
     }
   };
 
-  // Efecto inicial y al cambiar filtros
-  useEffect(() => {
-    fetchPiezas(1, searchFilters);
-  }, [searchFilters]);
-
-  // Handlers
   const handleSearch = (simple: SearchFilters) => {
-    // mantiene filtros avanzados y actualiza solo el query
-    setSearchFilters((prev) => ({ ...prev, query: simple.query }));
+    setSearchFilters(prev => ({ ...prev, query: simple.query }));
   };
   const handleApplyFilters = (advanced: SearchFilters) => {
     setSearchFilters(advanced);
@@ -137,48 +134,96 @@ export default function Index() {
       dateTo: "",
     });
   };
-  const handlePageChange = (page: number) => fetchPiezas(page, searchFilters);
+  const handlePageChange = (newPage: number) => {
+    navigate(`/${newPage}`);
+  };
   const handleViewModeChange = (mode: ViewMode) =>
-    setPagination((p) => ({ ...p, viewMode: mode }));
+    setPagination(p => ({ ...p, viewMode: mode }));
+
   const [selectedItems, setSelectedItems] = useState<CollectionItem[]>([]);
   const handleSelectItem = (item: CollectionItem) =>
-    setSelectedItems((prev) =>
-      prev.some((i) => i.id === item.id)
-        ? prev.filter((i) => i.id !== item.id)
+    setSelectedItems(prev =>
+      prev.some(i => i.id === item.id)
+        ? prev.filter(i => i.id !== item.id)
         : [...prev, item]
     );
   const handleSelectAll = () => {
-    const all = items.every((i) => selectedItems.some((s) => s.id === i.id));
+    const all = items.every(i => selectedItems.some(s => s.id === i.id));
     setSelectedItems(all ? [] : items);
   };
 
   return (
-    <div className="p-6 space-y-4">
-      <Search
-        onSearch={handleSearch}
-        showAdvanced={showFilters}
-        toggleAdvanced={() => setShowFilters((v) => !v)}
-      />
+    <div className="min-h-screen flex flex-col">
+      {/* HEADER con logo, toggle y usuario */}
+      <Header onLoginClick={() => setShowLogin(true)} />
 
-      {showFilters && (
-        <FilterPanel
-          initialFilters={searchFilters}
-          onApplyFilters={handleApplyFilters}
-          onReset={handleResetFilters}
+      <main className="flex-1 p-6 space-y-6">
+        {/* Título/Subtítulo al estilo Lovable */}
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold">Catálogo MAPA</h1>
+          <p className="text-muted-foreground">
+            Explora la colección del Museo de Arte Popular Americano Tomás Lago
+          </p>
+        </div>
+
+        {/* Buscador */}
+        <Search
+          onSearch={handleSearch}
+          showAdvanced={showFilters}
+          toggleAdvanced={() => setShowFilters(v => !v)}
         />
-      )}
 
-      <ItemGrid
-        items={items}
-        loading={loading}
-        pagination={pagination}
-        onPageChange={handlePageChange}
-        onViewModeChange={handleViewModeChange}
-        selectedItems={selectedItems}
-        onSelectItem={handleSelectItem}
-        onSelectAll={handleSelectAll}
-        totalItems={pagination.totalItems}
-      />
+        {/* Filtros avanzados */}
+        {showFilters && (
+          <FilterPanel
+            initialFilters={searchFilters}
+            onApplyFilters={handleApplyFilters}
+            onReset={handleResetFilters}
+          />
+        )}
+
+        {/* Rejilla/lista de ítems con paginación */}
+        <ItemGrid
+          items={items}
+          loading={loading}
+          pagination={pagination}
+          onPageChange={handlePageChange}
+          onViewModeChange={handleViewModeChange}
+          selectedItems={selectedItems}
+          onSelectItem={handleSelectItem}
+          onSelectAll={handleSelectAll}
+          totalItems={pagination.totalItems}
+        />
+      </main>
+
+      {/* Diálogo de inicio de sesión */}
+      {showLogin && (
+        <Dialog open onOpenChange={setShowLogin}>
+          <DialogContent>
+            {/* Aquí puedes copiar tu formulario de login */}
+            <h2 className="text-lg font-semibold mb-4">Iniciar sesión</h2>
+            <form className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Email</label>
+                <input
+                  type="email"
+                  className="w-full input"
+                  placeholder="admin@mapa.cl o editor@mapa.cl"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Contraseña</label>
+                <input
+                  type="password"
+                  className="w-full input"
+                  placeholder="Cualquier texto (demo)"
+                />
+              </div>
+              <Button className="w-full">Iniciar sesión</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
