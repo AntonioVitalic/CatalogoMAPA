@@ -1,15 +1,18 @@
-
+// frontend/src/components/ExportButton.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { CollectionItem, User } from "@/types";
 import { toast } from "sonner";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 interface ExportButtonProps {
   selectedItems: CollectionItem[];
@@ -19,85 +22,71 @@ interface ExportButtonProps {
 const ExportButton = ({ selectedItems, user }: ExportButtonProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
+  const headers = [
+    "N° de inventario",
+    "Nombre común",
+    "Nombre atribuido",
+    "Autor",
+    "Colección",
+    "País",
+    "Localidad",
+    "Fecha de creación",
+    "Materialidad",
+    "Estado de conservación",
+    "Descripción",
+    "N° de registro anterior",
+    "SURDOC",
+    "Ubicación",
+    "Depósito",
+    "Estante",
+  ];
+
   const exportToCSV = () => {
     if (selectedItems.length === 0) {
       toast.error("No hay piezas seleccionadas para exportar");
       return;
     }
-
     setIsExporting(true);
-
     try {
-      // Define columns for all users - matching the detail view
-      const headers = [
-        "N° de inventario", 
-        "Nombre común", 
-        "Nombre atribuido", 
-        "Autor",
-        "Colección",
-        "País", 
-        "Localidad", 
-        "Fecha de creación", 
-        "Materialidad", 
-        "Estado de conservación",
-        "Descripción",
-        "N° de registro anterior", 
-        "SURDOC", 
-        "Ubicación",
-        "Depósito",
-        "Estante"
-      ];
+      // BOM para forzar UTF-8 en Excel
+      let csvContent = "\uFEFF" + headers.join(",") + "\n";
 
-      // Create CSV content
-      let csvContent = headers.join(',') + '\n';
-      
-      selectedItems.forEach(item => {
+      selectedItems.forEach((item) => {
         const row = [
           item.inventoryNumber,
           item.commonName,
-          item.attributedName || '',
-          item.author || '',
+          item.attributedName || "",
+          item.author || "",
           item.collection,
           item.country,
-          item.locality || '',
-          item.creationDate || '',
-          (item.materials || []).join('; '),
+          item.locality || "",
+          item.creationDate || "",
+          (item.materials || []).join("; "),
           item.conservationState,
           item.collectionDescription,
-          item.previousRegistryNumber || '',
-          item.surdoc || '',
-          item.location || '',
-          item.deposit || '',
-          item.shelf || ''
+          item.previousRegistryNumber || "",
+          item.surdoc || "",
+          item.location || "",
+          item.deposit || "",
+          item.shelf || "",
         ];
-            
-        // Ensure each field is properly escaped for CSV
-        const escapedRow = row.map(field => {
-          // If the field contains a comma, newline, or double quote, enclose it in double quotes
-          if (field && (field.includes(',') || field.includes('\n') || field.includes('"'))) {
-            // Replace double quotes with two double quotes
+
+        const escaped = row.map((field) => {
+          if (field.includes(',') || field.includes('\n') || field.includes('"')) {
             return `"${field.replace(/"/g, '""')}"`;
           }
           return field;
         });
-        
-        csvContent += escapedRow.join(',') + '\n';
+
+        csvContent += escaped.join(",") + "\n";
       });
-      
-      // Create and download the file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `mapa_export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast.success(`${selectedItems.length} piezas exportadas exitosamente`);
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      toast.error("Error al exportar datos");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      saveAs(blob, `mapa_export_${new Date().toISOString().split("T")[0]}.csv`);
+      toast.success(`${selectedItems.length} piezas exportadas a CSV`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar a CSV");
     } finally {
       setIsExporting(false);
     }
@@ -108,17 +97,59 @@ const ExportButton = ({ selectedItems, user }: ExportButtonProps) => {
       toast.error("No hay piezas seleccionadas para exportar");
       return;
     }
-    
-    // For demo purposes, we'll just show a toast
-    // In a real implementation, you'd use a library like xlsx to create the Excel file
-    toast.success("Exportación a Excel no implementada en esta demo");
-    toast("Utilice la exportación a CSV por ahora");
+    setIsExporting(true);
+    try {
+      // Construimos un array de arrays: [headers, ...rows]
+      const data: Array<string[]> = [
+        headers,
+        ...selectedItems.map((item) => [
+          item.inventoryNumber,
+          item.commonName,
+          item.attributedName || "",
+          item.author || "",
+          item.collection,
+          item.country,
+          item.locality || "",
+          item.creationDate || "",
+          (item.materials || []).join("; "),
+          item.conservationState,
+          item.collectionDescription,
+          item.previousRegistryNumber || "",
+          item.surdoc || "",
+          item.location || "",
+          item.deposit || "",
+          item.shelf || "",
+        ]),
+      ];
+
+      // Generamos la hoja y el libro
+      const worksheet = XLSX.utils.aoa_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Piezas");
+
+      // Obtenemos array buffer y guardamos
+      const wbout = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const blob = new Blob([wbout], {
+        type: "application/octet-stream",
+      });
+      saveAs(blob, `mapa_export_${new Date().toISOString().split("T")[0]}.xlsx`);
+
+      toast.success(`${selectedItems.length} piezas exportadas a Excel`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar a Excel");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
+        <Button
           disabled={selectedItems.length === 0 || isExporting}
           className="flex items-center gap-2"
         >
