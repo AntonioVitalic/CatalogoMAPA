@@ -24,6 +24,7 @@ class PiezaSerializer(serializers.ModelSerializer):
     componentes = ComponenteSerializer(many=True, read_only=True)
     imagenes = ImagenSerializer(many=True, read_only=True)
     # Represent foreign keys by name in addition to ID (for easier reading):
+    nombre_comun = serializers.CharField(allow_blank=True, read_only=True)
     pais = serializers.SlugRelatedField(queryset=Pais.objects.all(), slug_field='nombre', allow_null=True)
     localidad = serializers.SlugRelatedField(queryset=Localidad.objects.all(), slug_field='nombre', allow_null=True)
     filiacion_cultural = serializers.SlugRelatedField(queryset=Cultura.objects.all(), slug_field='nombre', allow_null=True)
@@ -39,7 +40,7 @@ class PiezaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'numero_inventario', 'numero_registro_anterior', 'codigo_surdoc',
             'ubicacion', 'deposito', 'estante', 'caja_actual',
-            'tipologia', 'coleccion', 'clasificacion', 'conjunto',
+            'tipologia', 'coleccion', 'clasificacion', 'conjunto',  'nombre_comun',
             'nombre_especifico', 'autor', 'filiacion_cultural', 'pais', 'localidad',
             'fecha_creacion', 'descripcion_col', 'marcas_inscripciones',
             'contexto_historico', 'bibliografia', 'iconografia', 'notas_investigacion',
