@@ -5,6 +5,8 @@ import Header from "@/components/Header";
 import Search from "@/components/Search";
 import FilterPanel from "@/components/FilterPanel";
 import ItemGrid from "@/components/ItemGrid";
+import ExportButton from "@/components/ExportButton";
+import { useAuth } from "@/hooks/useAuth";
 import { CollectionItem, PaginationState, SearchFilters, ViewMode } from "@/types";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ const ITEMS_PER_PAGE = 10;
 export default function Index() {
   const { page: pageParam } = useParams<{ page?: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const initialPage =
     pageParam && !isNaN(Number(pageParam)) ? Number(pageParam) : 1;
@@ -42,10 +45,10 @@ export default function Index() {
     dateTo: "",
   });
 
-  // Estado para mostrar el diálogo de login
+  // Para el diálogo de login
   const [showLogin, setShowLogin] = useState(false);
 
-  // Refrescar cada vez que cambien la URL de página o los filtros
+  // Carga inicial y cuando cambian página o filtros
   useEffect(() => {
     fetchPiezas(initialPage, searchFilters);
   }, [pageParam, searchFilters]);
@@ -114,14 +117,14 @@ export default function Index() {
     }
   };
 
-  const handleSearch = (simple: SearchFilters) => {
+  // Handlers de búsqueda y filtros
+  const handleSearch = (simple: SearchFilters) =>
     setSearchFilters(prev => ({ ...prev, query: simple.query }));
-  };
   const handleApplyFilters = (advanced: SearchFilters) => {
     setSearchFilters(advanced);
     setShowFilters(false);
   };
-  const handleResetFilters = () => {
+  const handleResetFilters = () =>
     setSearchFilters({
       query: "",
       country: [],
@@ -133,13 +136,15 @@ export default function Index() {
       dateFrom: "",
       dateTo: "",
     });
-  };
+
+  // Cambiar página en URL
   const handlePageChange = (newPage: number) => {
     navigate(`/${newPage}`);
   };
   const handleViewModeChange = (mode: ViewMode) =>
     setPagination(p => ({ ...p, viewMode: mode }));
 
+  // Selección de piezas para exportar
   const [selectedItems, setSelectedItems] = useState<CollectionItem[]>([]);
   const handleSelectItem = (item: CollectionItem) =>
     setSelectedItems(prev =>
@@ -152,13 +157,17 @@ export default function Index() {
     setSelectedItems(all ? [] : items);
   };
 
+  // Cálculo de resumen: X–Y de Z
+  const start = (pagination.page - 1) * pagination.itemsPerPage + 1;
+  const end = Math.min(pagination.page * pagination.itemsPerPage, pagination.totalItems);
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* HEADER con logo, toggle y usuario */}
+      {/* HEADER */}
       <Header onLoginClick={() => setShowLogin(true)} />
 
       <main className="flex-1 p-6 space-y-6">
-        {/* Título/Subtítulo al estilo Lovable */}
+        {/* Título y subtítulo */}
         <div className="space-y-1">
           <h1 className="text-3xl font-bold">Catálogo MAPA</h1>
           <p className="text-muted-foreground">
@@ -182,7 +191,15 @@ export default function Index() {
           />
         )}
 
-        {/* Rejilla/lista de ítems con paginación */}
+        {/* Resumen + Exportar */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {start}-{end} de {pagination.totalItems} piezas
+          </p>
+          <ExportButton selectedItems={selectedItems} user={user} />
+        </div>
+
+        {/* Grid / Listado */}
         <ItemGrid
           items={items}
           loading={loading}
@@ -196,11 +213,10 @@ export default function Index() {
         />
       </main>
 
-      {/* Diálogo de inicio de sesión */}
+      {/* Diálogo de login */}
       {showLogin && (
         <Dialog open onOpenChange={setShowLogin}>
           <DialogContent>
-            {/* Aquí puedes copiar tu formulario de login */}
             <h2 className="text-lg font-semibold mb-4">Iniciar sesión</h2>
             <form className="space-y-4">
               <div className="space-y-2">
