@@ -1,14 +1,17 @@
-# backend\api\views.py
-
 from rest_framework import viewsets, filters, permissions
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Pieza, Componente, Imagen
-from .serializers import PiezaSerializer, ComponenteSerializer, ImagenSerializer
+from .models import Pieza, Componente, Imagen, Pais, Localidad, Coleccion, Autor, Material
+from .serializers import (
+    PiezaSerializer, ComponenteSerializer, ImagenSerializer,
+    PaisSerializer, LocalidadSerializer, ColeccionSerializer, AutorSerializer, MaterialSerializer
+)
 
 class PiezaViewSet(viewsets.ModelViewSet):
-    queryset = Pieza.objects.prefetch_related('componentes__imagenes', 'imagenes', 'pais', 'localidad',
-                                             'filiacion_cultural', 'coleccion', 'autor', 
-                                             'exposiciones', 'materiales', 'tecnica').all()
+    queryset = Pieza.objects.prefetch_related(
+        'componentes__imagenes', 'imagenes', 'pais', 'localidad',
+        'filiacion_cultural', 'coleccion', 'autor',
+        'exposiciones', 'materiales', 'tecnica'
+    ).all()
     serializer_class = PiezaSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]  # Auth: editores vs visitantes
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -30,6 +33,7 @@ class PiezaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Asigna el usuario que crea la pieza
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
+
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
 
@@ -51,6 +55,7 @@ class ComponenteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
+
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
 
@@ -65,3 +70,34 @@ class ImagenViewSet(viewsets.ModelViewSet):
         'componente__letra': ['exact'],
     }
     ordering = ['pieza__numero_inventario', 'componente__letra']
+
+# ViewSets de solo lectura para filtros dinámicos
+class PaisViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Pais.objects.all().order_by('nombre')
+    serializer_class = PaisSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None  # devolver todos los valores
+
+class ColeccionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Coleccion.objects.all().order_by('nombre')
+    serializer_class = ColeccionSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
+
+class AutorViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Autor.objects.all().order_by('nombre')
+    serializer_class = AutorSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
+
+class LocalidadViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Localidad.objects.all().order_by('nombre')
+    serializer_class = LocalidadSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
+
+class MaterialViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Material.objects.all().order_by('nombre')
+    serializer_class = MaterialSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None

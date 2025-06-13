@@ -1,12 +1,10 @@
-# backend\api\serializers.py
-
 from rest_framework import serializers
 from .models import Pieza, Componente, Imagen, Pais, Localidad, Cultura, Coleccion, Autor, Exposicion, Material, Tecnica
 
 class ImagenSerializer(serializers.ModelSerializer):
     class Meta:
         model = Imagen
-        fields = ['id', 'imagen', 'descripcion']  # 'imagen' field will return the URL if MEDIA_URL is configured in DRF
+        fields = ['id', 'imagen', 'descripcion']  # 'imagen' field will return the URL if MEDIA_URL is configured
 
 class ComponenteSerializer(serializers.ModelSerializer):
     # Nest images for this component
@@ -40,7 +38,7 @@ class PiezaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'numero_inventario', 'numero_registro_anterior', 'codigo_surdoc',
             'ubicacion', 'deposito', 'estante', 'caja_actual',
-            'tipologia', 'coleccion', 'clasificacion', 'conjunto',  'nombre_comun',
+            'tipologia', 'coleccion', 'clasificacion', 'conjunto', 'nombre_comun',
             'nombre_especifico', 'autor', 'filiacion_cultural', 'pais', 'localidad',
             'fecha_creacion', 'descripcion_col', 'marcas_inscripciones',
             'contexto_historico', 'bibliografia', 'iconografia', 'notas_investigacion',
@@ -51,3 +49,29 @@ class PiezaSerializer(serializers.ModelSerializer):
             'responsable_coleccion', 'fecha_ultima_modificacion',
             'componentes', 'imagenes'
         ]
+
+# Serializers sencillos para modelos de filtros
+class PaisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pais
+        fields = ['id', 'nombre']
+
+class LocalidadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Localidad
+        fields = ['id', 'nombre']
+
+class ColeccionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Coleccion
+        fields = ['id', 'nombre']
+
+class AutorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Autor
+        fields = ['id', 'nombre']
+
+class MaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Material
+        fields = ['id', 'nombre']

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,9 +11,18 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { mockMaterials, mockCountries, mockCollections, mockAuthors, mockLocalities } from "@/data/mockData";
 
-// Mock exhibitions data (this would come from your data source)
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
+
+type FilterOptions = {
+  countries: string[];
+  collections: string[];
+  authors: string[];
+  localities: string[];
+  materials: string[];
+};
+
+// Datos de exhibiciones (hardcodeado por ahora)
 const mockExhibitions = [
   "Textiles Andinos",
   "Artesanía Contemporánea",
@@ -41,12 +49,53 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
     dateFrom: "",
     dateTo: "",
   });
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    countries: [],
+    collections: [],
+    authors: [],
+    localities: [],
+    materials: []
+  });
 
+  // Si cambian filtros iniciales (ej. al reabrir el panel), actualizarlos
   useEffect(() => {
     if (initialFilters) {
       setFilters(initialFilters);
     }
   }, [initialFilters]);
+
+  // Cargar opciones de filtros desde el backend al montar
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const responses = await Promise.all([
+          fetch(`${API_URL}/api/paises/`),
+          fetch(`${API_URL}/api/colecciones/`),
+          fetch(`${API_URL}/api/autores/`),
+          fetch(`${API_URL}/api/localidades/`),
+          fetch(`${API_URL}/api/materiales/`)
+        ]);
+        // Verificar que todas las respuestas sean OK
+        for (const res of responses) {
+          if (!res.ok) {
+            throw new Error("Error al cargar opciones de filtros");
+          }
+        }
+        const [countryData, collectionData, authorData, localityData, materialData] =
+          await Promise.all(responses.map(res => res.json()));
+        setFilterOptions({
+          countries: countryData.map((item: any) => item.nombre),
+          collections: collectionData.map((item: any) => item.nombre),
+          authors: authorData.map((item: any) => item.nombre),
+          localities: localityData.map((item: any) => item.nombre),
+          materials: materialData.map((item: any) => item.nombre),
+        });
+      } catch (error) {
+        console.error("Error fetching filter options:", error);
+      }
+    };
+    fetchFilterOptions();
+  }, []);
 
   const handleCheckboxChange = (
     category: "country" | "collection" | "author" | "locality" | "materials" | "exhibitions",
@@ -110,7 +159,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           <AccordionTrigger>País</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {mockCountries.map((country) => (
+              {filterOptions.countries.map((country) => (
                 <div key={country} className="flex items-center space-x-2">
                   <Checkbox
                     id={`country-${country}`}
@@ -135,7 +184,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           <AccordionTrigger>Colección</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {mockCollections.map((collection) => (
+              {filterOptions.collections.map((collection) => (
                 <div key={collection} className="flex items-center space-x-2">
                   <Checkbox
                     id={`collection-${collection}`}
@@ -160,7 +209,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           <AccordionTrigger>Autor</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {mockAuthors.map((author) => (
+              {filterOptions.authors.map((author) => (
                 <div key={author} className="flex items-center space-x-2">
                   <Checkbox
                     id={`author-${author}`}
@@ -185,7 +234,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           <AccordionTrigger>Localidad</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {mockLocalities.map((locality) => (
+              {filterOptions.localities.map((locality) => (
                 <div key={locality} className="flex items-center space-x-2">
                   <Checkbox
                     id={`locality-${locality}`}
@@ -210,7 +259,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           <AccordionTrigger>Materialidad</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {mockMaterials.map((material) => (
+              {filterOptions.materials.map((material) => (
                 <div key={material} className="flex items-center space-x-2">
                   <Checkbox
                     id={`material-${material}`}
@@ -231,7 +280,6 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           </AccordionContent>
         </AccordionItem>
 
-        {/* New Exhibitions filter */}
         <AccordionItem value="exhibitions">
           <AccordionTrigger>Exhibiciones</AccordionTrigger>
           <AccordionContent>
