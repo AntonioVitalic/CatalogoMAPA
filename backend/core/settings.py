@@ -18,6 +18,11 @@ PROJECT_DIR = BASE_DIR.parent                          # …/CatalogoMAPA
 MEDIA_URL  = '/imagenes/'
 MEDIA_ROOT = PROJECT_DIR / 'imagenes'   # <— ahora Django subirá *dentro* de la carpeta raíz/imagenes
 
+# Configuración de Neo4j (usando variables de entorno o valores por defecto)
+NEO4J_URI = os.getenv('NEO4J_URI')
+NEO4J_USER = os.getenv('NEO4J_USER')
+NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD')
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/

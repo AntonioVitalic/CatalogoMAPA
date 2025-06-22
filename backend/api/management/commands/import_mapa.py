@@ -6,37 +6,21 @@ import time
 import pandas as pd
 from pathlib import Path
 from django.core.management.base import BaseCommand
-from django.db import connection
-from django.core.management.color import no_style
-from api.models import (
-    Pieza, Componente, Imagen,
-    Pais, Localidad, Cultura,
-    Coleccion, Autor, Exposicion,
-    Material, Tecnica
-)
+from api.neo4j import get_driver
 
 class Command(BaseCommand):
-    help = "Importa desde cero las piezas y componentes desde el Excel y asocia imágenes locales, reiniciando secuencias"
+    help = "Importa piezas y componentes desde un Excel, creando nodos/relaciones en Neo4j."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--excel', type=str,
-            help='Ruta al archivo Excel de inventario'
-        )
-        parser.add_argument(
-            '--images_dir', type=str,
-            help='Directorio donde se encuentran las imágenes'
-        )
-
+        parser.add_argument('--excel',   type=str, help='Ruta al archivo Excel de inventario')
+        parser.add_argument('--images_dir', type=str, help='Directorio con imágenes')
+    
     def handle(self, *args, **options):
-        # ─── Determinar rutas ──────────────────────────────────────────
-         # ─── Iniciar cronómetro ───────────────────────────────────────
         start_time = time.monotonic()
+        # Determinar rutas de Excel e imágenes
         BASE = Path(__file__).resolve().parents[3]
-        excel_path = Path(options.get('excel')) if options.get('excel') \
-            else BASE / '2025 Inventario Colecciones MAPA-PCMAPA.xlsx'
-        images_dir = Path(options.get('images_dir')) if options.get('images_dir') \
-            else BASE / 'imagenes'
+        excel_path = Path(options.get('excel')) if options.get('excel') else BASE / 'inventario.xlsx'
+        images_dir = Path(options.get('images_dir')) if options.get('images_dir') else BASE / 'imagenes'
 
         if not excel_path.exists():
             self.stdout.write(self.style.ERROR(f"❌ Excel no encontrado: {excel_path}"))
@@ -45,197 +29,214 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"❌ Carpeta de imágenes no existe: {images_dir}"))
             return
 
-        # ─── 1) Borrar datos anteriores ───────────────────────────────
-        Imagen.objects.all().delete()
-        Componente.objects.all().delete()
-        Pieza.objects.all().delete()
+        # Conectar a Neo4j y limpiar la base de datos actual
+        driver = get_driver()
+        with driver.session() as session:
+            session.execute_write(lambda tx: tx.run("MATCH (n) DETACH DELETE n"))
+        
+            # Leer y limpiar el Excel
+            df = pd.read_excel(excel_path, header=1)
+            # Eliminar columnas vacías o innecesarias
+            to_drop = [df.columns[10], 'Unnamed: 46']
+            df.drop(columns=to_drop, inplace=True, errors='ignore')
+            # Rellenar NaN: numéricos con 0, objetos con cadena vacía
+            num_cols = df.select_dtypes(include=['int64','float64']).columns
+            obj_cols = df.select_dtypes(include=['object']).columns
+            df[num_cols] = df[num_cols].fillna(0)
+            df[obj_cols] = df[obj_cols].fillna("")
+            # Ordenar por número de inventario
+            df['__num'] = pd.to_numeric(df['numero_de_inventario'], errors='coerce')
+            df = df[df['__num'].notnull()]
+            df.sort_values(by='__num', inplace=True)
+            df['numero_de_inventario'] = df['__num'].astype(int).astype(str)
+            df.drop(columns='__num', inplace=True)
 
-        # ─── 2) Reiniciar secuencias de PK (PostgreSQL, etc.) ────────
-        with connection.cursor() as cursor:
-            seq_sql = connection.ops.sequence_reset_sql(
-                no_style(),
-                [Pieza, Componente, Imagen]
-            )
-            for sql in seq_sql:
-                cursor.execute(sql)
+            # Iterar filas e insertar datos en Neo4j
+            for _, row in df.iterrows():
+                num = str(row['numero_de_inventario']).strip()
+                if not num:
+                    continue
 
-        # ─── 3) Leer y limpiar Excel ─────────────────────────────────
-        df = pd.read_excel(excel_path, header=1)
-        # print("=== Tipos antes de fillna ===")
-        # print(df.dtypes)
-        # print(df.info())
-        # df.fillna("", inplace=True)
-        # 3.1) Eliminar las dos columnas vacías que sobran, la que está entre "tipologia" y "coleccion", y la que se llama 'Unnamed: 46' (entre "fecha_ingreso" y "responsable_coleccion").
-        #    - columna sin nombre (índice 10 en el df.dtypes)
-        #    - 'Unnamed: 46' (índice 46)
-        to_drop = [df.columns[10], 'Unnamed: 46']
-        df.drop(columns=to_drop, inplace=True, errors='ignore')
+                # Datos de ejemplo extraídos de la fila
+                pais = row.get('pais', '').strip()
+                localidad = row.get('localidad', '').strip()
+                autor = row.get('autor', '').strip()
+                coleccion = row.get('coleccion', '').strip()
 
-        # 3.2) Rellenar NaN solo en función del tipo de dato
-        num_cols = df.select_dtypes(include=['int64','float64']).columns
-        obj_cols = df.select_dtypes(include=['object']).columns
-        df[num_cols] = df[num_cols].fillna(0)
-        df[obj_cols] = df[obj_cols].fillna("")
+                # 1) Crear (o MERGE) nodos de Pais, Localidad, Autor, Coleccion si existen
+                if pais:
+                    session.execute_write(lambda tx: tx.run(
+                        "MERGE (a:Pais {nombre: $pais})", pais=pais))
+                if localidad and pais:
+                    session.execute_write(lambda tx: tx.run(
+                        "MERGE (l:Localidad {nombre: $localidad})-[:PERTENECE_A]->(a:Pais {nombre: $pais})",
+                        localidad=localidad, pais=pais))
+                if autor:
+                    session.execute_write(lambda tx: tx.run(
+                        "MERGE (au:Autor {nombre: $autor})", autor=autor))
+                if coleccion:
+                    session.execute_write(lambda tx: tx.run(
+                        "MERGE (c:Coleccion {nombre: $coleccion})", coleccion=coleccion))
 
-        # ─── 4) Ordenar numéricamente por numero_de_inventario ───────
-        df['__num'] = pd.to_numeric(df['numero_de_inventario'], errors='coerce')
-        df = df[df['__num'].notnull()]
-        df.sort_values(by='__num', inplace=True)
-        df['numero_de_inventario'] = df['__num'].astype(int).astype(str)
-        df.drop(columns='__num', inplace=True)
+                # 2) Crear/actualizar el nodo Pieza con todos los campos
+                session.execute_write(lambda tx: tx.run(
+                    """
+                    MERGE (p:Pieza {numero_inventario: $num})
+                    SET
+                    p.revision                           = $revision,
+                    p.numero_registro_anterior           = $nrAnterior,
+                    p.codigo_surdoc                      = $codigoSurdoc,
+                    p.ubicacion                          = $ubicacion,
+                    p.deposito                           = $deposito,
+                    p.estante                            = $estante,
+                    p.caja_actual                        = $cajaActual,
+                    p.tipologia                          = $tipologia,
+                    p.coleccion                          = $coleccion,
+                    p.clasificacion                      = $clasificacion,
+                    p.conjunto                           = $conjunto,
+                    p.nombre_comun                       = $nombreComun,
+                    p.nombre_especifico                  = $nombreEspecifico,
+                    p.fecha_creacion                     = $fechaCreacion,
+                    p.descripcion                        = $descripcion,
+                    p.marcas_inscripciones               = $marcas,
+                    p.contexto_historico                 = $contextoHistorico,
+                    p.bibliografia                       = $bibliografia,
+                    p.iconografia                        = $iconografia,
+                    p.notas_investigacion                = $notasInvestigacion,
+                    p.estado_conservacion                = $estadoConservacion,
+                    p.descripcion_conservacion           = $descConservacion,
+                    p.responsable_conservacion           = $respConservacion,
+                    p.fecha_actualizacion_conservacion   = $fechaActConservacion,
+                    p.comentarios_conservacion           = $comentariosConservacion,
+                    p.avaluo                             = $avaluo,
+                    p.procedencia                        = $procedencia,
+                    p.donante                            = $donante,
+                    p.fecha_ingreso                      = $fechaIngreso,
+                    p.responsable_coleccion              = $respColeccion,
+                    p.fecha_ultima_modificacion          = $fechaUltMod
+                    """,
+                    num                         = num,
+                    revision                    = row.get('Revisión'),
+                    nrAnterior                  = row.get('numero_de registro_anterior'),
+                    codigoSurdoc                = row.get('SURDOC'),
+                    ubicacion                   = row.get('ubicacion'),
+                    deposito                    = row.get('deposito'),
+                    estante                     = row.get('estante'),
+                    cajaActual                  = row.get('caja_actual'),
+                    tipologia                   = row.get('tipologia'),
+                    coleccion                   = row.get('coleccion'),
+                    clasificacion               = row.get('clasificacion'),
+                    conjunto                    = row.get('conjunto'),
+                    nombreComun                 = row.get('nombre_comun'),
+                    nombreEspecifico            = row.get('nombre_especifico'),
+                    fechaCreacion               = row.get('fecha_de_creacion'),
+                    descripcion                 = row.get('descripcion_col'),
+                    marcas                      = row.get('marcas_o_inscripciones'),
+                    contextoHistorico           = row.get('contexto_historico'),
+                    bibliografia                = row.get('bibliografia'),
+                    iconografia                 = row.get('iconografia'),
+                    notasInvestigacion          = row.get('notas_investigacion'),
+                    estadoConservacion          = row.get('estado_genral_de_conservacion'),
+                    descConservacion            = row.get('descripcion_cr'),
+                    respConservacion            = row.get('responsable_conservacion'),
+                    fechaActConservacion        = row.get('fecha_actualizacion_cr'),
+                    comentariosConservacion      = row.get('comentarios_cr'),
+                    avaluo                      = row.get('avaluo'),
+                    procedencia                 = row.get('procedencia'),
+                    donante                     = row.get('donante'),
+                    fechaIngreso                = row.get('fecha_ingreso'),
+                    respColeccion               = row.get('responsable_coleccion'),
+                    fechaUltMod                 = row.get('fecha_ultima_modificacion'),
+                ))
 
-        # ─── 5) Preparar caches para get_or_create ────────────────────
-        pais_cache      = {}
-        localidad_cache = {}
-        cultura_cache   = {}
-        coleccion_cache = {}
-        autor_cache     = {}
-        expos_cache     = {}
-        material_cache  = {}
-        tecnica_cache   = {}
 
-        def get_or_create(model, cache, nombre, **extra):
-            if not nombre or not str(nombre).strip():
-                return None
-            clave = str(nombre).strip()
-            if clave in cache:
-                return cache[clave]
-            obj, _ = model.objects.get_or_create(nombre=clave, defaults=extra)
-            cache[clave] = obj
-            return obj
+                # 3) Crear relaciones de la Pieza con País, Autor, Colección
+                if pais:
+                    session.execute_write(lambda tx: tx.run(
+                        "MATCH (p:Pieza {numero_inventario: $num}), (a:Pais {nombre: $pais}) "
+                        "CREATE (p)-[:PROCEDENTE_DE]->(a)",
+                        num=num, pais=pais))
+                if autor:
+                    session.execute_write(lambda tx: tx.run(
+                        "MATCH (p:Pieza {numero_inventario: $num}), (au:Autor {nombre: $autor}) "
+                        "CREATE (p)-[:FUE_CREADA_POR]->(au)",
+                        num=num, autor=autor))
+                if coleccion:
+                    session.execute_write(lambda tx: tx.run(
+                        "MATCH (p:Pieza {numero_inventario: $num}), (c:Coleccion {nombre: $coleccion}) "
+                        "CREATE (p)-[:PERTENECE_A]->(c)",
+                        num=num, coleccion=coleccion))
 
-        piezas_creadas = {}
+                # 4) Componentes: si hay 'letra' en la fila, crear nodo Componente y relaciones
+                letra = str(row.get('letra', '')).strip()
+                if letra:
+                    # Crear nodo Componente asociado a esta Pieza
+                    session.execute_write(lambda tx: tx.run(
+                        "CREATE (cmp:Componente {pieza_numero: $num, letra: $letra, nombre_comun: $nom, peso_kg: $peso})",
+                        num=num, letra=letra,
+                        nom=row.get('nombre_comun', None),
+                        peso=(float(row.get('peso_(gr)', 0)) / 1000.0) if row.get('peso_(gr)') not in (None, "", 0) else None
+                    ))
+                    # Relación Pieza->Componente
+                    session.execute_write(lambda tx: tx.run(
+                        "MATCH (p:Pieza {numero_inventario: $num}), (cmp:Componente {pieza_numero: $num, letra: $letra}) "
+                        "CREATE (p)-[:TIENE_COMPONENTE]->(cmp)",
+                        num=num, letra=letra))
+                    # Materiales del componente (campo separado por ';')
+                    materiales = str(row.get('materialidad', '')).split(';')
+                    for mat in materiales:
+                        mat = mat.strip()
+                        if mat:
+                            session.execute_write(lambda tx, m=mat: tx.run(
+                                "MERGE (m:Material {nombre: $nombre})", nombre=m))
+                            session.execute_write(lambda tx, m=mat: tx.run(
+                                "MATCH (cmp:Componente {pieza_numero: $num, letra: $letra}), (m:Material {nombre: $nombre}) "
+                                "CREATE (cmp)-[:HECHO_DE]->(m)",
+                                num=num, letra=letra, nombre=m))
+                    # Técnicas del componente (campo separado por ';')
+                    tecnicas = str(row.get('tecnica', '')).split(';')
+                    for tec in tecnicas:
+                        tec = tec.strip()
+                        if tec:
+                            session.execute_write(lambda tx, t=tec: tx.run(
+                                "MERGE (t:Tecnica {nombre: $nombre})", nombre=t))
+                            session.execute_write(lambda tx, t=tec: tx.run(
+                                "MATCH (cmp:Componente {pieza_numero: $num, letra: $letra}), (t:Tecnica {nombre: $nombre}) "
+                                "CREATE (cmp)-[:USO_TECNICA]->(t)",
+                                num=num, letra=letra, nombre=t))
 
-        # ─── 6) Importar piezas y componentes ────────────────────────
-        for _, row in df.iterrows():
-            num = str(row.get('numero_de_inventario', '')).strip()
-            if not num or num.lower() == 'nan':
-                continue
+            # 5) Asociar imágenes recorriendo la carpeta
+            procesadas = 0
+            for fn in os.listdir(images_dir):
+                full_path = images_dir / fn
+                if not full_path.is_file():
+                    continue
+                name, ext = os.path.splitext(fn)
+                if ext.lower().strip('.') not in ('jpg','jpeg','png','tif','tiff'):
+                    continue
+                m = re.match(r'^0*(\d+)([A-Za-z]?)(?:.*)$', name)
+                if not m:
+                    continue
+                num_str, letra = m.group(1), (m.group(2) or '')
+                # Crear nodo Imagen con su ruta (o nombre de archivo)
+                session.execute_write(lambda tx: tx.run(
+                    "CREATE (img:Imagen {ruta: $ruta})", ruta=str(full_path)))
+                # Relacionar Imagen a Pieza
+                session.execute_write(lambda tx: tx.run(
+                    "MATCH (p:Pieza {numero_inventario: $num}), (img:Imagen {ruta: $ruta}) "
+                    "CREATE (img)-[:ES_IMAGEN_DE]->(p)",
+                    num=num_str, ruta=str(full_path)))
+                # Si tiene letra, relacionar a Componente
+                if letra:
+                    session.execute_write(lambda tx: tx.run(
+                        "MATCH (cmp:Componente {pieza_numero: $num, letra: $letra}), (img:Imagen {ruta: $ruta}) "
+                        "CREATE (img)-[:ES_IMAGEN_DE_COMPONENTE]->(cmp)",
+                        num=num_str, letra=letra, ruta=str(full_path)))
+                procesadas += 1
 
-            # 6.1 Pais y Localidad
-            pais_obj = get_or_create(Pais, pais_cache, row.get('pais', ''))
-            localidad_obj = None
-            if pais_obj:
-                localidad_obj = get_or_create(
-                    Localidad, localidad_cache,
-                    row.get('localidad', ''), pais=pais_obj
-                )
-
-            # 6.2 Crear Pieza
-            pieza = piezas_creadas.get(num)
-            if pieza is None:
-                pieza, created = Pieza.objects.get_or_create(
-                    numero_inventario=num,
-                    defaults={
-                        'revision': str(row.get('Revisión', '')).strip() or None,
-                        'numero_registro_anterior': str(row.get('numero_de registro_anterior', '')).strip() or None,
-                        'codigo_surdoc':        str(row.get('SURDOC', '')).strip() or None,
-                        'ubicacion':            row.get('ubicacion') or None,
-                        'deposito':             row.get('deposito') or None,
-                        'estante':              row.get('estante') or None,
-                        'caja_actual':          row.get('caja_actual') or None,
-                        'tipologia':            row.get('tipologia') or None,
-                        'coleccion':            get_or_create(Coleccion, coleccion_cache, row.get('coleccion', '')) or Coleccion.objects.first(),
-                        'clasificacion':        row.get('clasificacion') or None,
-                        'conjunto':             row.get('conjunto') or None,
-                        'nombre_comun': row.get('nombre_comun') or None,
-                        'nombre_especifico':    row.get('nombre_especifico') or None,
-                        'autor':                get_or_create(Autor, autor_cache, row.get('autor', '')),
-                        'filiacion_cultural':   get_or_create(Cultura, cultura_cache, row.get('filiacion_cultural', '')),
-                        'pais':                 pais_obj,
-                        'localidad':            localidad_obj,
-                        'fecha_creacion':       row.get('fecha_de_creacion') or None,
-                        'descripcion':          row.get('descripcion_col') or None,
-                        'marcas_inscripciones': row.get('marcas_o_inscripciones') or None,
-                        'contexto_historico':   row.get('contexto_historico') or None,
-                        'bibliografia':         row.get('bibliografia') or None,
-                        'iconografia':          row.get('iconografia') or None,
-                        'notas_investigacion':  row.get('notas_investigacion') or None,
-                        'estado_conservacion':  row.get('estado_genral_de_conservacion') or None,
-                        'descripcion_conservacion': row.get('descripcion_cr') or None,
-                        'responsable_conservacion': row.get('responsable_conservacion') or None,
-                        'fecha_actualizacion_conservacion': row.get('fecha_actualizacion_cr') or None,
-                        'comentarios_conservacion': row.get('comentarios_cr') or None,
-                        'avaluo':               row.get('avaluo') or None,
-                        'procedencia':          row.get('procedencia') or None,
-                        'donante':              row.get('donante') or None,
-                        'fecha_ingreso':        row.get('fecha_ingreso') or None,
-                        'responsable_coleccion': row.get('responsable_coleccion') or None,
-                        'fecha_ultima_modificacion': row.get('fecha_ultima_modificacion') or None,
-                    }
-                )
-            piezas_creadas[num] = pieza
-
-            # 6.3 Componentes
-            letra = str(row.get('letra', '')).strip()
-            if letra:
-                qs = Componente.objects.filter(pieza=pieza, letra=letra)
-                if qs.exists():
-                    comp = qs.first()
-                else:
-                    comp = Componente.objects.create(
-                        pieza=pieza,
-                        letra=letra,
-                        nombre_comun= row.get('nombre_comun') or pieza.tipologia or '',
-                        nombre_atribuido= row.get('nombre_especifico') or None,
-                        descripcion=     row.get('descripcion_col') or None,
-                        funcion=         row.get('funcion') or None,
-                        forma=           row.get('forma') or None,
-                    )
-                    # M2M de materiales y técnicas
-                    for mat in str(row.get('materialidad', '')).split(';'):
-                        if mat.strip():
-                            comp.materiales.add(get_or_create(Material, material_cache, mat))
-                    for tec in str(row.get('tecnica', '')).split(';'):
-                        if tec.strip():
-                            comp.tecnica.add(get_or_create(Tecnica, tecnica_cache, tec))
-                    # Dimensiones y peso
-                    try:
-                        comp.peso_kg = float(row.get('peso_(gr)', 0)) / 1000
-                    except:
-                        pass
-                    for col, attr in [
-                        ("alto_o_largo_(cm)", "alto_cm"),
-                        ("ancho_(cm)",       "ancho_cm"),
-                        ("profundidad_(cm)", "profundidad_cm"),
-                        ("diametro_(cm)",    "diametro_cm"),
-                        ("espesor_(mm)",     "espesor_mm"),
-                    ]:
-                        val = row.get(col, '')
-                        try:
-                            setattr(comp, attr, float(val))
-                        except:
-                            pass
-                    comp.save()
-
-        # ─── 7) Asociar imágenes ─────────────────────────────────────
-        procesadas = 0
-        for fn in os.listdir(images_dir):
-            full = images_dir / fn
-            if not full.is_file():
-                continue
-            name, ext = os.path.splitext(fn)
-            ext = ext.lower().strip('.')
-            if ext not in ('jpg','jpeg','png','tif','tiff'):
-                continue
-            m = re.match(r'^0*(\d+)([A-Za-z]?)(?:.*)$', name)
-            if not m:
-                continue
-            num_str, letra = m.group(1), m.group(2) or ''
-            try:
-                pieza = Pieza.objects.get(numero_inventario=num_str)
-            except Pieza.DoesNotExist:
-                continue
-            comp = None
-            if letra:
-                comp = Componente.objects.filter(pieza=pieza, letra=letra).first()
-            img = Imagen(pieza=pieza, componente=comp)
-            img.imagen.name = fn
-            img.save()
-            procesadas += 1
-
+        driver.close()
         elapsed = time.monotonic() - start_time
         self.stdout.write(self.style.SUCCESS(
-            f"✅ Import finalizado: {len(piezas_creadas)} piezas y {procesadas} imágenes procesadas "
-            f"en {elapsed:.2f} segundos."
+            f"✅ Importación finalizada: {len(df)} piezas procesadas, "
+            f"{procesadas} imágenes asociadas en {elapsed:.2f} segundos."
         ))

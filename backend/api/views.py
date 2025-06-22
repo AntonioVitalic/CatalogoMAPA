@@ -1,4 +1,8 @@
-from rest_framework import viewsets, filters, permissions
+import os
+from neo4j import GraphDatabase
+from rest_framework import viewsets, filters, permissions, status
+from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Pieza, Componente, Imagen, Pais, Localidad, Coleccion, Autor, Material
 from .serializers import (
@@ -6,36 +10,160 @@ from .serializers import (
     PaisSerializer, LocalidadSerializer, ColeccionSerializer, AutorSerializer, MaterialSerializer
 )
 
-class PiezaViewSet(viewsets.ModelViewSet):
-    queryset = Pieza.objects.prefetch_related(
-        'componentes__imagenes', 'imagenes', 'pais', 'localidad',
-        'filiacion_cultural', 'coleccion', 'autor',
-        'exposiciones', 'materiales', 'tecnica'
-    ).all()
-    serializer_class = PiezaSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]  # Auth: editores vs visitantes
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    # Permitir filtrar por campos relacionados:
-    filterset_fields = {
-        'pais__nombre': ['exact'],
-        'coleccion__nombre': ['exact'],
-        'autor__nombre': ['exact'],
-        'localidad__nombre': ['exact'],
-        'filiacion_cultural__nombre': ['exact'],
-        'materiales__nombre': ['exact'],
-        'exposiciones__titulo': ['exact'],
-        'estado_conservacion': ['exact'],
-    }
-    search_fields = ['numero_inventario', 'nombre_especifico', 'componentes__nombre_comun', 'componentes__nombre_atribuido', 'descripcion']
-    ordering_fields = ['id', 'numero_inventario']
-    ordering = ['id']  # o ['numero_inventario']
+# from .serializers import PiezaSerializer 
 
-    def perform_create(self, serializer):
-        # Asigna el usuario que crea la pieza
-        serializer.save(created_by=self.request.user, updated_by=self.request.user)
+uri      = os.getenv("NEO4J_URI", "bolt://neo4j:7687")
+user     = os.getenv("NEO4J_USER", "neo4j")
+password = os.getenv("NEO4J_PASSWORD", "")
+driver = GraphDatabase.driver(uri, auth=(user, password))
 
-    def perform_update(self, serializer):
-        serializer.save(updated_by=self.request.user)
+class PiezaPagination(PageNumberPagination):
+    page_size = 10
+    page_query_param = 'page'
+    page_size_query_param = None
+
+
+class PiezaViewSet(viewsets.ViewSet):
+    pagination_class = PiezaPagination
+
+    def list(self, request):
+        # 1) saco page y page_size
+        paginator = self.pagination_class()
+        page_number = int(paginator.get_page_number(request, self) or 1)
+        page_size   = paginator.get_page_size(request)
+
+        skip  = (page_number - 1) * page_size
+        limit = page_size
+
+        with driver.session() as session:
+            # 2) cuento TOTAL
+            total = session.run(
+                "MATCH (p:Pieza) RETURN count(p) AS c"
+            ).single()["c"]
+
+            # 3) traigo sólo esta página con SKIP/LIMIT
+            cypher = """
+            MATCH (p:Pieza)
+            OPTIONAL MATCH (p)-[:PROCEDENTE_DE]->(pa:Pais)
+            RETURN {
+              id:                    toInteger(p.numero_inventario),
+              numero_inventario:     p.numero_inventario,
+              numero_registro_anterior: p.numero_registro_anterior,
+              codigo_surdoc:         p.codigo_surdoc,
+              ubicacion:             p.ubicacion,
+              deposito:              p.deposito,
+              estante:               p.estante,
+              caja_actual:           p.caja_actual,
+              tipologia:             p.tipologia,
+              coleccion:             p.coleccion,
+              clasificacion:         p.clasificacion,
+              conjunto:              p.conjunto,
+              nombre_comun:          p.nombre_comun,
+              nombre_especifico:     p.nombre_especifico,
+              autor:                 coalesce(p.autor, null),
+              filiacion_cultural:    coalesce(p.filiacion_cultural, null),
+              pais:                  pa.nombre,
+              localidad:             coalesce(p.localidad, null),
+              fecha_creacion:        coalesce(p.fecha_creacion, null),
+              descripcion_col:       p.descripcion,
+              marcas_inscripciones:  coalesce(p.marcas_inscripciones, ""),
+              contexto_historico:    coalesce(p.contexto_historico, ""),
+              bibliografia:          coalesce(p.bibliografia, ""),
+              iconografia:           coalesce(p.iconografia, ""),
+              notas_investigacion:   coalesce(p.notas_investigacion, ""),
+              tecnica:               [],
+              materiales:            [],
+              estado_conservacion:   coalesce(p.estado_conservacion, ""),
+              descripcion_conservacion: coalesce(p.descripcion_conservacion, null),
+              responsable_conservacion: coalesce(p.responsable_conservacion, ""),
+              fecha_actualizacion_conservacion: toString(p.fecha_actualizacion_conservacion),
+              comentarios_conservacion: coalesce(p.comentarios_conservacion, null),
+              exposiciones:          [],
+              avaluo:                coalesce(p.avaluo, null),
+              procedencia:           coalesce(p.procedencia, null),
+              donante:               coalesce(p.donante, null),
+              fecha_ingreso:         toString(p.fecha_ingreso),
+              responsable_coleccion: coalesce(p.responsable_coleccion, null),
+              fecha_ultima_modificacion: toString(p.fecha_ultima_modificacion),
+              componentes:           [],
+              imagenes:              []
+            } AS pieza
+            ORDER BY toInteger(p.numero_inventario)
+            SKIP $skip LIMIT $limit
+            """
+            result = session.run(cypher, skip=skip, limit=limit)
+            piezas_page = [r["pieza"] for r in result]
+
+        # 4) armo next/prev
+        base = request.build_absolute_uri(request.path)
+        total_pages = (total + page_size - 1) // page_size
+
+        def page_url(n):
+            return f"{base}?page={n}"
+
+        next_url = page_url(page_number + 1) if page_number < total_pages else None
+        prev_url = page_url(page_number - 1) if page_number > 1 else None
+
+        return Response({
+            "count":    total,
+            "next":     next_url,
+            "previous": prev_url,
+            "results":  piezas_page
+        })
+
+    def retrieve(self, request, pk=None):
+        with driver.session() as session:
+            cypher = """
+            MATCH (p:Pieza { numero_inventario: $id })
+            OPTIONAL MATCH (p)-[:PROCEDENTE_DE]->(pa:Pais)
+            RETURN {
+              id:                    toInteger(p.numero_inventario),
+              numero_inventario:     p.numero_inventario,
+              numero_registro_anterior: p.numero_registro_anterior,
+              codigo_surdoc:         p.codigo_surdoc,
+              ubicacion:             p.ubicacion,
+              deposito:              p.deposito,
+              estante:               p.estante,
+              caja_actual:           p.caja_actual,
+              tipologia:             p.tipologia,
+              coleccion:             p.coleccion,
+              clasificacion:         p.clasificacion,
+              conjunto:              p.conjunto,
+              nombre_comun:          p.nombre_comun,
+              nombre_especifico:     p.nombre_especifico,
+              autor:                 coalesce(p.autor, null),
+              filiacion_cultural:    coalesce(p.filiacion_cultural, null),
+              pais:                  pa.nombre,
+              localidad:             coalesce(p.localidad, null),
+              fecha_creacion:        coalesce(p.fecha_creacion, null),
+              descripcion_col:       p.descripcion,
+              marcas_inscripciones:  coalesce(p.marcas_inscripciones, ""),
+              contexto_historico:    coalesce(p.contexto_historico, ""),
+              bibliografia:          coalesce(p.bibliografia, ""),
+              iconografia:           coalesce(p.iconografia, ""),
+              notas_investigacion:   coalesce(p.notas_investigacion, ""),
+              tecnica:               [],
+              materiales:            [],
+              estado_conservacion:   coalesce(p.estado_conservacion, ""),
+              descripcion_conservacion: coalesce(p.descripcion_conservacion, null),
+              responsable_conservacion: coalesce(p.responsable_conservacion, ""),
+              fecha_actualizacion_conservacion: toString(p.fecha_actualizacion_conservacion),
+              comentarios_conservacion: coalesce(p.comentarios_conservacion, null),
+              exposiciones:          [],
+              avaluo:                coalesce(p.avaluo, null),
+              procedencia:           coalesce(p.procedencia, null),
+              donante:               coalesce(p.donante, null),
+              fecha_ingreso:         toString(p.fecha_ingreso),
+              responsable_coleccion: coalesce(p.responsable_coleccion, null),
+              fecha_ultima_modificacion: toString(p.fecha_ultima_modificacion),
+              componentes:           [],
+              imagenes:              []
+            } AS pieza
+            """
+            rec = session.run(cypher, id=pk).single()
+            if not rec:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(rec["pieza"])
 
 class ComponenteViewSet(viewsets.ModelViewSet):
     queryset = Componente.objects.prefetch_related('imagenes', 'materiales', 'tecnica').select_related('pieza').all()
