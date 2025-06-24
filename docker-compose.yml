@@ -5,6 +5,7 @@ services:
     container_name: catalogomapa-neo4j
     environment:
       - NEO4J_AUTH=${NEO4J_AUTH}
+      - NEO4JLABS_PLUGINS=["apoc"]  
       - NEO4J_dbms_security_procedures_unrestricted=${NEO4J_dbms_security_procedures_unrestricted}
       - NEO4J_apoc_import_file_enabled=${NEO4J_apoc_import_file_enabled}
       - NEO4J_dbms_security_allow__csv__import__from__file__urls=${NEO4J_dbms_security_allow_csv_import_from_file_urls}
@@ -29,17 +30,13 @@ services:
     container_name: catalogomapa-back
     env_file:
       - .env
-    environment:
-      - NEO4J_HOSTNAME=neo4j
-      - NEO4J_URI=${NEO4J_URI}
-      - NEO4J_USER=${NEO4J_USER}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
     ports:
       - "8002:8000"    # expone Django en localhost:8002
     volumes:
       - ./backend:/app # el código Django
       - "./imagenes:/imagenes" # la carpeta donde ya están todas las fotos de las piezas
       - "./2025 Inventario Colecciones MAPA-PCMAPA.xlsx:/app/inventario.xlsx" # el Excel montado dentro de /app con el nombre simplificado inventario.xlsx.
+      -  ./neo4j/import:/app/neo4j/import
     depends_on:
       neo4j:
        condition: service_healthy
