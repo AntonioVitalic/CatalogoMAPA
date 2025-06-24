@@ -5,6 +5,7 @@ services:
     container_name: catalogomapa-neo4j
     environment:
       - NEO4J_AUTH=${NEO4J_AUTH}
+      - NEO4JLABS_PLUGINS=["apoc"]  
       - NEO4J_dbms_security_procedures_unrestricted=${NEO4J_dbms_security_procedures_unrestricted}
       - NEO4J_apoc_import_file_enabled=${NEO4J_apoc_import_file_enabled}
       - NEO4J_dbms_security_allow__csv__import__from__file__urls=${NEO4J_dbms_security_allow_csv_import_from_file_urls}
