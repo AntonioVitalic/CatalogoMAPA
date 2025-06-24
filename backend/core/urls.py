@@ -14,36 +14,34 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+# backend/urls.py
 from django.contrib import admin
-from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from api.views import (
-    PiezaViewSet,
-    ComponenteViewSet,
-    ImagenViewSet,
-    PaisViewSet,
-    ColeccionViewSet,
-    AutorViewSet,
-    LocalidadViewSet,
-    MaterialViewSet,
+    PiezaViewSet, ComponenteViewSet, ImagenViewSet, 
+    AutorViewSet, PaisViewSet, LocalidadViewSet, 
+    MaterialViewSet, TecnicaViewSet, ColeccionViewSet
 )
 
 router = DefaultRouter()
 router.register(r'piezas', PiezaViewSet, basename='pieza')
 router.register(r'componentes', ComponenteViewSet, basename='componente')
 router.register(r'imagenes', ImagenViewSet, basename='imagen')
-router.register(r'paises', PaisViewSet, basename='pais')
-router.register(r'colecciones', ColeccionViewSet, basename='coleccion')
 router.register(r'autores', AutorViewSet, basename='autor')
+router.register(r'paises', PaisViewSet, basename='pais')
 router.register(r'localidades', LocalidadViewSet, basename='localidad')
 router.register(r'materiales', MaterialViewSet, basename='material')
+router.register(r'tecnicas', TecnicaViewSet, basename='tecnica')
+router.register(r'colecciones', ColeccionViewSet, basename='coleccion')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),   # <-- aquí tu API REST
+    path('api/', include(router.urls)),
 ]
+
 
 # En DEBUG, servir archivos de MEDIA_ROOT en MEDIA_URL
 if settings.DEBUG:

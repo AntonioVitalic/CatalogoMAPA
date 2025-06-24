@@ -18,17 +18,24 @@ PROJECT_DIR = BASE_DIR.parent                          # …/CatalogoMAPA
 MEDIA_URL  = '/imagenes/'
 MEDIA_ROOT = PROJECT_DIR / 'imagenes'   # <— ahora Django subirá *dentro* de la carpeta raíz/imagenes
 
-# Configuración de Neo4j (usando variables de entorno o valores por defecto)
-NEO4J_URI = os.getenv('NEO4J_URI')
-NEO4J_USER = os.getenv('NEO4J_USER')
-NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD')
+# usa la URL base + credenciales
+bolt_url = os.getenv('NEO4J_URI', 'bolt://neo4j:7687')
+user    = os.getenv('NEO4J_USER', 'neo4j')
+pwd     = os.getenv('NEO4J_PASSWORD', 'neo4j')
+# inyecta usuario y contraseña en la URL
+if '://' in bolt_url and '@' not in bolt_url:
+    scheme, rest = bolt_url.split('://', 1)
+    bolt_url = f"{scheme}://{user}:{pwd}@{rest}"
+NEO4J_BOLT_URL = bolt_url
+
+from neomodel import config
+config.DATABASE_URL = bolt_url
+
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-7aqkbz0n3v!wy4c3-#bki0!%w38apn5t_y33mn2&kaa5lq$k2^'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -51,7 +58,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
 
-    # tu aplicación que contiene los modelos (era 'api'; si la renombraras, pon aquí 'catalogo')
+    # la aplicación que contiene los modelos (era 'api'; si se renombrara, se pondría 'catalogo')
     'api.apps.ApiConfig',
 
     "corsheaders",
