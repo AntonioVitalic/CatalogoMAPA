@@ -2,7 +2,8 @@
 
 import math
 from urllib.parse import urlencode
-from rest_framework import viewsets, pagination
+from rest_framework import viewsets
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .neo4j import get_driver
@@ -24,14 +25,15 @@ class PiezaViewSet(viewsets.ViewSet):
     ViewSet que expone todas las piezas almacenadas en Neo4j.
     Sólo implementa el método list (GET /api/piezas/) y un endpoint de diagnóstico /labels/.
     """
+    pagination_class = PageNumberPagination
+    PAGE_SIZE = 10
 
     def list(self, request):
         """
         GET /api/piezas/
         """
         page = int(request.query_params.get("page", 1))
-        PAGE_SIZE = 10
-        skip = (page - 1) * PAGE_SIZE
+        skip = (page - 1) * self.PAGE_SIZE
 
         # Consulta Cypher: asegúrate de traer todos los campos relevantes
         query = """
@@ -42,7 +44,7 @@ class PiezaViewSet(viewsets.ViewSet):
             collect(DISTINCT coalesce(img.url, '')) AS imagenes,
             collect(DISTINCT c{.*}) AS componentes
         RETURN
-            id(p) AS id,
+            p.row_id   AS id,                    // ← uso row_id
             p.numero_inventario AS numero_inventario,
             p.numero_registro_anterior AS numero_registro_anterior,
             p.codigo_surdoc AS codigo_surdoc,
@@ -83,54 +85,31 @@ class PiezaViewSet(viewsets.ViewSet):
             p.fecha_ultima_modificacion AS fecha_ultima_modificacion,
             componentes,
             imagenes
-        ORDER BY p.numero_inventario
+        ORDER BY p.row_id                        // ← orden ascendente
         SKIP $skip
         LIMIT $limit
         """
 
-        count_query = """
-        MATCH (p:Pieza)
-        RETURN count(p) AS total
-        """
+        count_query = "MATCH (p:Pieza) RETURN count(p) AS total"
 
         driver = get_driver()
         with driver.session() as session:
-            result = session.run(query, skip=skip, limit=PAGE_SIZE)
-            piezas = []
-            for record in result:
-                pieza = {k: record.get(k, None) for k in [
-                    "id", "numero_inventario", "numero_registro_anterior", "codigo_surdoc",
-                    "ubicacion", "deposito", "estante", "caja_actual", "tipologia", "coleccion",
-                    "clasificacion", "conjunto", "nombre_comun", "nombre_especifico", "autor",
-                    "filiacion_cultural", "pais", "localidad", "fecha_creacion", "descripcion_col",
-                    "marcas_inscripciones", "contexto_historico", "bibliografia", "iconografia",
-                    "notas_investigacion", "tecnica", "materiales", "estado_conservacion",
-                    "descripcion_conservacion", "responsable_conservacion", "fecha_actualizacion_conservacion",
-                    "comentarios_conservacion", "exposiciones", "avaluo", "procedencia", "donante",
-                    "fecha_ingreso", "responsable_coleccion", "fecha_ultima_modificacion", "componentes", "imagenes"
-                ]}
-                # Normaliza listas/campos vacíos
-                for key in ["tecnica", "materiales", "exposiciones", "componentes", "imagenes"]:
-                    if pieza[key] is None:
-                        pieza[key] = []
-                piezas.append(pieza)
-            total = session.run(count_query).single()["total"]
+            result = session.run(query, skip=skip, limit=self.PAGE_SIZE)
+            piezas = [ dict(record) for record in result ]
+            total  = session.run(count_query).single()["total"]
 
-        base_url = request.build_absolute_uri(request.path)
-        def page_url(p):
-            if p < 1 or p > (total + PAGE_SIZE - 1) // PAGE_SIZE:
-                return None
-            return f"{base_url}?{urlencode({'page': p})}"
+        # Limpia NaNs y luego…
+        piezas = [ _clean_nan(p) for p in piezas ]
 
-        next_url = page_url(page + 1) if skip + PAGE_SIZE < total else None
-        prev_url = page_url(page - 1) if page > 1 else None
+        # ——— aquí viene la magia de DRF ———
+        paginator = PageNumberPagination()
+        paginator.page_size = self.PAGE_SIZE
+        # asigna el paginator al view para que BrowsableRenderer genere los links
+        self.paginator = paginator
 
-        return Response(_clean_nan({
-            "count": total,
-            "next": next_url,
-            "previous": prev_url,
-            "results": piezas,
-        }))
+        # DRF espera una lista “cruda” para luego paginarla:
+        page_obj = paginator.paginate_queryset(piezas, request, view=self)
+        return paginator.get_paginated_response(page_obj)
 
     @action(detail=False)
     def labels(self, request):

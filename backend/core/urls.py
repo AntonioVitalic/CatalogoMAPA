@@ -42,7 +42,7 @@ router.register(r'piezas', PiezaViewSet, basename='pieza')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),   # <-- aquí tu API REST
+    path('api/', include(router.urls)),   # <-- aquí la API REST
 ]
 
 # En DEBUG, servir archivos de MEDIA_ROOT en MEDIA_URL

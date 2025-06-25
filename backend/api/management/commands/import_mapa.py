@@ -1,3 +1,5 @@
+# backend/api/management/commands/import_mapa.py
+
 import os
 import time
 import pandas as pd
@@ -22,8 +24,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        excel_path = options['excel']
-        images_dir = options['images_dir']
+        excel_path  = options['excel']
+        images_dir  = options['images_dir']
 
         if not os.path.isfile(excel_path):
             raise CommandError(f"El archivo Excel no existe: {excel_path}")
@@ -46,18 +48,24 @@ class Command(BaseCommand):
         # 2) Cargo el Excel
         df = pd.read_excel(excel_path, header=1)
 
-        piezas_procesadas = 0
+        piezas_procesadas  = 0
         imagenes_asociadas = 0
 
         # 3) Itero piezas y componentes
         with driver.session() as session:
             for _, row in df.iterrows():
+                # fila de Excel: header en 2 → fila 3 tiene índice 3, le restamos 2 → row_id = 1,2,3…
+                excel_row = row.name
+                row_id     = excel_row + 1
+
                 num = str(row.get('numero_de_inventario')).strip()
                 if not num:
                     continue
                 piezas_procesadas += 1
 
-                session.execute_write(self._crear_pieza, row)
+                # sólo _crear_pieza necesita row_id
+                session.execute_write(self._crear_pieza, row, row_id)
+                # el resto mantienen su firma original
                 session.execute_write(self._relaciones_pieza, row)
                 session.execute_write(self._componentes, row)
 
@@ -77,15 +85,14 @@ class Command(BaseCommand):
             f"{imagenes_asociadas} imágenes asociadas en {elapsed:.2f} segundos"
         ))
 
-
-
     @staticmethod
-    def _crear_pieza(tx, row):
+    def _crear_pieza(tx, row, row_id):
         num = str(row.get('numero_de_inventario')).strip()
         tx.run(
             """
             MERGE (p:Pieza {numero_inventario: $num})
             SET
+              p.row_id                         = $row_id,
               p.numero_registro_anterior       = $nrAnterior,
               p.codigo_surdoc                  = $codSurdoc,
               p.ubicacion                      = $ubicacion,
@@ -115,7 +122,8 @@ class Command(BaseCommand):
               p.responsable_coleccion          = $respColeccion,
               p.fecha_ultima_modificacion      = $fUltMod
             """,
-            num=str(row.get('numero_de_inventario')).strip(),
+            num=num,
+            row_id=row_id,
             nrAnterior=str(row.get('numero_de_registro_anterior') or "").strip(),
             codSurdoc=str(row.get('codigo_surdoc') or "").strip(),
             ubicacion=str(row.get('ubicacion') or "").strip(),
@@ -148,12 +156,12 @@ class Command(BaseCommand):
 
     @staticmethod
     def _relaciones_pieza(tx, row):
-        num  = str(row.get('numero_de_inventario')).strip()
-        pais = str(row.get('pais') or "").strip()
-        au   = str(row.get('autor') or "").strip()
-        col  = str(row.get('coleccion') or "").strip()
-        cul  = str(row.get('filiacion_cultural') or "").strip()
-        loc  = str(row.get('localidad') or "").strip()
+        num   = str(row.get('numero_de_inventario')).strip()
+        pais  = str(row.get('pais') or "").strip()
+        au    = str(row.get('autor') or "").strip()
+        col   = str(row.get('coleccion') or "").strip()
+        cul   = str(row.get('filiacion_cultural') or "").strip()
+        loc   = str(row.get('localidad') or "").strip()
         expos = [e.strip() for e in str(row.get('exposiciones') or "").split(';') if e.strip()]
 
         if pais:
