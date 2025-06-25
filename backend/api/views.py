@@ -9,16 +9,16 @@ from rest_framework.response import Response
 from .neo4j import get_driver
 
 def _clean_nan(obj):
-    """
-    Reemplaza float('nan') por None, recursivamente en dicts y listas.
-    """
     if isinstance(obj, float) and math.isnan(obj):
+        return None
+    if isinstance(obj, str) and obj.lower() == 'nan':
         return None
     if isinstance(obj, dict):
         return {k: _clean_nan(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_clean_nan(v) for v in obj]
     return obj
+
 
 class PiezaViewSet(viewsets.ViewSet):
     """
@@ -35,57 +35,72 @@ class PiezaViewSet(viewsets.ViewSet):
         page = int(request.query_params.get("page", 1))
         skip = (page - 1) * self.PAGE_SIZE
 
-        # Consulta Cypher: asegúrate de traer todos los campos relevantes
         query = """
         MATCH (p:Pieza)
-        OPTIONAL MATCH (p)-[:TIENE_IMAGEN]->(img:Imagen)
+        OPTIONAL MATCH (p)-[:PERTENECE_A]->(col:Coleccion)
+        OPTIONAL MATCH (p)-[:FUE_CREADA_POR]->(aut:Autor)
+        OPTIONAL MATCH (p)-[:PROCEDENTE_DE]->(pa:Pais)
+        OPTIONAL MATCH (p)-[:UBICADO_EN]->(loc:Localidad)
+        OPTIONAL MATCH (p)-[:TIENE_FILIACION]->(cul:Cultura)
+        OPTIONAL MATCH (p)-[:EN_EXPOSICION]->(exp:Exposicion)
+        OPTIONAL MATCH (p)-[:HECHO_DE]->(ma:Material)
+        OPTIONAL MATCH (p)-[:USO_TECNICA]->(tec:Tecnica)
+        OPTIONAL MATCH (p)-[:ES_IMAGEN_DE]->(img:Imagen)
         OPTIONAL MATCH (p)-[:TIENE_COMPONENTE]->(c:Componente)
         WITH p,
-            collect(DISTINCT coalesce(img.url, '')) AS imagenes,
-            collect(DISTINCT c{.*}) AS componentes
+             head(collect(DISTINCT col.nombre))        AS coleccion,
+             head(collect(DISTINCT aut.nombre))        AS autor,
+             head(collect(DISTINCT pa.nombre))         AS pais,
+             head(collect(DISTINCT loc.nombre))        AS localidad,
+             head(collect(DISTINCT cul.nombre))        AS filiacion_cultural,
+             collect(DISTINCT exp.titulo)              AS exposiciones,
+             collect(DISTINCT ma.nombre)               AS materiales,
+             collect(DISTINCT tec.nombre)              AS tecnica,
+             collect(DISTINCT coalesce(img.ruta, ''))  AS imagenes,
+             collect(DISTINCT c{.*})                   AS componentes
         RETURN
-            p.row_id   AS id,                    // ← uso row_id
-            p.numero_inventario AS numero_inventario,
-            p.numero_registro_anterior AS numero_registro_anterior,
-            p.codigo_surdoc AS codigo_surdoc,
-            p.ubicacion AS ubicacion,
-            p.deposito AS deposito,
-            p.estante AS estante,
-            p.caja_actual AS caja_actual,
-            p.tipologia AS tipologia,
-            p.coleccion AS coleccion,
-            p.clasificacion AS clasificacion,
-            p.conjunto AS conjunto,
-            p.nombre_comun AS nombre_comun,
-            p.nombre_especifico AS nombre_especifico,
-            p.autor AS autor,
-            p.filiacion_cultural AS filiacion_cultural,
-            p.pais AS pais,
-            p.localidad AS localidad,
-            p.fecha_creacion AS fecha_creacion,
-            p.descripcion AS descripcion_col,
-            p.marcas_inscripciones AS marcas_inscripciones,
-            p.contexto_historico AS contexto_historico,
-            p.bibliografia AS bibliografia,
-            p.iconografia AS iconografia,
-            p.notas_investigacion AS notas_investigacion,
-            p.tecnica AS tecnica,
-            p.materiales AS materiales,
-            p.estado_conservacion AS estado_conservacion,
-            p.descripcion_conservacion AS descripcion_conservacion,
-            p.responsable_conservacion AS responsable_conservacion,
-            p.fecha_actualizacion_conservacion AS fecha_actualizacion_conservacion,
-            p.comentarios_conservacion AS comentarios_conservacion,
-            p.exposiciones AS exposiciones,
-            p.avaluo AS avaluo,
-            p.procedencia AS procedencia,
-            p.donante AS donante,
-            p.fecha_ingreso AS fecha_ingreso,
-            p.responsable_coleccion AS responsable_coleccion,
-            p.fecha_ultima_modificacion AS fecha_ultima_modificacion,
-            componentes,
-            imagenes
-        ORDER BY p.row_id                        // ← orden ascendente
+          p.row_id   AS id,
+          p.numero_inventario             AS numero_inventario,
+          p.numero_registro_anterior      AS numero_registro_anterior,
+          p.codigo_surdoc                 AS codigo_surdoc,
+          p.ubicacion                     AS ubicacion,
+          p.deposito                      AS deposito,
+          p.estante                       AS estante,
+          p.caja_actual                   AS caja_actual,
+          p.tipologia                     AS tipologia,
+          coleccion,
+          p.clasificacion                 AS clasificacion,
+          p.conjunto                      AS conjunto,
+          p.nombre_comun                  AS nombre_comun,
+          p.nombre_especifico             AS nombre_especifico,
+          autor,
+          filiacion_cultural,
+          pais,
+          localidad,
+          p.fecha_creacion                AS fecha_creacion,
+          p.descripcion                   AS descripcion_col,
+          p.marcas_inscripciones          AS marcas_inscripciones,
+          p.contexto_historico            AS contexto_historico,
+          p.bibliografia                  AS bibliografia,
+          p.iconografia                   AS iconografia,
+          p.notas_investigacion           AS notas_investigacion,
+          tecnica,
+          materiales,
+          p.estado_conservacion           AS estado_conservacion,
+          p.descripcion_conservacion      AS descripcion_conservacion,
+          p.responsable_conservacion      AS responsable_conservacion,
+          p.fecha_actualizacion_conservacion AS fecha_actualizacion_conservacion,
+          p.comentarios_conservacion      AS comentarios_conservacion,
+          exposiciones,
+          p.avaluo                        AS avaluo,
+          p.procedencia                   AS procedencia,
+          p.donante                       AS donante,
+          p.fecha_ingreso                 AS fecha_ingreso,
+          p.responsable_coleccion         AS responsable_coleccion,
+          p.fecha_ultima_modificacion     AS fecha_ultima_modificacion,
+          componentes,
+          imagenes
+        ORDER BY p.row_id
         SKIP $skip
         LIMIT $limit
         """
@@ -94,22 +109,37 @@ class PiezaViewSet(viewsets.ViewSet):
 
         driver = get_driver()
         with driver.session() as session:
+            # 1) Ejecutar query de piezas
             result = session.run(query, skip=skip, limit=self.PAGE_SIZE)
             piezas = [ dict(record) for record in result ]
-            total  = session.run(count_query).single()["total"]
 
-        # Limpia NaNs y luego…
-        piezas = [ _clean_nan(p) for p in piezas ]
+            # 2) Obtener total de piezas
+            total = session.run(count_query).single()["total"]
 
-        # ——— aquí viene la magia de DRF ———
-        paginator = PageNumberPagination()
-        paginator.page_size = self.PAGE_SIZE
-        # asigna el paginator al view para que BrowsableRenderer genere los links
-        self.paginator = paginator
+            # 3) Limpiar NaNs e "nan" strings
+            piezas = [ _clean_nan(p) for p in piezas ]
+            for pieza in piezas:
+                for k, v in pieza.items():
+                    if isinstance(v, str) and v.lower() == 'nan':
+                        pieza[k] = None
 
-        # DRF espera una lista “cruda” para luego paginarla:
-        page_obj = paginator.paginate_queryset(piezas, request, view=self)
-        return paginator.get_paginated_response(page_obj)
+            # 4) Construir URLs de next/previous
+            base = request.build_absolute_uri(request.path)
+            def page_url(n):
+                params = request.query_params.copy()
+                params['page'] = n
+                return f"{base}?{params.urlencode()}"
+
+            next_url = page_url(page+1) if skip + self.PAGE_SIZE < total else None
+            prev_url = page_url(page-1) if page > 1 else None
+
+        # 5) Devolver la Response fuera del with
+        return Response({
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": piezas
+        })
 
     @action(detail=False)
     def labels(self, request):

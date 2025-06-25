@@ -81,7 +81,7 @@ class Command(BaseCommand):
 
         elapsed = time.time() - start
         self.stdout.write(self.style.SUCCESS(
-            f"✅ Importación finalizada: {piezas_procesadas} piezas procesadas, "
+            f"✅ Importación finalizada: {piezas_procesadas} filas procesadas, "
             f"{imagenes_asociadas} imágenes asociadas en {elapsed:.2f} segundos"
         ))
 
