@@ -19,23 +19,70 @@ def _clean_nan(obj):
         return [_clean_nan(v) for v in obj]
     return obj
 
-
 class PiezaViewSet(viewsets.ViewSet):
     """
-    ViewSet que expone todas las piezas almacenadas en Neo4j.
-    Sólo implementa el método list (GET /api/piezas/) y un endpoint de diagnóstico /labels/.
+    ViewSet que expone todas las piezas almacenadas en Neo4j,
+    con filtros, búsqueda y ordenamiento dinámicos.
     """
     pagination_class = PageNumberPagination
     PAGE_SIZE = 10
 
     def list(self, request):
-        """
-        GET /api/piezas/
-        """
+        # 1) Paginación
         page = int(request.query_params.get("page", 1))
         skip = (page - 1) * self.PAGE_SIZE
 
-        query = """
+        # 2) Preparar filtros y parámetros
+        conditions = []
+        params = {"skip": skip, "limit": self.PAGE_SIZE}
+
+        # Igualdad exacta
+        for param, field in [
+            ("pais__nombre", "pa.nombre"),
+            ("coleccion__nombre", "col.nombre"),
+            ("autor__nombre", "aut.nombre"),
+            ("localidad__nombre", "loc.nombre"),
+            ("filiacion_cultural__nombre", "cul.nombre"),
+            ("materiales__nombre", "ma.nombre"),
+            ("exposiciones__titulo", "exp.titulo"),
+            ("estado_conservacion", "p.estado_conservacion"),
+        ]:
+            val = request.query_params.get(param)
+            if val is not None:
+                conditions.append(f"{field} = ${param}")
+                params[param] = val
+
+        # Búsqueda global
+        search = request.query_params.get("search")
+        if search:
+            conditions.append(
+                "(p.numero_inventario CONTAINS $search "
+                "OR p.nombre_especifico CONTAINS $search "
+                "OR any(c IN componentes WHERE c.nombre_comun CONTAINS $search OR c.nombre_atribuido CONTAINS $search) "
+                "OR p.descripcion_col CONTAINS $search)"
+            )
+            params["search"] = search
+
+        # Construir cláusula WHERE
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
+
+        # 3) Ordenamiento dinámico (siempre se ordena por row_id a priori)
+        ordering = request.query_params.get("ordering", "id")
+        if ordering.startswith("-"):
+            field_key = ordering[1:]
+            direction = "DESC"
+        else:
+            field_key = ordering
+            direction = "ASC"
+        order_field = {
+            "id": "p.row_id",
+            "numero_inventario": "p.numero_inventario"
+        }.get(field_key, "p.row_id")
+
+        # 4) Consulta principal con WHERE antes del WITH
+        query = f"""
         MATCH (p:Pieza)
         OPTIONAL MATCH (p)-[:PERTENECE_A]->(col:Coleccion)
         OPTIONAL MATCH (p)-[:FUE_CREADA_POR]->(aut:Autor)
@@ -47,17 +94,21 @@ class PiezaViewSet(viewsets.ViewSet):
         OPTIONAL MATCH (p)-[:USO_TECNICA]->(tec:Tecnica)
         OPTIONAL MATCH (p)-[:ES_IMAGEN_DE]->(img:Imagen)
         OPTIONAL MATCH (p)-[:TIENE_COMPONENTE]->(c:Componente)
-        WITH p,
-             head(collect(DISTINCT col.nombre))        AS coleccion,
-             head(collect(DISTINCT aut.nombre))        AS autor,
-             head(collect(DISTINCT pa.nombre))         AS pais,
-             head(collect(DISTINCT loc.nombre))        AS localidad,
-             head(collect(DISTINCT cul.nombre))        AS filiacion_cultural,
-             collect(DISTINCT exp.titulo)              AS exposiciones,
-             collect(DISTINCT ma.nombre)               AS materiales,
-             collect(DISTINCT tec.nombre)              AS tecnica,
-             collect(DISTINCT coalesce(img.ruta, ''))  AS imagenes,
-             collect(DISTINCT c{.*})                   AS componentes
+
+        {where_clause}
+
+        WITH
+          p,
+          head(collect(DISTINCT col.nombre))        AS coleccion,
+          head(collect(DISTINCT aut.nombre))        AS autor,
+          head(collect(DISTINCT pa.nombre))         AS pais,
+          head(collect(DISTINCT loc.nombre))        AS localidad,
+          head(collect(DISTINCT cul.nombre))        AS filiacion_cultural,
+          collect(DISTINCT exp.titulo)              AS exposiciones,
+          collect(DISTINCT ma.nombre)               AS materiales,
+          collect(DISTINCT tec.nombre)              AS tecnica,
+          collect(DISTINCT coalesce(img.ruta, ''))  AS imagenes,
+          collect(DISTINCT c {{ .* }})              AS componentes
         RETURN
           p.row_id   AS id,
           p.numero_inventario             AS numero_inventario,
@@ -100,40 +151,43 @@ class PiezaViewSet(viewsets.ViewSet):
           p.fecha_ultima_modificacion     AS fecha_ultima_modificacion,
           componentes,
           imagenes
-        ORDER BY p.row_id
+        ORDER BY {order_field} {direction}
         SKIP $skip
         LIMIT $limit
         """
 
-        count_query = "MATCH (p:Pieza) RETURN count(p) AS total"
+        # 5) Conteo con los mismos filtros
+        count_query = f"""
+        MATCH (p:Pieza)
+        OPTIONAL MATCH (p)-[:PERTENECE_A]->(col:Coleccion)
+        OPTIONAL MATCH (p)-[:FUE_CREADA_POR]->(aut:Autor)
+        OPTIONAL MATCH (p)-[:PROCEDENTE_DE]->(pa:Pais)
+        OPTIONAL MATCH (p)-[:UBICADO_EN]->(loc:Localidad)
+        OPTIONAL MATCH (p)-[:TIENE_FILIACION]->(cul:Cultura)
+        OPTIONAL MATCH (p)-[:EN_EXPOSICION]->(exp:Exposicion)
+        OPTIONAL MATCH (p)-[:HECHO_DE]->(ma:Material)
+
+        {where_clause}
+
+        RETURN count(DISTINCT p) AS total
+        """
 
         driver = get_driver()
         with driver.session() as session:
-            # 1) Ejecutar query de piezas
-            result = session.run(query, skip=skip, limit=self.PAGE_SIZE)
-            piezas = [ dict(record) for record in result ]
+            piezas = [dict(r) for r in session.run(query, **params)]
+            total = session.run(count_query, **params).single()["total"]
 
-            # 2) Obtener total de piezas
-            total = session.run(count_query).single()["total"]
+        # 6) Limpiar NaNs y construir URLs de paginación
+        piezas = [_clean_nan(p) for p in piezas]
+        base = request.build_absolute_uri(request.path)
+        def page_url(n):
+            qs = request.query_params.copy()
+            qs['page'] = n
+            return f"{base}?{qs.urlencode()}"
 
-            # 3) Limpiar NaNs e "nan" strings
-            piezas = [ _clean_nan(p) for p in piezas ]
-            for pieza in piezas:
-                for k, v in pieza.items():
-                    if isinstance(v, str) and v.lower() == 'nan':
-                        pieza[k] = None
+        next_url = page_url(page + 1) if skip + self.PAGE_SIZE < total else None
+        prev_url = page_url(page - 1) if page > 1 else None
 
-            # 4) Construir URLs de next/previous
-            base = request.build_absolute_uri(request.path)
-            def page_url(n):
-                params = request.query_params.copy()
-                params['page'] = n
-                return f"{base}?{params.urlencode()}"
-
-            next_url = page_url(page+1) if skip + self.PAGE_SIZE < total else None
-            prev_url = page_url(page-1) if page > 1 else None
-
-        # 5) Devolver la Response fuera del with
         return Response({
             "count": total,
             "next": next_url,
@@ -141,11 +195,12 @@ class PiezaViewSet(viewsets.ViewSet):
             "results": piezas
         })
 
+
     @action(detail=False)
     def labels(self, request):
         """
         GET /api/piezas/labels/
-        Endpoint de diagnóstico: devuelve las 10 etiquetas (labels) más comunes.
+        Devuelve las 10 etiquetas más comunes en la base de datos.
         """
         query = """
         CALL db.labels() YIELD label
