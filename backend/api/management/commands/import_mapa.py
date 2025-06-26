@@ -236,6 +236,6 @@ class Command(BaseCommand):
 
         elapsed = time.monotonic() - start_time
         self.stdout.write(self.style.SUCCESS(
-            f"✅ Import finalizado: {len(piezas_creadas)} piezas y {procesadas} imágenes procesadas "
+            f"✅ Import finalizado: {len(piezas_creadas)} objetos y {procesadas} imágenes procesadas "
             f"en {elapsed:.2f} segundos."
         ))
