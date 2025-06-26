@@ -33,42 +33,33 @@ class PiezaViewSet(viewsets.ViewSet):
         skip = (page - 1) * self.PAGE_SIZE
 
         # 2) Preparar filtros y parámetros
-        conditions = []
         params = {"skip": skip, "limit": self.PAGE_SIZE}
-
-        # Igualdad exacta
         for param, field in [
-            ("pais__nombre", "pa.nombre"),
-            ("coleccion__nombre", "col.nombre"),
-            ("autor__nombre", "aut.nombre"),
-            ("localidad__nombre", "loc.nombre"),
+            ("pais__nombre",         "pa.nombre"),
+            ("coleccion__nombre",    "col.nombre"),
+            ("autor__nombre",        "aut.nombre"),
+            ("localidad__nombre",    "loc.nombre"),
             ("filiacion_cultural__nombre", "cul.nombre"),
-            ("materiales__nombre", "ma.nombre"),
+            ("materiales__nombre",   "ma.nombre"),
             ("exposiciones__titulo", "exp.titulo"),
-            ("estado_conservacion", "p.estado_conservacion"),
+            ("estado_conservacion",  "p.estado_conservacion"),
         ]:
             val = request.query_params.get(param)
-            if val is not None:
-                conditions.append(f"{field} = ${param}")
-                params[param] = val
+            params[param] = val
+        # construyo un único WHERE condicional
+        where_clause = """
+        WHERE
+          ($pais__nombre IS NULL            OR pa.nombre  = $pais__nombre)
+          AND ($coleccion__nombre IS NULL   OR col.nombre = $coleccion__nombre)
+          AND ($autor__nombre IS NULL       OR aut.nombre = $autor__nombre)
+          AND ($localidad__nombre IS NULL   OR loc.nombre = $localidad__nombre)
+          AND ($filiacion_cultural__nombre IS NULL OR cul.nombre = $filiacion_cultural__nombre)
+          AND ($materiales__nombre IS NULL  OR ma.nombre = $materiales__nombre)
+          AND ($exposiciones__titulo IS NULL OR exp.titulo = $exposiciones__titulo)
+          AND ($estado_conservacion IS NULL OR p.estado_conservacion = $estado_conservacion)
+        """
 
-        # Búsqueda global
-        search = request.query_params.get("search")
-        if search:
-            conditions.append(
-                "(p.numero_inventario CONTAINS $search "
-                "OR p.nombre_especifico CONTAINS $search "
-                "OR any(c IN componentes WHERE c.nombre_comun CONTAINS $search OR c.nombre_atribuido CONTAINS $search) "
-                "OR p.descripcion_col CONTAINS $search)"
-            )
-            params["search"] = search
-
-        # Construir cláusula WHERE
-        where_clause = ""
-        if conditions:
-            where_clause = "WHERE " + " AND ".join(conditions)
-
-        # 3) Ordenamiento dinámico (siempre se ordena por row_id a priori)
+        # 3) Ordenamiento dinámico
         ordering = request.query_params.get("ordering", "id")
         if ordering.startswith("-"):
             field_key = ordering[1:]
@@ -81,7 +72,7 @@ class PiezaViewSet(viewsets.ViewSet):
             "numero_inventario": "p.numero_inventario"
         }.get(field_key, "p.row_id")
 
-        # 4) Consulta principal con WHERE antes del WITH
+        # 4) Consulta principal con WHERE en medio de dos WITHs
         query = f"""
         MATCH (p:Pieza)
         OPTIONAL MATCH (p)-[:PERTENECE_A]->(col:Coleccion)
@@ -95,6 +86,7 @@ class PiezaViewSet(viewsets.ViewSet):
         OPTIONAL MATCH (p)-[:ES_IMAGEN_DE]->(img:Imagen)
         OPTIONAL MATCH (p)-[:TIENE_COMPONENTE]->(c:Componente)
 
+        WITH p, col, aut, pa, loc, cul, exp, ma, tec, img, c
         {where_clause}
 
         WITH
@@ -109,6 +101,7 @@ class PiezaViewSet(viewsets.ViewSet):
           collect(DISTINCT tec.nombre)              AS tecnica,
           collect(DISTINCT coalesce(img.ruta, ''))  AS imagenes,
           collect(DISTINCT c {{ .* }})              AS componentes
+
         RETURN
           p.row_id   AS id,
           p.numero_inventario             AS numero_inventario,
@@ -156,7 +149,6 @@ class PiezaViewSet(viewsets.ViewSet):
         LIMIT $limit
         """
 
-        # 5) Conteo con los mismos filtros
         count_query = f"""
         MATCH (p:Pieza)
         OPTIONAL MATCH (p)-[:PERTENECE_A]->(col:Coleccion)
@@ -167,10 +159,15 @@ class PiezaViewSet(viewsets.ViewSet):
         OPTIONAL MATCH (p)-[:EN_EXPOSICION]->(exp:Exposicion)
         OPTIONAL MATCH (p)-[:HECHO_DE]->(ma:Material)
 
+        WITH p, col, aut, pa, loc, cul, exp, ma
         {where_clause}
 
         RETURN count(DISTINCT p) AS total
         """
+
+        # 5) Prints para depurar en consola
+        print("⎡ CYPHER ⎤\n", query)
+        print("⎡ PARAMS ⎤\n", params)
 
         driver = get_driver()
         with driver.session() as session:
@@ -194,7 +191,6 @@ class PiezaViewSet(viewsets.ViewSet):
             "previous": prev_url,
             "results": piezas
         })
-
 
     @action(detail=False)
     def labels(self, request):
