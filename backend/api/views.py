@@ -1,7 +1,9 @@
 # backend/api/views.py
 
 import math
+import os
 from urllib.parse import urlencode
+from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
@@ -44,9 +46,8 @@ class PiezaViewSet(viewsets.ViewSet):
             ("exposiciones__titulo", "exp.titulo"),
             ("estado_conservacion",  "p.estado_conservacion"),
         ]:
-            val = request.query_params.get(param)
-            params[param] = val
-        # construyo un único WHERE condicional
+            params[param] = request.query_params.get(param)
+
         where_clause = """
         WHERE
           ($pais__nombre IS NULL            OR pa.nombre  = $pais__nombre)
@@ -72,7 +73,7 @@ class PiezaViewSet(viewsets.ViewSet):
             "numero_inventario": "p.numero_inventario"
         }.get(field_key, "p.row_id")
 
-        # 4) Consulta principal con WHERE en medio de dos WITHs
+        # 4) Consulta principal
         query = f"""
         MATCH (p:Pieza)
         OPTIONAL MATCH (p)-[:PERTENECE_A]->(col:Coleccion)
@@ -165,17 +166,25 @@ class PiezaViewSet(viewsets.ViewSet):
         RETURN count(DISTINCT p) AS total
         """
 
-        # 5) Prints para depurar en consola
-        print("⎡ CYPHER ⎤\n", query)
-        print("⎡ PARAMS ⎤\n", params)
-
+        # 5) Ejecutar en Neo4j
         driver = get_driver()
         with driver.session() as session:
-            piezas = [dict(r) for r in session.run(query, **params)]
+            records = list(session.run(query, **params))
             total = session.run(count_query, **params).single()["total"]
 
-        # 6) Limpiar NaNs y construir URLs de paginación
-        piezas = [_clean_nan(p) for p in piezas]
+        # 6) Limpiar NaNs
+        piezas = [_clean_nan(dict(r)) for r in records]
+
+        # 7) Convertir rutas de fichero en URLs accesibles
+        for pieza in piezas:
+            urls = []
+            for ruta in pieza.get("imagenes", []):
+                if ruta:
+                    fname = os.path.basename(ruta)
+                    urls.append(request.build_absolute_uri(settings.MEDIA_URL + fname))
+            pieza["imagenes"] = urls
+
+        # 8) Construir next/previous
         base = request.build_absolute_uri(request.path)
         def page_url(n):
             qs = request.query_params.copy()

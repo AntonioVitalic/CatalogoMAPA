@@ -1,5 +1,6 @@
 # backend/api/management/commands/import_mapa.py
 
+import re
 import os
 import time
 import pandas as pd
@@ -69,15 +70,26 @@ class Command(BaseCommand):
                 session.execute_write(self._relaciones_pieza, row)
                 session.execute_write(self._componentes, row)
 
-            # 4) Importo imágenes
+            # 4) Importo imágenes (sólo filename, como en tu importador SQLite)
             for root, _, files in os.walk(images_dir):
                 for fn in files:
-                    fn_low = fn.lower()
-                    if not fn_low.endswith(('.jpg','.jpeg','.png','.tif','.tiff','bmp')):
+                    name, ext = os.path.splitext(fn)
+                    ext = ext.lower().lstrip('.')
+                    if ext not in ('jpg', 'jpeg', 'png', 'tif', 'tiff', 'bmp'):
                         continue
-                    fullpath = os.path.join(root, fn).replace("\\", "/")
+                    m = re.match(r'^0*(\d+)([A-Za-z]?)(?:.*)$', name)
+                    if not m:
+                        continue
+                    num_str, letra = m.group(1), m.group(2) or None
+
+                    session.execute_write(self._importar_imagen, num_str, letra, fn)
                     imagenes_asociadas += 1
-                    session.execute_write(self._importar_imagen, fn, fullpath)
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"🖼️ Asociada imagen «{fn}» → pieza {num_str}"
+                            + (f", componente {letra}" if letra else "")
+                        )
+                    )
 
         elapsed = time.time() - start
         self.stdout.write(self.style.SUCCESS(
@@ -304,31 +316,26 @@ class Command(BaseCommand):
             )
 
     @staticmethod
-    def _importar_imagen(tx, filename, fullpath):
+    def _importar_imagen(tx, num, letra, filename):
         """
-        filename: '123_A.jpg' o '456.jpg'
-        fullpath: '/imagenes/123_A.jpg'
+        num: número de inventario (string)
+        letra: letra de componente o None
+        filename: nombre de fichero, p.ej. '02686.00.jpg'
         """
-        nombre, _ = os.path.splitext(filename)
-        parts = nombre.split('_')
-        num   = parts[0]
-        letra = parts[1] if len(parts) > 1 else None
-
-        # Crear nodo Imagen
+        # 1) Nodo Imagen con propiedad 'ruta' = filename
         tx.run(
             """
             CREATE (i:Imagen {
               id: $uuid,
               ruta: $ruta,
-              descripcion: $desc
+              descripcion: ""
             })
             """,
             uuid=str(uuid4()),
-            ruta=fullpath.replace("\\", "/"),
-            desc=""
+            ruta=filename
         )
 
-        # Relacionar
+        # 2) Relacionar con Pieza o Componente
         if letra:
             tx.run(
                 """
@@ -336,8 +343,7 @@ class Command(BaseCommand):
                 MATCH (c:Componente {pieza_numero:$num, letra:$letra})
                 MERGE (i)-[:ES_IMAGEN_DE_COMPONENTE]->(c)
                 """,
-                ruta=fullpath.replace("\\", "/"),
-                num=num, letra=letra
+                ruta=filename, num=num, letra=letra
             )
         else:
             tx.run(
@@ -346,6 +352,5 @@ class Command(BaseCommand):
                 MATCH (p:Pieza {numero_inventario:$num})
                 MERGE (i)-[:ES_IMAGEN_DE]->(p)
                 """,
-                ruta=fullpath.replace("\\", "/"),
-                num=num
+                ruta=filename, num=num
             )
