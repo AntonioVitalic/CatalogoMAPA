@@ -6,17 +6,23 @@ El proyecto CatalogoMAPA utiliza los siguientes puertos en el entorno de desarro
   
 | Servicio | Puerto | Descripción |  
 |----------|--------|-------------|  
-| Frontend (Vite + React) | 8080 | Interfaz de usuario accesible en http://localhost:8080 |  
-| Backend (Django) | 8002 | API REST accesible en http://localhost:8002 |  
+| Frontend (React + Vite) | 8080 | Interfaz de usuario accesible en http://localhost:8080 |  
+| Backend (Django REST) | 8002 | API REST accesible en http://localhost:8002 |  
 | Neo4j Browser | 7475 | Interfaz de navegador Neo4j accesible en http://localhost:7475 |  
 | Neo4j Bolt | 7688 | Puerto de conexión Bolt para Neo4j |  
-  
-Para iniciar todos los servicios, ejecuta:  
+
+
+Para construir la aplicación, se debe ejecutar:
+```bash  
+docker-compose up --build
+```
+
+Para iniciar todos los servicios, hay que ejecutar (con modo debug):  
 ```bash  
 docker-compose up -d
 ```
 
-Este comando iniciará los contenedores de Docker necesarios para el proyecto, incluyendo el backend (Django), el frontend (Vite + React) y la base de datos Neo4j. Esto crea una imagen de Linux, que instala las librerías de python necesarias en backend\requirements.txt
+Este comando iniciará los contenedores de Docker necesarios para el proyecto, incluyendo el backend (Django REST), el frontend (React + Vite) y la base de datos Neo4j. Esto crea una imagen de Linux, que instala las librerías de python necesarias en backend\requirements.txt
 
 ## Carga masiva de datos
 
