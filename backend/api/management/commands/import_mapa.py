@@ -190,6 +190,56 @@ class Command(BaseCommand):
                 )
             procesadas += 1
 
+        # 7) Crear relaciones M2M de Pieza con otros nodos
+        for _, row in df.iterrows():
+            pieza_id = int(row['numero_de_inventario'])
+            # Autor
+            if pd.notnull(row.get('autor')):
+                db.cypher_query(
+                    "MATCH (p:Pieza {id:$pieza_id}), (a:Autor {nombre:$autor}) "
+                    "CREATE (p)-[:CREADO_POR]->(a)",
+                    {'pieza_id': pieza_id, 'autor': row['autor']}
+                )
+            # País
+            if pd.notnull(row.get('pais')):
+                db.cypher_query(
+                    "MATCH (p:Pieza {id:$pieza_id}), (pa:Pais {nombre:$pais}) "
+                    "CREATE (p)-[:PROCEDENTE_DE]->(pa)",
+                    {'pieza_id': pieza_id, 'pais': row['pais']}
+                )
+            # Localidad
+            if pd.notnull(row.get('localidad')):
+                db.cypher_query(
+                    "MATCH (p:Pieza {id:$pieza_id}), (l:Localidad {nombre:$localidad}) "
+                    "CREATE (p)-[:LOCALIZADO_EN]->(l)",
+                    {'pieza_id': pieza_id, 'localidad': row['localidad']}
+                )
+            # Materiales
+            for mat in str(row.get('materialidad', '')).split(';'):
+                mat = mat.strip()
+                if mat:
+                    db.cypher_query(
+                        "MATCH (p:Pieza {id:$pieza_id}), (m:Material {nombre:$mat}) "
+                        "CREATE (p)-[:HECHO_DE]->(m)",
+                        {'pieza_id': pieza_id, 'mat': mat}
+                    )
+            # Técnicas
+            for tec in str(row.get('tecnica', '')).split(';'):
+                tec = tec.strip()
+                if tec:
+                    db.cypher_query(
+                        "MATCH (p:Pieza {id:$pieza_id}), (t:Tecnica {nombre:$tec}) "
+                        "CREATE (p)-[:HECHO_CON]->(t)",
+                        {'pieza_id': pieza_id, 'tec': tec}
+                    )
+            # Colección
+            if pd.notnull(row.get('coleccion')):
+                db.cypher_query(
+                    "MATCH (p:Pieza {id:$pieza_id}), (c:Coleccion {nombre:$coleccion}) "
+                    "CREATE (p)-[:PERTENECE_A]->(c)",
+                    {'pieza_id': pieza_id, 'coleccion': row['coleccion']}
+                )
+
         # 7) Aplicar constraints e índices definidos en los modelos
         for cls in (Pieza, Componente, Imagen, Autor, Pais,
             Localidad, Material, Tecnica, Coleccion):
