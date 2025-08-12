@@ -206,3 +206,11 @@ class PiezaOutSerializer(serializers.Serializer):
             })
         data['imagenes'] = imgs
         return data
+
+class ImagenSerializer(serializers.Serializer):
+    file_name = serializers.CharField()
+    descripcion = serializers.CharField(allow_blank=True, required=False)
+
+# --- Serializadores simples de "nombre" para catálogos ---
+class NombreSerializer(serializers.Serializer):
+    nombre = serializers.CharField()
