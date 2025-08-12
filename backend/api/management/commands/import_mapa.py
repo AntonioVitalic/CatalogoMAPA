@@ -6,10 +6,6 @@ import unicodedata
 import pandas as pd
 from django.core.management.base import BaseCommand
 from neomodel import db
-from api.models import (
-    Pieza, Componente, Imagen, Autor, Pais, Localidad, Cultura,
-    Material, Tecnica, Coleccion, Exposicion
-)
 
 class Command(BaseCommand):
     help = 'DROP + LOAD CSV de Excel e imágenes a Neo4j (espejo compat con dev-sqlite)'
@@ -391,34 +387,8 @@ class Command(BaseCommand):
         pd.DataFrame({"nombre": _uniq_series(piezas_df.get("localidad", pd.Series(dtype=str)))}) \
           .to_csv(os.path.join(aux_dir, "localidades.csv"), index=False)
 
-        # --- Materiales: vienen en piezas y componentes separados por ';' ---
-        def _split_semicolon(col: pd.Series) -> list[str]:
-            bag = []
-            for raw in col.fillna("").astype(str):
-                for part in raw.split(";"):
-                    v = _norm(part)
-                    if v:
-                        bag.append(v)
-            return bag
-
-        def _uniq_list_case_insensitive(items: list[str]) -> list[str]:
-            seen = set()
-            out = []
-            for v in items:
-                key = v.casefold()
-                if key not in seen:
-                    seen.add(key)
-                    out.append(v)
-            return sorted(out, key=lambda x: x.casefold())
-
-        mat_piezas = _split_semicolon(piezas_df.get("materialidad", pd.Series(dtype=str)))
-        mat_comps  = _split_semicolon(comp_df.get("materialidad",  pd.Series(dtype=str)))
-        mat_all    = _uniq_list_case_insensitive(mat_piezas + mat_comps)
-
-        pd.DataFrame({"nombre": mat_all}) \
-          .to_csv(os.path.join(aux_dir, "materiales.csv"), index=False)
-
-
+        pd.DataFrame({"nombre": _uniq_series(piezas_df.get("tipologia", pd.Series(dtype=str)))}) \
+          .to_csv(os.path.join(aux_dir, "tipologias.csv"), index=False)
 
         self.stdout.write(self.style.SUCCESS(
             f"✅ Import finalizado: {len(piezas_df)} piezas, {len(img_rows)} imágenes, en {time.monotonic()-t0:.2f}s"

@@ -23,16 +23,18 @@ from rest_framework.routers import DefaultRouter
 from api.views import (
     PiezaViewSet, ComponenteViewSet, ImagenViewSet, 
     AutorViewSet, PaisViewSet, LocalidadViewSet, 
-    MaterialViewSet, ColeccionViewSet
+    TipologiaViewSet, ColeccionViewSet
 )
 
 router = DefaultRouter()
 router.register(r'piezas', PiezaViewSet, basename='pieza')
+router.register(r'componentes', ComponenteViewSet, basename='componente')
+router.register(r'imagenes', ImagenViewSet, basename='imagen')
 router.register(r'paises', PaisViewSet, basename='pais')
 router.register(r'colecciones', ColeccionViewSet, basename='coleccion')
 router.register(r'autores', AutorViewSet, basename='autor')
 router.register(r'localidades', LocalidadViewSet, basename='localidad')
-router.register(r'materiales', MaterialViewSet, basename='material')
+router.register(r'tipologias', TipologiaViewSet, basename='tipologia')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
