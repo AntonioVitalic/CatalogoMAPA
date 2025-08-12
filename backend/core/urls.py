@@ -28,14 +28,14 @@ from api.views import (
 
 router = DefaultRouter()
 router.register(r'piezas', PiezaViewSet, basename='pieza')
-router.register(r'componentes', ComponenteViewSet, basename='componente')
-router.register(r'imagenes', ImagenViewSet, basename='imagen')
-router.register(r'autores', AutorViewSet, basename='autor')
-router.register(r'paises', PaisViewSet, basename='pais')
-router.register(r'localidades', LocalidadViewSet, basename='localidad')
-router.register(r'materiales', MaterialViewSet, basename='material')
-router.register(r'tecnicas', TecnicaViewSet, basename='tecnica')
-router.register(r'colecciones', ColeccionViewSet, basename='coleccion')
+# router.register(r'componentes', ComponenteViewSet, basename='componente')
+# router.register(r'imagenes', ImagenViewSet, basename='imagen')
+# router.register(r'autores', AutorViewSet, basename='autor')
+# router.register(r'paises', PaisViewSet, basename='pais')
+# router.register(r'localidades', LocalidadViewSet, basename='localidad')
+# router.register(r'materiales', MaterialViewSet, basename='material')
+# router.register(r'tecnicas', TecnicaViewSet, basename='tecnica')
+# router.register(r'colecciones', ColeccionViewSet, basename='coleccion')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

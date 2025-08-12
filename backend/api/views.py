@@ -1,71 +1,44 @@
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from django.conf import settings
+from neomodel import db
 
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
     Localidad, Material, Tecnica, Coleccion
 )
 from .serializers import (
-    PiezaSerializer, ComponenteSerializer, ImagenSerializer,
-    AutorSerializer, PaisSerializer, LocalidadSerializer,
-    MaterialSerializer, TecnicaSerializer, ColeccionSerializer
-)
+    PiezaOutSerializer)
 
 class PiezaViewSet(viewsets.ViewSet):
     def list(self, request):
-        piezas = Pieza.nodes.all()
+        nombre_coleccion = request.query_params.get('coleccion__nombre')
+
+        if nombre_coleccion:
+            q = """
+            MATCH (p:Pieza)-[:PERTENECE_A]->(c:Coleccion)
+            WHERE toLower(c.nombre) CONTAINS toLower($nombre)
+            RETURN p
+            ORDER BY p.numero_inventario_int
+            """
+            rows, _ = db.cypher_query(q, {"nombre": nombre_coleccion})
+            piezas = [Pieza.inflate(r[0]) for r in rows]
+        else:
+            # listado normal, ordenado por numero_inventario_int
+            piezas = sorted(Pieza.nodes.all(),
+                            key=lambda p: (p.numero_inventario_int or 0))
+
         paginator = PageNumberPagination()
-        paginator.page_size = 10  # O usa settings.PAGE_SIZE
-        result_page = paginator.paginate_queryset(list(piezas), request)
-        serializer = PiezaSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        paginator.page_size = settings.REST_FRAMEWORK['PAGE_SIZE']  # 10
+        page = paginator.paginate_queryset(list(piezas), request)
+        ser = PiezaOutSerializer(page, many=True)
+        return paginator.get_paginated_response(ser.data)
 
     def retrieve(self, request, pk=None):
-        pieza = Pieza.nodes.get(id=int(pk))
-        serializer = PiezaSerializer(pieza)
-        return Response(serializer.data)
-
-    def create(self, request):
-        data = request.data
-        pieza = Pieza(
-            nombre=data.get('nombre'),
-            descripcion=data.get('descripcion', '')
-        ).save()
-
-        # Conectar relaciones si vinieron en la petición
-        for autor_id in data.get('autores', []):
-            pieza.autores.connect(Autor.nodes.get(id=int(autor_id)))
-        for comp_id in data.get('componentes', []):
-            pieza.componentes.connect(Componente.nodes.get(id=int(comp_id)))
-        for pais_id in data.get('pais', []):
-            pieza.pais.connect(Pais.nodes.get(id=int(pais_id)))
-        for loc_id in data.get('localidad', []):
-            pieza.localidad.connect(Localidad.nodes.get(id=int(loc_id)))
-        for mat_id in data.get('materiales', []):
-            pieza.materiales.connect(Material.nodes.get(id=int(mat_id)))
-        for tec_id in data.get('tecnicas', []):
-            pieza.tecnicas.connect(Tecnica.nodes.get(id=int(tec_id)))
-        for col_id in data.get('colecciones', []):
-            pieza.colecciones.connect(Coleccion.nodes.get(id=int(col_id)))
-
-        serializer = PiezaSerializer(pieza)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def update(self, request, pk=None):
-        pieza = Pieza.nodes.get(id=int(pk))
-        data = request.data
-        pieza.nombre = data.get('nombre', pieza.nombre)
-        pieza.descripcion = data.get('descripcion', pieza.descripcion)
-        pieza.save()
-        # (Opcional: sincronizar relaciones aquí)
-        serializer = PiezaSerializer(pieza)
-        return Response(serializer.data)
-
-    def destroy(self, request, pk=None):
-        pieza = Pieza.nodes.get(id=int(pk))
-        pieza.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # pk viene como “id” sqlite => numero_inventario
+        pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
+        return Response(PiezaOutSerializer(pieza).data)
 
 
 class ComponenteViewSet(viewsets.ViewSet):
@@ -75,7 +48,7 @@ class ComponenteViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     def retrieve(self, request, pk=None):
-        comp = Componente.nodes.get(id=int(pk))
+        comp = Componente.nodes.get(uid=int(pk))
         serializer = ComponenteSerializer(comp)
         return Response(serializer.data)
 
