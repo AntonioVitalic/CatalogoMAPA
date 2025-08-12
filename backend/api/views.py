@@ -6,10 +6,10 @@ from neomodel import db
 
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
-    Localidad, Material, Tecnica, Coleccion
+    Localidad, Material, Coleccion
 )
-from .serializers import (
-    PiezaOutSerializer)
+
+from .serializers import PiezaOutSerializer, ImagenOutSerializer, ImagenSerializer, NombreSerializer
 
 class PiezaViewSet(viewsets.ViewSet):
     def list(self, request):
@@ -106,62 +106,27 @@ class ImagenViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class AutorViewSet(viewsets.ViewSet):
-    def list(self, request):
-        qs = Autor.nodes.all()
-        return Response(AutorSerializer(qs, many=True).data)
-
-    def retrieve(self, request, pk=None):
-        obj = Autor.nodes.get(id=int(pk))
-        return Response(AutorSerializer(obj).data)
-    # create/update/destroy si los necesitas…
-
-
 class PaisViewSet(viewsets.ViewSet):
     def list(self, request):
-        qs = Pais.nodes.all()
-        return Response(PaisSerializer(qs, many=True).data)
-
-    def retrieve(self, request, pk=None):
-        obj = Pais.nodes.get(id=int(pk))
-        return Response(PaisSerializer(obj).data)
-
-
-class LocalidadViewSet(viewsets.ViewSet):
-    def list(self, request):
-        qs = Localidad.nodes.all()
-        return Response(LocalidadSerializer(qs, many=True).data)
-
-    def retrieve(self, request, pk=None):
-        obj = Localidad.nodes.get(id=int(pk))
-        return Response(LocalidadSerializer(obj).data)
-
-
-class MaterialViewSet(viewsets.ViewSet):
-    def list(self, request):
-        qs = Material.nodes.all()
-        return Response(MaterialSerializer(qs, many=True).data)
-
-    def retrieve(self, request, pk=None):
-        obj = Material.nodes.get(id=int(pk))
-        return Response(MaterialSerializer(obj).data)
-
-
-class TecnicaViewSet(viewsets.ViewSet):
-    def list(self, request):
-        qs = Tecnica.nodes.all()
-        return Response(TecnicaSerializer(qs, many=True).data)
-
-    def retrieve(self, request, pk=None):
-        obj = Tecnica.nodes.get(id=int(pk))
-        return Response(TecnicaSerializer(obj).data)
-
+        data = [{"nombre": p.nombre} for p in Pais.nodes.all()]
+        return Response(NombreSerializer(data, many=True).data)
 
 class ColeccionViewSet(viewsets.ViewSet):
     def list(self, request):
-        qs = Coleccion.nodes.all()
-        return Response(ColeccionSerializer(qs, many=True).data)
+        data = [{"nombre": c.nombre} for c in Coleccion.nodes.all()]
+        return Response(NombreSerializer(data, many=True).data)
 
-    def retrieve(self, request, pk=None):
-        obj = Coleccion.nodes.get(id=int(pk))
-        return Response(ColeccionSerializer(obj).data)
+class AutorViewSet(viewsets.ViewSet):
+    def list(self, request):
+        data = [{"nombre": a.nombre} for a in Autor.nodes.all()]
+        return Response(NombreSerializer(data, many=True).data)
+
+class LocalidadViewSet(viewsets.ViewSet):
+    def list(self, request):
+        data = [{"nombre": l.nombre} for l in Localidad.nodes.all()]
+        return Response(NombreSerializer(data, many=True).data)
+
+class MaterialViewSet(viewsets.ViewSet):
+    def list(self, request):
+        data = [{"nombre": m.nombre} for m in Material.nodes.all()]
+        return Response(NombreSerializer(data, many=True).data)

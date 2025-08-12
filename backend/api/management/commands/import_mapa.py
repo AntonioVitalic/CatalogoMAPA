@@ -2,6 +2,7 @@
 import os
 import re
 import time
+import unicodedata
 import pandas as pd
 from django.core.management.base import BaseCommand
 from neomodel import db
@@ -151,6 +152,12 @@ class Command(BaseCommand):
             "CREATE INDEX idx_expo_titulo IF NOT EXISTS FOR (e:Exposicion) ON (e.titulo)"
         ]:
             db.cypher_query(stmt)
+
+        # Unicidad por nombre de archivo de la imagen
+        db.cypher_query(
+            "CREATE CONSTRAINT uniq_imagen_file IF NOT EXISTS "
+            "FOR (i:Imagen) REQUIRE i.file_name IS UNIQUE"
+        )
 
         # 4) Carga de PIEZAS (propiedades planas)
         db.cypher_query(f"""
@@ -314,29 +321,104 @@ class Command(BaseCommand):
             if not m:
                 continue
             num = str(int(m.group(1)))
-            letra = (m.group(2) or '').lower()  # **clave**: letra a minúscula
+            letra = (m.group(2) or '').lower()
             img_rows.append({'file_name': fn, 'num': num, 'letra': letra})
 
         pd.DataFrame(img_rows).to_csv(os.path.join(import_dir, 'imagenes.csv'), index=False)
 
+        # Nodos Imagen
         db.cypher_query("""
-        CALL apoc.periodic.iterate(
-          "LOAD CSV WITH HEADERS FROM 'file:///imagenes.csv' AS row RETURN row",
-          "
-           MERGE (i:Imagen {file_name:row.file_name})
+        LOAD CSV WITH HEADERS FROM 'file:///imagenes.csv' AS row
+        WITH row WHERE row.file_name IS NOT NULL AND trim(row.file_name) <> ''
+        MERGE (:Imagen {file_name: trim(row.file_name)});
+        """)
 
-           // Enlazar a la Pieza
-           MATCH (p:Pieza {numero_inventario:row.num})
-           MERGE (p)-[:TIENE_IMAGEN]->(i)
+        # Pieza -> Imagen
+        db.cypher_query("""
+        LOAD CSV WITH HEADERS FROM 'file:///imagenes.csv' AS row
+        WITH trim(row.num) AS num, trim(row.file_name) AS fn
+        MATCH (p:Pieza {numero_inventario: num})
+        MATCH (i:Imagen {file_name: fn})
+        MERGE (p)-[:TIENE_IMAGEN]->(i);
+        """)
 
-           // Enlazar a Componente si hay letra
-           FOREACH(_ IN CASE WHEN row.letra<>'' THEN [1] ELSE [] END |
-             MATCH (c:Componente {pieza_numero_inventario:row.num, letra:row.letra})
-             MERGE (c)-[:TIENE_IMAGEN]->(i)
-           )
-          ",
-          {batchSize:1000, iterateList:true}
-        )""")
+        # Componente -> Imagen (si hay letra)
+        db.cypher_query("""
+        LOAD CSV WITH HEADERS FROM 'file:///imagenes.csv' AS row
+        WITH trim(row.num) AS num, toLower(trim(coalesce(row.letra,''))) AS letra, trim(row.file_name) AS fn
+        WHERE letra <> ''
+        MATCH (c:Componente {pieza_numero_inventario: num, letra: letra})
+        MATCH (i:Imagen {file_name: fn})
+        MERGE (c)-[:TIENE_IMAGEN]->(i);
+        """)
+
+
+        # ===== CSV auxiliares para filtros del frontend =====
+        aux_dir = import_dir  # los dejamos junto a los otros csv
+
+        def _norm(s: str) -> str:
+            # Normaliza: quita espacios, aplica NFC y casefold (mejor que lower para Unicode)
+            s = (s or "").strip()
+            if not s:
+                return ""
+            s = unicodedata.normalize("NFC", s)
+            return s
+
+        def _uniq_series(series: pd.Series) -> list[str]:
+            """Valores únicos (case-insensitive), conservando la primera capitalización encontrada."""
+            seen = set()
+            out = []
+            for raw in series.fillna("").astype(str):
+                val = _norm(raw)
+                if not val:
+                    continue
+                key = val.casefold()
+                if key not in seen:
+                    seen.add(key)
+                    out.append(val)
+            # ordenar de forma estable por casefold
+            return sorted(out, key=lambda x: x.casefold())
+
+        pd.DataFrame({"nombre": _uniq_series(piezas_df.get("coleccion", pd.Series(dtype=str)))}) \
+          .to_csv(os.path.join(aux_dir, "colecciones.csv"), index=False)
+
+        pd.DataFrame({"nombre": _uniq_series(piezas_df.get("autor", pd.Series(dtype=str)))}) \
+          .to_csv(os.path.join(aux_dir, "autores.csv"), index=False)
+
+        pd.DataFrame({"nombre": _uniq_series(piezas_df.get("pais", pd.Series(dtype=str)))}) \
+          .to_csv(os.path.join(aux_dir, "paises.csv"), index=False)
+
+        pd.DataFrame({"nombre": _uniq_series(piezas_df.get("localidad", pd.Series(dtype=str)))}) \
+          .to_csv(os.path.join(aux_dir, "localidades.csv"), index=False)
+
+        # --- Materiales: vienen en piezas y componentes separados por ';' ---
+        def _split_semicolon(col: pd.Series) -> list[str]:
+            bag = []
+            for raw in col.fillna("").astype(str):
+                for part in raw.split(";"):
+                    v = _norm(part)
+                    if v:
+                        bag.append(v)
+            return bag
+
+        def _uniq_list_case_insensitive(items: list[str]) -> list[str]:
+            seen = set()
+            out = []
+            for v in items:
+                key = v.casefold()
+                if key not in seen:
+                    seen.add(key)
+                    out.append(v)
+            return sorted(out, key=lambda x: x.casefold())
+
+        mat_piezas = _split_semicolon(piezas_df.get("materialidad", pd.Series(dtype=str)))
+        mat_comps  = _split_semicolon(comp_df.get("materialidad",  pd.Series(dtype=str)))
+        mat_all    = _uniq_list_case_insensitive(mat_piezas + mat_comps)
+
+        pd.DataFrame({"nombre": mat_all}) \
+          .to_csv(os.path.join(aux_dir, "materiales.csv"), index=False)
+
+
 
         self.stdout.write(self.style.SUCCESS(
             f"✅ Import finalizado: {len(piezas_df)} piezas, {len(img_rows)} imágenes, en {time.monotonic()-t0:.2f}s"
