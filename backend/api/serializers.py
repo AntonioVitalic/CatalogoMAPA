@@ -38,19 +38,18 @@ def _fmt_fecha_con_hora_or_nat(val):
 #  Imágenes (compat sqlite)
 # -----------------------------
 class ImagenOutSerializer(serializers.Serializer):
-    # Importante: NO tocar obj.id (Neo4j 5)
     id = serializers.SerializerMethodField()
     imagen = serializers.SerializerMethodField()
-    descripcion = serializers.CharField(allow_blank=True, required=False)
+    descripcion = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     def get_id(self, obj):
-        # En este serializer lo dejamos en None;
-        # el ID incremental se arma donde se usa (pieza/componentes).
+        # lo seguimos dejando None aquí; el id incremental lo arma el padre
         return None
 
     def get_imagen(self, obj):
-        # MEDIA_URL + file_name
-        return f"{settings.MEDIA_URL}{obj.file_name}"
+        request = self.context.get('request')
+        rel = f"{settings.MEDIA_URL}{obj.file_name}"
+        return request.build_absolute_uri(rel) if request else rel
 
 
 # -----------------------------
@@ -91,15 +90,16 @@ class ComponenteOutSerializer(serializers.Serializer):
         # M2M por nombre
         base['materiales'] = [m.nombre for m in c.materiales.all()]
         base['tecnica']    = [t.nombre for t in c.tecnica.all()]
-        # imágenes del componente con id incremental local
-        imgs = []
-        img_id = 0
+        # URLs absolutas + descripcion null si viene vacía
+        request = self.context.get('request')
+        imgs, img_id = [], 0
         for i in c.imagenes.all():
             img_id += 1
+            rel = f"{settings.MEDIA_URL}{i.file_name}"
             imgs.append({
                 'id': img_id,
-                'imagen': f"{settings.MEDIA_URL}{i.file_name}",
-                'descripcion': i.descripcion or ""
+                'imagen': request.build_absolute_uri(rel) if request else rel,
+                'descripcion': i.descripcion if (i.descripcion or None) else None
             })
         base['imagenes'] = imgs
         return base
@@ -194,19 +194,44 @@ class PiezaOutSerializer(serializers.Serializer):
         data['tecnica'] = [t.nombre for t in p.tecnica.all()]
         data['materiales'] = [m.nombre for m in p.materiales.all()]
         data['exposiciones'] = [e.titulo for e in p.exposiciones.all()]
+
+        # pasar request a los serializadores hijos para URL absoluta
+        ctx = {'request': self.context.get('request'), 'next_comp_id': next_comp_id}
+
+        # componentes ordenados por letra
         comps = sorted(p.componentes.all(), key=lambda c: c.letra or '')
-        data['componentes'] = [ComponenteOutSerializer(c, context=self.context).data for c in comps]
+        data['componentes'] = [ComponenteOutSerializer(c, context=ctx).data for c in comps]
+
+        # imágenes de pieza: URL absoluta + null si vacía
+        request = self.context.get('request')
         imgs, img_id = [], 0
         for i in p.imagenes.all():
             img_id += 1
+            rel = f"{settings.MEDIA_URL}{i.file_name}"
             imgs.append({
                 'id': img_id,
-                'imagen': f"{settings.MEDIA_URL}{i.file_name}",
-                'descripcion': i.descripcion or ""
+                'imagen': request.build_absolute_uri(rel) if request else rel,
+                'descripcion': i.descripcion if (i.descripcion or None) else None
             })
         data['imagenes'] = imgs
         return data
 
+class ImagenListSerializer(serializers.Serializer):
+    id = serializers.SerializerMethodField()
+    imagen = serializers.SerializerMethodField()
+    descripcion = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+
+    def get_id(self, obj):
+        # id virtual consecutivo, estable dentro del orden elegido (paginado)
+        return self.context['next_img_id']()
+
+    def get_imagen(self, obj):
+        # URL ABSOLUTA como en dev-sqlite
+        request = self.context.get('request')
+        rel = f"{settings.MEDIA_URL}{obj.file_name}"
+        return request.build_absolute_uri(rel) if request else rel
+    
+# --- (opcional) Mantén tu ImagenSerializer simple si lo usas en create/update ---
 class ImagenSerializer(serializers.Serializer):
     file_name = serializers.CharField()
     descripcion = serializers.CharField(allow_blank=True, required=False)
