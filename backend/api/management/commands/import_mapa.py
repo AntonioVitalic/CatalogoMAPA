@@ -1,253 +1,343 @@
 # backend/api/management/commands/import_mapa.py
-
 import os
 import re
 import time
-from api.models import (
-    Pieza, Componente, Imagen, Autor, Pais,
-    Localidad, Material, Tecnica, Coleccion
-)
 import pandas as pd
 from django.core.management.base import BaseCommand
-from neomodel import db, install_labels
+from neomodel import db
+from api.models import (
+    Pieza, Componente, Imagen, Autor, Pais, Localidad, Cultura,
+    Material, Tecnica, Coleccion, Exposicion
+)
 
 class Command(BaseCommand):
-    help = 'Importa datos masivos de Excel a Neo4j (DROP existente + LOAD CSV)'
+    help = 'DROP + LOAD CSV de Excel e imágenes a Neo4j (espejo compat con dev-sqlite)'
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--excel',
-            type=str,
-            required=True,
-            help='Ruta al archivo Excel de inventario'
-        )
-        parser.add_argument(
-            '--images_dir',
-            type=str,
-            required=True,
-            help='Directorio con imágenes (montado)'
-        )
+        parser.add_argument('--excel', required=True, help='Ruta Excel inventario (dentro del contenedor)')
+        parser.add_argument('--images_dir', required=True, help='Carpeta imágenes (dentro del contenedor)')
 
-    def handle(self, *args, **options):
-        start_time = time.monotonic()
+    def handle(self, *args, **opt):
+        t0 = time.monotonic()
+        excel_path = opt['excel']
+        images_dir = opt['images_dir']
 
-        excel_path = options['excel']
-        images_dir = options['images_dir']
+        # Carpeta donde Neo4j puede leer CSV (montada como neo4j/import)
         import_dir = os.path.join(os.getcwd(), 'neo4j', 'import')
         os.makedirs(import_dir, exist_ok=True)
 
-        # 1) Limpiar todo en Neo4j
+        # 0) Wipe total
         db.cypher_query("MATCH (n) DETACH DELETE n")
 
-        # 2) Leer el Excel (cabeceras en la segunda fila)
-        df = pd.read_excel(excel_path, sheet_name=0, header=1)
+        # 1) Excel
+        df = pd.read_excel(excel_path, header=1)
 
-        # 3) Generar CSV intermedios
+        # El Excel suele traer dos columnas “fantasma”: la entre tipologia y coleccion (idx 10)
+        # y 'Unnamed: 46' (entre fecha_ingreso y responsable_coleccion). Las quitamos si existen.
+        to_drop = []
+        if len(df.columns) > 46:
+            to_drop = [df.columns[10], 'Unnamed: 46']
+        df.drop(columns=[c for c in to_drop if c in df.columns], inplace=True, errors='ignore')
 
-        # Piezas
-        piezas_df = df[[
-            'numero_de_inventario',
-            'nombre_comun',
-            'descripcion_col'
-        ]].drop_duplicates()
-        piezas_df.columns = ['id', 'nombre', 'descripcion']
-        piezas_df.to_csv(os.path.join(import_dir, 'piezas.csv'), index=False)
+        # Rellenar NaN según tipo
+        num_cols = df.select_dtypes(include=['int64','float64']).columns
+        obj_cols = df.select_dtypes(include=['object']).columns
+        df[num_cols] = df[num_cols].fillna(0)
+        df[obj_cols] = df[obj_cols].fillna("")
 
-        # Componentes: filas donde 'letra' no esté vacío
-        comp_rows = df[df['letra'].fillna('').astype(str).str.strip() != '']
-        componentes_df = comp_rows[[
-            'numero_de_inventario',
-            'letra',
-            'nombre_comun'
-        ]].drop_duplicates()
-        componentes_df.columns = ['pieza_id', 'letra', 'nombre']
-        componentes_df.to_csv(os.path.join(import_dir, 'componentes.csv'), index=False)
+        # Ordenar por número inventario (numérico)
+        df['__num'] = pd.to_numeric(df['numero_de_inventario'], errors='coerce')
+        df = df[df['__num'].notnull()]
+        df.sort_values('__num', inplace=True)
 
-        # Autores
-        autores_df = df[['autor']].dropna().drop_duplicates()
-        autores_df.columns = ['nombre']
-        autores_df.to_csv(os.path.join(import_dir, 'autores.csv'), index=False)
+        # 2) CSV base (SOLO piezas.csv + componentes.csv)
+        piezas_cols = dict(
+            numero_inventario='numero_de_inventario',
+            revision='Revisión',
+            numero_registro_anterior='numero_de registro_anterior',
+            codigo_surdoc='SURDOC',
+            ubicacion='ubicacion',
+            deposito='deposito',
+            estante='estante',
+            caja_actual='caja_actual',
+            tipologia='tipologia',
+            clasificacion='clasificacion',
+            conjunto='conjunto',
+            nombre_comun='nombre_comun',
+            nombre_especifico='nombre_especifico',
+            fecha_creacion='fecha_de_creacion',
+            descripcion='descripcion_col',
+            marcas_inscripciones='marcas_o_inscripciones',
+            contexto_historico='contexto_historico',
+            bibliografia='bibliografia',
+            iconografia='iconografia',
+            notas_investigacion='notas_investigacion',
+            avaluo='avaluo',
+            procedencia='procedencia',
+            donante='donante',
+            fecha_ingreso='fecha_ingreso',
+            estado_conservacion='estado_genral_de_conservacion',
+            descripcion_conservacion='descripcion_cr',
+            responsable_conservacion='responsable_conservacion',
+            fecha_actualizacion_conservacion='fecha_actualizacion_cr',
+            comentarios_conservacion='comentarios_cr',
+            responsable_coleccion='responsable_coleccion',
+            fecha_ultima_modificacion='fecha_ultima_modificacion',
+            autor='autor',
+            filiacion_cultural='filiacion_cultural',
+            pais='pais',
+            localidad='localidad',
+            coleccion='coleccion',
+            materialidad='materialidad',
+            tecnica='tecnica',
+        )
 
-        # Países
-        paises_df = df[['pais']].dropna().drop_duplicates()
-        paises_df.columns = ['nombre']
-        paises_df.to_csv(os.path.join(import_dir, 'paises.csv'), index=False)
+        piezas_df = df[[v for v in piezas_cols.values() if v in df.columns]].copy()
+        piezas_df.rename(columns={v: k for k, v in piezas_cols.items() if v in df.columns}, inplace=True)
+        piezas_df['numero_inventario'] = piezas_df['numero_inventario'].astype(int).astype(str)
+        piezas_df['numero_inventario_int'] = piezas_df['numero_inventario'].astype(int)
+        # Evitar duplicados por filas A/B del Excel: quedarse con la primera (la “pieza”)
+        piezas_df = piezas_df.drop_duplicates(subset=['numero_inventario'], keep='first')
+        piezas_csv = os.path.join(import_dir, 'piezas.csv')
+        piezas_df.to_csv(piezas_csv, index=False)
 
-        # Localidades
-        localidades_df = df[['localidad', 'pais']].dropna().drop_duplicates()
-        localidades_df.columns = ['nombre', 'pais']
-        localidades_df.to_csv(os.path.join(import_dir, 'localidades.csv'), index=False)
+        # Componentes (una fila por letra, con marcas_inscripciones)
+        comp_df = df[df['letra'].astype(str).str.strip() != ''].copy()
+        comp_df = comp_df.assign(
+            pieza_numero_inventario=comp_df['numero_de_inventario'].astype(int).astype(str),
+            letra=comp_df['letra'].astype(str).str.strip().str.lower(),  # forzar minúscula para alinear con imágenes
+            nombre_comun=comp_df['nombre_comun'],
+            nombre_atribuido=comp_df['nombre_especifico'],
+            descripcion=comp_df['descripcion_col'],
+            funcion=comp_df.get('funcion', ''),
+            forma=comp_df.get('forma', ''),
+            marcas_inscripciones=comp_df.get('marcas_o_inscripciones', ''),
+            peso_kg=pd.to_numeric(comp_df.get('peso_(gr)', 0), errors='coerce').fillna(0) / 1000.0,
+            alto_cm=pd.to_numeric(comp_df.get('alto_o_largo_(cm)', 0), errors='coerce'),
+            ancho_cm=pd.to_numeric(comp_df.get('ancho_(cm)', 0), errors='coerce'),
+            profundidad_cm=pd.to_numeric(comp_df.get('profundidad_(cm)', 0), errors='coerce'),
+            diametro_cm=pd.to_numeric(comp_df.get('diametro_(cm)', 0), errors='coerce'),
+            espesor_mm=pd.to_numeric(comp_df.get('espesor_(mm)', 0), errors='coerce'),
+            estado_conservacion=comp_df.get('estado_genral_de_conservacion', '')
+        )[[
+            'pieza_numero_inventario', 'letra', 'nombre_comun', 'nombre_atribuido', 'descripcion',
+            'funcion', 'forma', 'marcas_inscripciones', 'peso_kg', 'alto_cm', 'ancho_cm',
+            'profundidad_cm', 'diametro_cm', 'espesor_mm', 'estado_conservacion', 'materialidad', 'tecnica'
+        ]]
+        comp_csv = os.path.join(import_dir, 'componentes.csv')
+        comp_df.to_csv(comp_csv, index=False)
 
-        # Materiales (desplegar valores separados por ';')
-        all_materials = set()
-        for raw in df['materialidad'].fillna('').astype(str):
-            for mat in raw.split(';'):
-                mat = mat.strip()
-                if mat:
-                    all_materials.add(mat)
-        materiales_df = pd.DataFrame({'nombre': list(all_materials)})
-        materiales_df.to_csv(os.path.join(import_dir, 'materiales.csv'), index=False)
+        # 3) Índices / constraints mínimos
+        try:
+            db.cypher_query("DROP INDEX index_Pieza_numero_inventario IF EXISTS")
+        except Exception:
+            pass
 
-        # Técnicas (desplegar valores separados por ';')
-        all_tecnicas = set()
-        for raw in df['tecnica'].fillna('').astype(str):
-            for tec in raw.split(';'):
-                tec = tec.strip()
-                if tec:
-                    all_tecnicas.add(tec)
-        tecnicas_df = pd.DataFrame({'nombre': list(all_tecnicas)})
-        tecnicas_df.to_csv(os.path.join(import_dir, 'tecnicas.csv'), index=False)
+        db.cypher_query(
+            "CREATE CONSTRAINT unique_pieza_num IF NOT EXISTS "
+            "FOR (p:Pieza) REQUIRE p.numero_inventario IS UNIQUE"
+        )
+        for stmt in [
+            "CREATE INDEX idx_pieza_numint IF NOT EXISTS FOR (p:Pieza) ON (p.numero_inventario_int)",
+            "CREATE INDEX idx_comp_pieza_num IF NOT EXISTS FOR (c:Componente) ON (c.pieza_numero_inventario)",
+            "CREATE INDEX idx_comp_letra IF NOT EXISTS FOR (c:Componente) ON (c.letra)",
+            "CREATE INDEX idx_autor_nombre IF NOT EXISTS FOR (a:Autor) ON (a.nombre)",
+            "CREATE INDEX idx_pais_nombre IF NOT EXISTS FOR (pa:Pais) ON (pa.nombre)",
+            "CREATE INDEX idx_localidad_nombre IF NOT EXISTS FOR (l:Localidad) ON (l.nombre)",
+            "CREATE INDEX idx_cultura_nombre IF NOT EXISTS FOR (cu:Cultura) ON (cu.nombre)",
+            "CREATE INDEX idx_material_nombre IF NOT EXISTS FOR (m:Material) ON (m.nombre)",
+            "CREATE INDEX idx_tecnica_nombre IF NOT EXISTS FOR (t:Tecnica) ON (t.nombre)",
+            "CREATE INDEX idx_coleccion_nombre IF NOT EXISTS FOR (co:Coleccion) ON (co.nombre)",
+            "CREATE INDEX idx_expo_titulo IF NOT EXISTS FOR (e:Exposicion) ON (e.titulo)"
+        ]:
+            db.cypher_query(stmt)
 
-        # Colecciones
-        colecciones_df = df[['coleccion']].dropna().drop_duplicates()
-        colecciones_df.columns = ['nombre']
-        colecciones_df.to_csv(os.path.join(import_dir, 'colecciones.csv'), index=False)
-
-        # 4) Cargar nodos en Neo4j vía APOC
-
-        carga_queries = [
-            ('piezas.csv',
-             "CREATE (p:Pieza {id:toInteger(row.id), nombre:row.nombre, descripcion:row.descripcion})"),
-            ('componentes.csv',
-             "CREATE (c:Componente {pieza_id:toInteger(row.pieza_id), letra:row.letra, nombre:row.nombre})"),
-            ('autores.csv',
-             "CREATE (a:Autor {nombre:row.nombre})"),
-            ('paises.csv',
-             "CREATE (pa:Pais {nombre:row.nombre})"),
-            ('localidades.csv',
-             "MATCH (pa:Pais {nombre:row.pais}) "
-             "CREATE (l:Localidad {nombre:row.nombre})-[:PERTENECE_A]->(pa)"),
-            ('materiales.csv',
-             "CREATE (m:Material {nombre:row.nombre})"),
-            ('tecnicas.csv',
-             "CREATE (t:Tecnica {nombre:row.nombre})"),
-            ('colecciones.csv',
-             "CREATE (co:Coleccion {nombre:row.nombre})"),
-        ]
-
-        for csv_file, cypher in carga_queries:
-            db.cypher_query(f"""
-                CALL apoc.periodic.iterate(
-                  "LOAD CSV WITH HEADERS FROM 'file:///{csv_file}' AS row RETURN row",
-                  "{cypher}",
-                  {{batchSize:1000, iterateList:true}}
-                )
-            """)
-
-        # 5) Relacionar Piezas → Componentes en batches
-        db.cypher_query("""
+        # 4) Carga de PIEZAS (propiedades planas)
+        db.cypher_query(f"""
         CALL apoc.periodic.iterate(
-        'LOAD CSV WITH HEADERS FROM "file:///componentes.csv" AS row RETURN row',
-        'MATCH (p:Pieza {id: toInteger(row.pieza_id)}), 
-                (c:Componente {pieza_id: toInteger(row.pieza_id), letra: row.letra})
-        CREATE (p)-[:TIENE_COMPONENTE]->(c)',
-        {batchSize: 1000, iterateList: true}
+          "LOAD CSV WITH HEADERS FROM 'file:///piezas.csv' AS row RETURN row",
+          "
+           CREATE (p:Pieza {{
+             numero_inventario: row.numero_inventario,
+             numero_inventario_int: toInteger(row.numero_inventario_int),
+             revision: row.revision,
+             numero_registro_anterior: row.numero_registro_anterior,
+             codigo_surdoc: row.codigo_surdoc,
+             ubicacion: row.ubicacion,
+             deposito: row.deposito,
+             estante: row.estante,
+             caja_actual: row.caja_actual,
+             tipologia: row.tipologia,
+             clasificacion: row.clasificacion,
+             conjunto: row.conjunto,
+             nombre_comun: row.nombre_comun,
+             nombre_especifico: row.nombre_especifico,
+             fecha_creacion: row.fecha_creacion,
+             descripcion: row.descripcion,
+             marcas_inscripciones: row.marcas_inscripciones,
+             contexto_historico: row.contexto_historico,
+             bibliografia: row.bibliografia,
+             iconografia: row.iconografia,
+             notas_investigacion: row.notas_investigacion,
+             avaluo: row.avaluo,
+             procedencia: row.procedencia,
+             donante: row.donante,
+             fecha_ingreso: row.fecha_ingreso,
+             estado_conservacion: row.estado_conservacion,
+             descripcion_conservacion: row.descripcion_conservacion,
+             responsable_conservacion: row.responsable_conservacion,
+             fecha_actualizacion_conservacion: row.fecha_actualizacion_conservacion,
+             comentarios_conservacion: row.comentarios_conservacion,
+             responsable_coleccion: row.responsable_coleccion,
+             fecha_ultima_modificacion: row.fecha_ultima_modificacion
+           }})
+          ",
+          {{batchSize:1000, iterateList:true}}
         )
         """)
 
+        # 5) Relacionar dominios (Autor/Colección/Cultura/País/Localidad) directamente desde piezas.csv
+        db.cypher_query("""
+        CALL apoc.periodic.iterate(
+          "LOAD CSV WITH HEADERS FROM 'file:///piezas.csv' AS row RETURN row",
+          "
+           MATCH (p:Pieza {numero_inventario:row.numero_inventario})
 
-        # 6) Crear nodos Imagen y relaciones
-        imagenes = []
-        for fname in os.listdir(images_dir):
-            if os.path.isfile(os.path.join(images_dir, fname)):
-                imagenes.append({'file_name': fname})
-        img_df = pd.DataFrame(imagenes)
-        img_df.to_csv(os.path.join(import_dir, 'imagenes.csv'), index=False)
+           // Autor / Colección / Cultura
+           FOREACH (_ IN CASE WHEN row.autor<>'' THEN [1] ELSE [] END |
+             MERGE (a:Autor {nombre:trim(row.autor)}) MERGE (p)-[:CREADO_POR]->(a))
+           FOREACH (_ IN CASE WHEN row.coleccion<>'' THEN [1] ELSE [] END |
+             MERGE (c:Coleccion {nombre:trim(row.coleccion)}) MERGE (p)-[:PERTENECE_A]->(c))
+           FOREACH (_ IN CASE WHEN row.filiacion_cultural<>'' THEN [1] ELSE [] END |
+             MERGE (cu:Cultura {nombre:trim(row.filiacion_cultural)}) MERGE (p)-[:FILIACION]->(cu))
 
-        db.cypher_query(f"""
+           // País si existe
+           FOREACH (_ IN CASE WHEN row.pais<>'' THEN [1] ELSE [] END |
+             MERGE (pa:Pais {nombre:trim(row.pais)}) MERGE (p)-[:PROCEDENTE_DE]->(pa))
+
+           // Localidad si existe; y vincular a País si vino
+           FOREACH (_ IN CASE WHEN row.localidad<>'' THEN [1] ELSE [] END |
+             MERGE (l:Localidad {nombre:trim(row.localidad)})
+             MERGE (p)-[:LOCALIZADO_EN]->(l)
+             FOREACH (__ IN CASE WHEN row.pais<>'' THEN [1] ELSE [] END |
+               MERGE (pa:Pais {nombre:trim(row.pais)})
+               MERGE (l)-[:PERTENECE_A]->(pa)
+             )
+           )
+          ",
+          {batchSize:1000, iterateList:true}
+        )""")
+
+        # 6) Relacionar materiales/técnicas de pieza desde strings ; separadas
+        for rel_name, label in [('materialidad','Material'), ('tecnica','Tecnica')]:
+            db.cypher_query(f"""
             CALL apoc.periodic.iterate(
-              "LOAD CSV WITH HEADERS FROM 'file:///imagenes.csv' AS row RETURN row",
-              "CREATE (i:Imagen {{file_name:row.file_name}})",
+              "LOAD CSV WITH HEADERS FROM 'file:///piezas.csv' AS row RETURN row",
+              "
+               MATCH (p:Pieza {{numero_inventario:row.numero_inventario}})
+               WITH p, row
+               CALL apoc.text.split(row.{rel_name}, ';') YIELD value
+               WITH p, trim(value) AS v
+               WHERE v <> ''
+               MERGE (m:{label} {{nombre:v}})
+               MERGE (p)-[:{'HECHO_DE' if label=='Material' else 'HECHO_CON'}]->(m)
+              ",
               {{batchSize:1000, iterateList:true}}
             )
-        """)
+            """)
 
-        procesadas = 0
-        for fname in os.listdir(images_dir):
-            path = os.path.join(images_dir, fname)
-            if not os.path.isfile(path):
+        # 7) Componentes: nodos básicos
+        db.cypher_query("""
+        CALL apoc.periodic.iterate(
+          "LOAD CSV WITH HEADERS FROM 'file:///componentes.csv' AS row RETURN row",
+          "
+           CREATE (c:Componente {
+             pieza_numero_inventario: row.pieza_numero_inventario,
+             letra: row.letra,
+             nombre_comun: row.nombre_comun,
+             nombre_atribuido: row.nombre_atribuido,
+             descripcion: row.descripcion,
+             funcion: row.funcion,
+             forma: row.forma,
+             marcas_inscripciones: row.marcas_inscripciones,
+             peso_kg: toFloat(row.peso_kg),
+             alto_cm: toFloat(row.alto_cm),
+             ancho_cm: toFloat(row.ancho_cm),
+             profundidad_cm: toFloat(row.profundidad_cm),
+             diametro_cm: toFloat(row.diametro_cm),
+             espesor_mm: toFloat(row.espesor_mm),
+             estado_conservacion: row.estado_conservacion
+           })
+          ",
+          {batchSize:1000, iterateList:true}
+        )""")
+
+        # 8) Pieza -> Componente + M2M (materialidad/tecnica) del componente
+        db.cypher_query("""
+        CALL apoc.periodic.iterate(
+          "LOAD CSV WITH HEADERS FROM 'file:///componentes.csv' AS row RETURN row",
+          "
+           MATCH (p:Pieza {numero_inventario:row.pieza_numero_inventario})
+           MATCH (c:Componente {pieza_numero_inventario:row.pieza_numero_inventario, letra:row.letra})
+           MERGE (p)-[:TIENE_COMPONENTE]->(c)
+
+           // Materialidad del componente
+           WITH c, row
+           CALL apoc.text.split(row.materialidad, ';') YIELD value
+           WITH c, trim(value) AS mv, row
+           WHERE mv <> '' 
+           MERGE (m:Material {nombre:mv})
+           MERGE (c)-[:USO_MATERIAL]->(m)
+
+           // Técnica del componente
+           WITH c, row
+           CALL apoc.text.split(row.tecnica, ';') YIELD value
+           WITH c, trim(value) AS tv
+           WHERE tv <> '' 
+           MERGE (t:Tecnica {nombre:tv})
+           MERGE (c)-[:USO_TECNICA]->(t)
+          ",
+          {batchSize:1000, iterateList:true}
+        )""")
+
+        # 9) Imágenes: escanear carpeta, normalizar letra a minúscula y vincular
+        img_rows = []
+        for fn in os.listdir(images_dir):
+            full = os.path.join(images_dir, fn)
+            if not os.path.isfile(full):
                 continue
-            name, ext = os.path.splitext(fname)
-            if ext.lower().lstrip('.') not in ('jpg','jpeg','png','tif','tiff'):
+            name, ext = os.path.splitext(fn)
+            ext = ext.lower().lstrip('.')
+            if ext not in ('jpg', 'jpeg', 'png', 'tif', 'tiff'):
                 continue
             m = re.match(r'^0*(\d+)([A-Za-z]?)(?:.*)$', name)
             if not m:
                 continue
-            pieza_id = int(m.group(1))
-            letra = m.group(2) or ''
-            # Imagen → Pieza
-            db.cypher_query(
-                "MATCH (p:Pieza {id:$pieza_id}), (i:Imagen {file_name:$file}) "
-                "CREATE (p)-[:TIENE_IMAGEN]->(i)",
-                {'pieza_id': pieza_id, 'file': fname}
-            )
-            # Imagen → Componente si corresponde
-            if letra:
-                db.cypher_query(
-                    "MATCH (cmp:Componente {pieza_id:$pieza_id, letra:$letra}), (i:Imagen {file_name:$file}) "
-                    "CREATE (cmp)-[:TIENE_IMAGEN]->(i)",
-                    {'pieza_id': pieza_id, 'letra': letra, 'file': fname}
-                )
-            procesadas += 1
+            num = str(int(m.group(1)))
+            letra = (m.group(2) or '').lower()  # **clave**: letra a minúscula
+            img_rows.append({'file_name': fn, 'num': num, 'letra': letra})
 
-        # 7) Crear relaciones M2M de Pieza con otros nodos
-        for _, row in df.iterrows():
-            pieza_id = int(row['numero_de_inventario'])
-            # Autor
-            if pd.notnull(row.get('autor')):
-                db.cypher_query(
-                    "MATCH (p:Pieza {id:$pieza_id}), (a:Autor {nombre:$autor}) "
-                    "CREATE (p)-[:CREADO_POR]->(a)",
-                    {'pieza_id': pieza_id, 'autor': row['autor']}
-                )
-            # País
-            if pd.notnull(row.get('pais')):
-                db.cypher_query(
-                    "MATCH (p:Pieza {id:$pieza_id}), (pa:Pais {nombre:$pais}) "
-                    "CREATE (p)-[:PROCEDENTE_DE]->(pa)",
-                    {'pieza_id': pieza_id, 'pais': row['pais']}
-                )
-            # Localidad
-            if pd.notnull(row.get('localidad')):
-                db.cypher_query(
-                    "MATCH (p:Pieza {id:$pieza_id}), (l:Localidad {nombre:$localidad}) "
-                    "CREATE (p)-[:LOCALIZADO_EN]->(l)",
-                    {'pieza_id': pieza_id, 'localidad': row['localidad']}
-                )
-            # Materiales
-            for mat in str(row.get('materialidad', '')).split(';'):
-                mat = mat.strip()
-                if mat:
-                    db.cypher_query(
-                        "MATCH (p:Pieza {id:$pieza_id}), (m:Material {nombre:$mat}) "
-                        "CREATE (p)-[:HECHO_DE]->(m)",
-                        {'pieza_id': pieza_id, 'mat': mat}
-                    )
-            # Técnicas
-            for tec in str(row.get('tecnica', '')).split(';'):
-                tec = tec.strip()
-                if tec:
-                    db.cypher_query(
-                        "MATCH (p:Pieza {id:$pieza_id}), (t:Tecnica {nombre:$tec}) "
-                        "CREATE (p)-[:HECHO_CON]->(t)",
-                        {'pieza_id': pieza_id, 'tec': tec}
-                    )
-            # Colección
-            if pd.notnull(row.get('coleccion')):
-                db.cypher_query(
-                    "MATCH (p:Pieza {id:$pieza_id}), (c:Coleccion {nombre:$coleccion}) "
-                    "CREATE (p)-[:PERTENECE_A]->(c)",
-                    {'pieza_id': pieza_id, 'coleccion': row['coleccion']}
-                )
+        pd.DataFrame(img_rows).to_csv(os.path.join(import_dir, 'imagenes.csv'), index=False)
 
-        # 7) Aplicar constraints e índices definidos en los modelos
-        for cls in (Pieza, Componente, Imagen, Autor, Pais,
-            Localidad, Material, Tecnica, Coleccion):
-            install_labels(cls)
+        db.cypher_query("""
+        CALL apoc.periodic.iterate(
+          "LOAD CSV WITH HEADERS FROM 'file:///imagenes.csv' AS row RETURN row",
+          "
+           MERGE (i:Imagen {file_name:row.file_name})
 
+           // Enlazar a la Pieza
+           MATCH (p:Pieza {numero_inventario:row.num})
+           MERGE (p)-[:TIENE_IMAGEN]->(i)
 
-        elapsed = time.monotonic() - start_time
+           // Enlazar a Componente si hay letra
+           FOREACH(_ IN CASE WHEN row.letra<>'' THEN [1] ELSE [] END |
+             MATCH (c:Componente {pieza_numero_inventario:row.num, letra:row.letra})
+             MERGE (c)-[:TIENE_IMAGEN]->(i)
+           )
+          ",
+          {batchSize:1000, iterateList:true}
+        )""")
+
         self.stdout.write(self.style.SUCCESS(
-            f"✅ Importación finalizada: {len(piezas_df)} piezas importadas, "
-            f"{procesadas} imágenes asociadas en {elapsed:.2f} segundos."
+            f"✅ Import finalizado: {len(piezas_df)} piezas, {len(img_rows)} imágenes, en {time.monotonic()-t0:.2f}s"
         ))
