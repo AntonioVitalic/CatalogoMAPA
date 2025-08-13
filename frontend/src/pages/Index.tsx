@@ -39,7 +39,7 @@ export default function Index() {
     collection: [],
     author: [],
     locality: [],
-    materials: [],
+    tipologias: [],
     exhibitions: [],
     dateFrom: "",
     dateTo: "",
@@ -65,7 +65,7 @@ export default function Index() {
       filters.collection?.forEach(c => params.append("coleccion__nombre", c));
       filters.author?.forEach(a => params.append("autor__nombre", a));
       filters.locality?.forEach(l => params.append("localidad__nombre", l));
-      filters.materials?.forEach(m => params.append("materiales__nombre", m));
+      filters.tipologias?.forEach(t => params.append("tipologias__nombre", t));
       filters.exhibitions?.forEach(e => params.append("exposiciones__titulo", e));
       if (filters.dateFrom) params.append("fecha_creacion_after", filters.dateFrom);
       if (filters.dateTo) params.append("fecha_creacion_before", filters.dateTo);
@@ -131,7 +131,7 @@ export default function Index() {
       collection: [],
       author: [],
       locality: [],
-      materials: [],
+      tipologias: [],
       exhibitions: [],
       dateFrom: "",
       dateTo: "",
