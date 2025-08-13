@@ -19,7 +19,7 @@ type FilterOptions = {
   collections: string[];
   authors: string[];
   localities: string[];
-  materials: string[];
+  tipologias: string[];    
 };
 
 // Datos de exhibiciones (hardcodeado por ahora)
@@ -44,7 +44,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
     collection: [],
     author: [],
     locality: [],
-    materials: [],
+    tipologias: [],    
     exhibitions: [],
     dateFrom: "",
     dateTo: "",
@@ -54,7 +54,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
     collections: [],
     authors: [],
     localities: [],
-    materials: []
+    tipologias: [],    
   });
 
   // Si cambian filtros iniciales (ej. al reabrir el panel), actualizarlos
@@ -73,7 +73,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           fetch(`${API_URL}/api/colecciones/`),
           fetch(`${API_URL}/api/autores/`),
           fetch(`${API_URL}/api/localidades/`),
-          fetch(`${API_URL}/api/materiales/`)
+          fetch(`${API_URL}/api/tipologias/`)
         ]);
         // Verificar que todas las respuestas sean OK
         for (const res of responses) {
@@ -81,14 +81,14 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             throw new Error("Error al cargar opciones de filtros");
           }
         }
-        const [countryData, collectionData, authorData, localityData, materialData] =
+        const [countryData, collectionData, authorData, localityData, tipologiaData] =
           await Promise.all(responses.map(res => res.json()));
         setFilterOptions({
           countries: countryData.map((item: any) => item.nombre),
           collections: collectionData.map((item: any) => item.nombre),
           authors: authorData.map((item: any) => item.nombre),
           localities: localityData.map((item: any) => item.nombre),
-          materials: materialData.map((item: any) => item.nombre),
+          tipologias: tipologiaData.map((item: any) => item.nombre), 
         });
       } catch (error) {
         console.error("Error fetching filter options:", error);
@@ -98,7 +98,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
   }, []);
 
   const handleCheckboxChange = (
-    category: "country" | "collection" | "author" | "locality" | "materials" | "exhibitions",
+    category: "country" | "collection" | "author" | "locality" | "tipologias" | "exhibitions",
     value: string
   ) => {
     setFilters((prev) => {
@@ -127,7 +127,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
       collection: [],
       author: [],
       locality: [],
-      materials: [],
+      tipologias: [],
       exhibitions: [],
       dateFrom: "",
       dateTo: "",
@@ -255,24 +255,24 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="materials">
-          <AccordionTrigger>Materialidad</AccordionTrigger>
+        <AccordionItem value="tipologias">
+          <AccordionTrigger>Tipología</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {filterOptions.materials.map((material) => (
-                <div key={material} className="flex items-center space-x-2">
+              {filterOptions.tipologias.map((tip) => (
+                <div key={tip} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`material-${material}`}
-                    checked={filters.materials?.includes(material) || false}
+                    id={`tipologia-${tip}`}
+                    checked={filters.tipologias?.includes(tip) || false}
                     onCheckedChange={() =>
-                      handleCheckboxChange("materials", material)
+                      handleCheckboxChange("tipologias", tip)
                     }
                   />
                   <Label
-                    htmlFor={`material-${material}`}
+                    htmlFor={`tipologia-${tip}`}
                     className="text-sm font-normal cursor-pointer"
                   >
-                    {material}
+                    {tip}
                   </Label>
                 </div>
               ))}

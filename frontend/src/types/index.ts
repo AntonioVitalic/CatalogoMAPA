@@ -45,7 +45,7 @@ export interface SearchFilters {
   collection?: string[];
   author?: string[];
   locality?: string[];
-  materials?: string[];
+  tipologias?: string[];
   exhibitions?: string[];
   dateFrom?: string;
   dateTo?: string;
