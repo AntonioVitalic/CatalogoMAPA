@@ -121,8 +121,10 @@ export default function Index() {
   const handleSearch = (simple: SearchFilters) =>
     setSearchFilters(prev => ({ ...prev, query: simple.query }));
   const handleApplyFilters = (advanced: SearchFilters) => {
-    setSearchFilters(advanced);
-    setShowFilters(false);
+  setSearchFilters(advanced);
+  setPagination(prev => ({ ...prev, page: 1 })); // <-- resetea la página
+  navigate(`/1`); // <-- navega a la página 1
+  setShowFilters(false);
   };
   const handleResetFilters = () =>
     setSearchFilters({

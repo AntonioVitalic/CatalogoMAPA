@@ -18,19 +18,17 @@ from .serializers import (
 
 class PiezaViewSet(viewsets.ViewSet):
     def list(self, request):
-        nombre_coleccion = request.query_params.get('coleccion__nombre')
-
-        if nombre_coleccion:
+        colecciones = request.query_params.getlist('coleccion__nombre') # getlist es para filtrar por 1 o más colecciones
+        if colecciones:
             q = """
             MATCH (p:Pieza)-[:PERTENECE_A]->(c:Coleccion)
-            WHERE toLower(c.nombre) CONTAINS toLower($nombre)
+            WHERE any(nombre IN $nombres WHERE toLower(c.nombre) = toLower(nombre))
             RETURN p
             ORDER BY p.numero_inventario_int
             """
-            rows, _ = db.cypher_query(q, {"nombre": nombre_coleccion})
+            rows, _ = db.cypher_query(q, {"nombres": colecciones})
             piezas = [Pieza.inflate(r[0]) for r in rows]
         else:
-            # listado normal, ordenado por numero_inventario_int
             piezas = sorted(Pieza.nodes.all(),
                             key=lambda p: (p.numero_inventario_int or 0))
 
