@@ -18,22 +18,63 @@ from .serializers import (
 
 class PiezaViewSet(viewsets.ViewSet):
     def list(self, request):
-        colecciones = request.query_params.getlist('coleccion__nombre') # getlist es para filtrar por 1 o más colecciones
-        if colecciones:
-            q = """
-            MATCH (p:Pieza)-[:PERTENECE_A]->(c:Coleccion)
-            WHERE any(nombre IN $nombres WHERE toLower(c.nombre) = toLower(nombre))
-            RETURN p
-            ORDER BY p.numero_inventario_int
-            """
-            rows, _ = db.cypher_query(q, {"nombres": colecciones})
-            piezas = [Pieza.inflate(r[0]) for r in rows]
-        else:
-            piezas = sorted(Pieza.nodes.all(),
-                            key=lambda p: (p.numero_inventario_int or 0))
+        colecciones = request.query_params.getlist('coleccion__nombre')
+        paises      = request.query_params.getlist('pais__nombre')
+        autores     = request.query_params.getlist('autor__nombre')
+        localidades = request.query_params.getlist('localidad__nombre')
+        tipologias  = request.query_params.getlist('tipologia')
+
+        # normalizamos (trim + lower) una sola vez
+        def _norm_list(xs):
+            return [x.strip().lower() for x in xs if str(x).strip() != ""]
+
+        params = {
+            "colecciones": _norm_list(colecciones),
+            "paises":      _norm_list(paises),
+            "autores":     _norm_list(autores),
+            "localidades": _norm_list(localidades),
+            "tipologias":  _norm_list(tipologias),
+        }
+
+        # Consulta: colectamos por pieza y filtramos contra esas listas
+        q = """
+        MATCH (p:Pieza)
+        // relaciones opcionales
+        OPTIONAL MATCH (p)-[:PERTENECE_A]->(c:Coleccion)
+        WITH p, collect(DISTINCT toLower(trim(c.nombre))) AS cols
+        OPTIONAL MATCH (p)-[:PROCEDENTE_DE]->(pa:Pais)
+        WITH p, cols, collect(DISTINCT toLower(trim(pa.nombre))) AS pais_list
+        OPTIONAL MATCH (p)-[:CREADO_POR]->(a:Autor)
+        WITH p, cols, pais_list, collect(DISTINCT toLower(trim(a.nombre))) AS aut_list
+        OPTIONAL MATCH (p)-[:LOCALIZADO_EN]->(l:Localidad)
+        WITH p, cols, pais_list, aut_list, collect(DISTINCT toLower(trim(l.nombre))) AS loc_list
+
+        // filtros (cada uno es "pasa si el arreglo está vacío o si hay intersección")
+        WHERE (
+            size($colecciones) = 0 OR any(x IN $colecciones WHERE x IN cols)
+        )
+        AND (
+            size($paises) = 0 OR any(x IN $paises WHERE x IN pais_list)
+        )
+        AND (
+            size($autores) = 0 OR any(x IN $autores WHERE x IN aut_list)
+        )
+        AND (
+            size($localidades) = 0 OR any(x IN $localidades WHERE x IN loc_list)
+        )
+        AND (
+            size($tipologias) = 0 OR toLower(trim(coalesce(p.tipologia, ''))) IN $tipologias
+        )
+
+        RETURN p
+        ORDER BY p.numero_inventario_int
+        """
+
+        rows, _ = db.cypher_query(q, params)
+        piezas = [Pieza.inflate(r[0]) for r in rows]
 
         paginator = PageNumberPagination()
-        paginator.page_size = settings.REST_FRAMEWORK['PAGE_SIZE']  # 10
+        paginator.page_size = settings.REST_FRAMEWORK['PAGE_SIZE']
         page = paginator.paginate_queryset(list(piezas), request)
         ser = PiezaOutSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(ser.data)
