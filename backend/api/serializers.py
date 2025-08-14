@@ -3,7 +3,7 @@ from django.conf import settings
 from rest_framework import serializers
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais, Localidad, Cultura,
-    Coleccion, Exposicion, Material, Tecnica
+    Coleccion, Material, Tecnica
 )
 
 def _first_name(qs):
@@ -15,22 +15,17 @@ def _first_name(qs):
     return None
 
 def _none_if_zeroish(val):
-    # Normaliza "0.0", "0", "", None -> None
     if val is None:
         return None
     s = str(val).strip()
     return None if s in ("", "0", "0.0") else val
 
 def _fmt_fecha_con_hora_or_nat(val):
-    # Queremos exactamente "YYYY-MM-DD 00:00:00" cuando hay fecha simple,
-    # y "NaT" cuando está vacío/None/0.0 (como sqlite dump).
     if val is None or str(val).strip() in ("", "0", "0.0"):
         return "NaT"
     s = str(val).strip()
-    # si ya viene con hora, dejarla
     if " " in s:
         return s
-    # si viene como YYYY-MM-DD, agrega hora cero
     return f"{s} 00:00:00"
 
 
@@ -43,7 +38,6 @@ class ImagenOutSerializer(serializers.Serializer):
     descripcion = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     def get_id(self, obj):
-        # lo seguimos dejando None aquí; el id incremental lo arma el padre
         return None
 
     def get_imagen(self, obj):
@@ -56,9 +50,8 @@ class ImagenOutSerializer(serializers.Serializer):
 #  Componentes (compat sqlite)
 # -----------------------------
 class ComponenteOutSerializer(serializers.Serializer):
-    # Importante: NO tocar obj.id
-    id = serializers.SerializerMethodField()             # id virtual incremental
-    pieza = serializers.IntegerField(read_only=True)     # número inventario int
+    id = serializers.SerializerMethodField()
+    pieza = serializers.IntegerField(read_only=True)
     letra = serializers.CharField(allow_blank=True)
     nombre_comun = serializers.CharField(allow_blank=True, required=False)
     nombre_atribuido = serializers.CharField(allow_blank=True, required=False)
@@ -75,22 +68,16 @@ class ComponenteOutSerializer(serializers.Serializer):
     diametro_cm = serializers.FloatField(required=False)
     espesor_mm = serializers.FloatField(required=False)
     estado_conservacion = serializers.CharField(allow_blank=True, required=False)
-
-    # Construimos imágenes como lista de dicts (para controlar id incremental)
     imagenes = serializers.ListField(child=serializers.DictField(), read_only=True)
 
     def get_id(self, c):
-        # contador virtual inyectado desde PiezaOutSerializer
         return self.context.get('next_comp_id')()
 
-    def to_representation(self, c: Componente):
+    def to_representation(self, c):
         base = super().to_representation(c)
-        # pieza = int(numero_inventario)
         base['pieza'] = int(c.pieza_numero_inventario)
-        # M2M por nombre
         base['materiales'] = [m.nombre for m in c.materiales.all()]
         base['tecnica']    = [t.nombre for t in c.tecnica.all()]
-        # URLs absolutas + descripcion null si viene vacía
         request = self.context.get('request')
         imgs, img_id = [], 0
         for i in c.imagenes.all():
@@ -109,9 +96,7 @@ class ComponenteOutSerializer(serializers.Serializer):
 #  Piezas (compat sqlite)
 # -----------------------------
 class PiezaOutSerializer(serializers.Serializer):
-    # Importante: NO tocar obj.id
-    id = serializers.SerializerMethodField()  # int(numero_inventario) como en sqlite
-    # === Orden EXACTO del JSON sqlite ===
+    id = serializers.SerializerMethodField()
     numero_inventario = serializers.CharField()
     numero_registro_anterior = serializers.CharField(allow_blank=True, required=False)
     codigo_surdoc = serializers.CharField(allow_blank=True, required=False)
@@ -143,7 +128,6 @@ class PiezaOutSerializer(serializers.Serializer):
     responsable_conservacion = serializers.CharField(allow_blank=True, required=False)
     fecha_actualizacion_conservacion = serializers.SerializerMethodField()
     comentarios_conservacion = serializers.SerializerMethodField()
-    exposiciones = serializers.ListField(child=serializers.CharField(), read_only=True)
     avaluo = serializers.CharField(allow_blank=True, required=False)
     procedencia = serializers.CharField(allow_blank=True, required=False)
     donante = serializers.CharField(allow_blank=True, required=False)
@@ -193,16 +177,12 @@ class PiezaOutSerializer(serializers.Serializer):
         data = super().to_representation(p)
         data['tecnica'] = [t.nombre for t in p.tecnica.all()]
         data['materiales'] = [m.nombre for m in p.materiales.all()]
-        data['exposiciones'] = [e.titulo for e in p.exposiciones.all()]
 
-        # pasar request a los serializadores hijos para URL absoluta
         ctx = {'request': self.context.get('request'), 'next_comp_id': next_comp_id}
 
-        # componentes ordenados por letra
         comps = sorted(p.componentes.all(), key=lambda c: c.letra or '')
         data['componentes'] = [ComponenteOutSerializer(c, context=ctx).data for c in comps]
 
-        # imágenes de pieza: URL absoluta + null si vacía
         request = self.context.get('request')
         imgs, img_id = [], 0
         for i in p.imagenes.all():
@@ -216,26 +196,56 @@ class PiezaOutSerializer(serializers.Serializer):
         data['imagenes'] = imgs
         return data
 
+
+# -----------------------------
+#  Piezas (serializer minimal para exportación masiva)
+# -----------------------------
+class PiezaExportSerializer(serializers.Serializer):
+    # Sólo los campos necesarios para CSV/Excel en el front
+    numero_inventario = serializers.CharField()
+    nombre_especifico = serializers.CharField(allow_blank=True, required=False)
+    autor = serializers.SerializerMethodField()
+    coleccion = serializers.SerializerMethodField()
+    pais = serializers.SerializerMethodField()
+    localidad = serializers.SerializerMethodField()
+    fecha_creacion = serializers.CharField(allow_blank=True, required=False)
+    materiales = serializers.ListField(child=serializers.CharField(), read_only=True)
+    estado_conservacion = serializers.CharField(allow_blank=True, required=False)
+    descripcion_col = serializers.CharField(source='descripcion', allow_blank=True, required=False)
+    numero_registro_anterior = serializers.CharField(allow_blank=True, required=False)
+    codigo_surdoc = serializers.CharField(allow_blank=True, required=False)
+    ubicacion = serializers.CharField(allow_blank=True, required=False)
+    deposito = serializers.CharField(allow_blank=True, required=False)
+    estante = serializers.CharField(allow_blank=True, required=False)
+
+    def get_autor(self, p: Pieza):
+        return _first_name(p.autor.all())
+
+    def get_coleccion(self, p: Pieza):
+        return _first_name(p.coleccion.all())
+
+    def get_pais(self, p: Pieza):
+        return _first_name(p.pais.all())
+
+    def get_localidad(self, p: Pieza):
+        return _first_name(p.localidad.all())
+
+    def to_representation(self, p: Pieza):
+        data = super().to_representation(p)
+        data['materiales'] = [m.nombre for m in p.materiales.all()]
+        return data
+
 class ImagenListSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
     imagen = serializers.SerializerMethodField()
     descripcion = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     def get_id(self, obj):
-        # id virtual consecutivo, estable dentro del orden elegido (paginado)
-        return self.context['next_img_id']()
+        # Si tienes un contador en el contexto, úsalo
+        next_img_id = self.context.get('next_img_id')
+        return next_img_id() if next_img_id else None
 
     def get_imagen(self, obj):
-        # URL ABSOLUTA como en dev-sqlite
         request = self.context.get('request')
         rel = f"{settings.MEDIA_URL}{obj.file_name}"
         return request.build_absolute_uri(rel) if request else rel
-    
-# --- (opcional) Mantén tu ImagenSerializer simple si lo usas en create/update ---
-class ImagenSerializer(serializers.Serializer):
-    file_name = serializers.CharField()
-    descripcion = serializers.CharField(allow_blank=True, required=False)
-
-# --- Serializadores simples de "nombre" para catálogos ---
-class NombreSerializer(serializers.Serializer):
-    nombre = serializers.CharField()

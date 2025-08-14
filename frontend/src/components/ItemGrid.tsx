@@ -1,4 +1,3 @@
-// frontend/src/components/ItemGrid.tsx
 import { CollectionItem, PaginationState, ViewMode } from "@/types";
 import ItemCard from "./ItemCard";
 import {
@@ -11,7 +10,7 @@ import {
 } from "@/components/ui/pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LayoutGrid, List, CheckSquare } from "lucide-react";
+import { LayoutGrid, List, Check } from "lucide-react";
 
 interface ItemGridProps {
   items: CollectionItem[];
@@ -21,8 +20,9 @@ interface ItemGridProps {
   onViewModeChange: (mode: ViewMode) => void;
   selectedItems: CollectionItem[];
   onSelectItem: (item: CollectionItem) => void;
-  onSelectAll: () => void;
-  totalItems: number;
+  onSelectAllVisible: () => void;
+  onSelectAllFiltered: () => void;
+  totalFilteredItems: number;
 }
 
 const ItemGrid = ({
@@ -33,13 +33,12 @@ const ItemGrid = ({
   onViewModeChange,
   selectedItems,
   onSelectItem,
-  onSelectAll,
-  totalItems,
+  onSelectAllVisible,
+  onSelectAllFiltered,
+  totalFilteredItems,
 }: ItemGridProps) => {
   const isSelected = (item: CollectionItem) =>
     selectedItems.some((i) => i.id === item.id);
-
-  const areAllSelected = items.length > 0 && items.every(isSelected);
 
   if (loading) {
     return (
@@ -163,26 +162,32 @@ const ItemGrid = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between mb-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onSelectAll}
-          className="flex items-center gap-2"
-          title={areAllSelected ? "Deseleccionar todo" : "Seleccionar todo"}
-        >
-          <CheckSquare size={16} />
-          {areAllSelected
-            ? "Deseleccionar todo"
-            : `Seleccionar todo (${totalItems})`}
-        </Button>
-
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSelectAllFiltered}
+            className="flex items-center gap-2"
+          >
+            <Check size={16} />
+            Todas filtradas ({totalFilteredItems})
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSelectAllVisible}
+            className="flex items-center gap-2"
+          >
+            <Check size={16} />
+            Solo visible en página actual ({items.length})
+          </Button>
+        </div>
         <div className="bg-background border rounded-md p-1 flex">
           <Button
             variant={pagination.viewMode === "grid" ? "default" : "ghost"}
             size="sm"
             onClick={() => onViewModeChange("grid")}
             className="rounded-r-none"
-            title="Vista de cuadrícula"
           >
             <LayoutGrid size={18} />
           </Button>
@@ -191,15 +196,12 @@ const ItemGrid = ({
             size="sm"
             onClick={() => onViewModeChange("list")}
             className="rounded-l-none"
-            title="Vista de lista"
           >
             <List size={18} />
           </Button>
         </div>
       </div>
-
       {pagination.viewMode === "grid" ? renderGridView() : renderListView()}
-
       <Pagination>
         <PaginationContent>
           <PaginationItem>
@@ -208,7 +210,6 @@ const ItemGrid = ({
               disabled={pagination.page <= 1}
             />
           </PaginationItem>
-
           {Array.from(
             { length: Math.min(5, pagination.totalPages) },
             (_, i) => {
@@ -238,13 +239,12 @@ const ItemGrid = ({
               );
             }
           )}
-
-          {pagination.totalPages > 5 && pagination.page < pagination.totalPages - 2 && (
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-          )}
-
+          {pagination.totalPages > 5 &&
+            pagination.page < pagination.totalPages - 2 && (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )}
           {pagination.totalPages > 5 &&
             pagination.page < pagination.totalPages - 1 && (
               <PaginationItem>
@@ -262,7 +262,6 @@ const ItemGrid = ({
                 </button>
               </PaginationItem>
             )}
-
           <PaginationItem>
             <PaginationNext
               onClick={() => onPageChange(pagination.page + 1)}
