@@ -38,7 +38,8 @@ router.register(r'tipologias', TipologiaViewSet, basename='tipologia')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
+    path('api/', include(router.urls)), # los endpoints de Neo4j
+    path('accounts/', include('accounts.urls')), # los endpoints de auth + usuarios + registro cambios
 ]
 
 

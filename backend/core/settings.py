@@ -11,9 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
 
 BASE_DIR    = Path(__file__).resolve().parent.parent   # …/CatalogoMAPA/backend
 PROJECT_DIR = BASE_DIR.parent                          # …/CatalogoMAPA
+load_dotenv(PROJECT_DIR / '.env')
 
 MEDIA_URL  = '/imagenes/'
 MEDIA_ROOT = PROJECT_DIR / 'imagenes'   # <— ahora Django subirá *dentro* de la carpeta raíz/imagenes
@@ -36,7 +39,7 @@ config.DATABASE_URL = bolt_url
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -59,7 +62,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
 
-    # la aplicación que contiene los modelos (era 'api'; si se renombrara, se pondría 'catalogo')
+    'rest_framework_simplejwt',      # ← JWT
+    'accounts', # la app para administrar las cuentas de usuarios
+
+    # la aplicación que contiene los modelos
     'api.apps.ApiConfig',
 
     "corsheaders",
@@ -160,4 +166,17 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     # opcional: paginación, permiso por defecto, etc.
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
 }
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+# Usuario personalzido
+AUTH_USER_MODEL = 'accounts.Usuario'

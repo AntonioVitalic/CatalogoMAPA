@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface HeaderProps {
@@ -20,6 +21,7 @@ interface HeaderProps {
 
 const Header = ({ onLoginClick }: HeaderProps) => {
   const { user, role, logout } = useAuth();
+  const navigate = useNavigate();
 
   const getRoleBadge = (userRole: UserRole) => {
     switch (userRole) {
@@ -54,13 +56,22 @@ const Header = ({ onLoginClick }: HeaderProps) => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
                   <User size={18} />
-                  <span>{user.name}</span>
+                  <span>{user.first_name} {user.last_name}</span>
                   {role && getRoleBadge(role)}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {user.role === "admin" && (
+                   <DropdownMenuItem
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => navigate("/admin/users")} // <-- usa navigate en vez de window.location.href
+                    >
+                    <User size={16} />
+                    <span>Gestión de usuarios</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="flex items-center gap-2" onClick={logout}>
                   <LogOut size={16} />
                   <span>Cerrar sesión</span>

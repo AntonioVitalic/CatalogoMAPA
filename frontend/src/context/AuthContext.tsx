@@ -1,74 +1,85 @@
+import { createContext, useEffect, useState, ReactNode } from "react";
+import api from "@/services/api";
 
-import { createContext, useState, useEffect, ReactNode } from 'react';
-import { User, UserRole } from '@/types';
-import { mockUsers } from '@/data/mockData';
+type Role = "admin" | "editor" | "visitor";
+
+export interface User {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: Role;
+  is_active: boolean;
+  date_joined: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  loading: boolean;
+  role: Role | null;
+  isAuthenticated: boolean;
+  refreshProfile: () => Promise<void>;
   logout: () => void;
-  role: UserRole | null;
 }
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
-  login: async () => false,
-  logout: () => {},
+  loading: true,
   role: null,
+  isAuthenticated: false,
+  refreshProfile: async () => {},
+  logout: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('mapa_user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      setRole(parsedUser.role);
-    } else {
-      // For demo purposes, auto-login as visitor
-      const visitorUser = mockUsers.find(u => u.role === 'visitor');
-      if (visitorUser) {
-        setUser(visitorUser);
-        setRole('visitor');
-        localStorage.setItem('mapa_user', JSON.stringify(visitorUser));
-      }
-    }
-  }, []);
+  const isAuthenticated = !!user;
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // In a real app, this would validate credentials with an API
-    const foundUser = mockUsers.find(u => u.email === email);
-    
-    if (foundUser) {
-      setUser(foundUser);
-      setRole(foundUser.role);
-      localStorage.setItem('mapa_user', JSON.stringify(foundUser));
-      return true;
+  const refreshProfile = async () => {
+    try {
+      const { data } = await api.get<User>("/accounts/me/");
+      setUser(data);
+      localStorage.setItem("user", JSON.stringify(data));
+    } catch {
+      setUser(null);
+      localStorage.removeItem("user");
     }
-    
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    setRole(null);
-    localStorage.removeItem('mapa_user');
-    
-    // For demo purposes, auto-login as visitor after logout
-    const visitorUser = mockUsers.find(u => u.role === 'visitor');
-    if (visitorUser) {
-      setUser(visitorUser);
-      setRole('visitor');
-      localStorage.setItem('mapa_user', JSON.stringify(visitorUser));
+  useEffect(() => {
+    const access = localStorage.getItem("access");
+    if (!access) {
+      setLoading(false);
+      return;
     }
+    // Intentar cargar “me”
+    (async () => {
+      await refreshProfile();
+      setLoading(false);
+    })();
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    localStorage.removeItem("user");
+    setUser(null);
+    window.location.href = "/auth"; // <-- recarga en /auth al cerrar sesión
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, role }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        role: user?.role || null,
+        isAuthenticated,
+        refreshProfile,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
