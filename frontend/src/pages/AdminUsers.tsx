@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "@/services/api";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
@@ -33,6 +34,7 @@ export default function AdminUsers() {
 
         if (meRes.data.role !== "admin") {
           setError("Solo el administrador puede ver esta página.");
+          setMe(meRes.data); // para mostrar el nombre del usuario si quieres
           return;
         }
 
@@ -54,7 +56,20 @@ export default function AdminUsers() {
     bootstrap();
   }, []);
 
-  if (error) return <div style={{ color: "red" }}>{error}</div>;
+  if (error) return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Alert variant="destructive" className="max-w-md w-full">
+        <AlertDescription>
+          {error}
+          {me && (
+            <div className="mt-2 text-sm text-muted-foreground">
+              Iniciaste sesión como: <b>{me.first_name} {me.last_name}</b> (posees el rol {me.role})
+            </div>
+          )}
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
   if (!me) return <div>Cargando…</div>;
 
   return (
