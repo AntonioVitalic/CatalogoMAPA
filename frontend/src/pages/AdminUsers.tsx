@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Pencil, UserX, UserCheck, Plus, ArrowLeft } from "lucide-react";
 import api from "@/services/api";
+import { useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 
@@ -18,6 +23,10 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [me, setMe] = useState<User | null>(null);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"activos" | "inactivos">("activos");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -26,23 +35,15 @@ export default function AdminUsers() {
         setError("No autenticado");
         return;
       }
-
       try {
-        // quién soy
         const meRes = await api.get<User>("/accounts/me/", { baseURL: API_URL });
         setMe(meRes.data);
-
         if (meRes.data.role !== "admin") {
           setError("Solo el administrador puede ver esta página.");
-          setMe(meRes.data); // para mostrar el nombre del usuario si quieres
+          setMe(meRes.data);
           return;
         }
-
-        // usuarios
-        const usersRes = await api.get<User[]>("/accounts/users/", {
-          baseURL: API_URL,
-        });
-        setUsers(usersRes.data);
+        await fetchUsers(tab);
       } catch (err: any) {
         const msg =
           err?.response?.data?.detail ||
@@ -52,9 +53,40 @@ export default function AdminUsers() {
         setError(msg);
       }
     };
-
     bootstrap();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const fetchUsers = async (tab: "activos" | "inactivos") => {
+    try {
+      const usersRes = await api.get<User[]>("/accounts/users/", { baseURL: API_URL });
+      setUsers(usersRes.data.filter(u => tab === "activos" ? u.is_active : !u.is_active));
+    } catch (err: any) {
+      setError("Error al cargar usuarios");
+    }
+  };
+
+  const handleDeactivate = (user: User) => {
+    setSelectedUser(user);
+    setShowModal(true);
+  };
+
+  const handleActivate = (user: User) => {
+    setSelectedUser(user);
+    setShowModal(true);
+  };
+
+  const confirmAction = async () => {
+    if (!selectedUser) return;
+    try {
+      await api.patch(`/accounts/user/${selectedUser.id}/`, { is_active: !selectedUser.is_active });
+      setShowModal(false);
+      setSelectedUser(null);
+      await fetchUsers(tab);
+    } catch (err) {
+      setError("Error al actualizar usuario");
+    }
+  };
 
   if (error) return (
     <div className="flex min-h-screen items-center justify-center bg-background">
@@ -63,7 +95,7 @@ export default function AdminUsers() {
           {error}
           {me && (
             <div className="mt-2 text-sm text-muted-foreground">
-              Iniciaste sesión como: <b>{me.first_name} {me.last_name}</b> (posees el rol {me.role})
+              Iniciaste sesión como: <b>{me.first_name} {me.last_name}</b> (rol {me.role})
             </div>
           )}
         </AlertDescription>
@@ -73,36 +105,147 @@ export default function AdminUsers() {
   if (!me) return <div>Cargando…</div>;
 
   return (
-    <div className="p-4">
-      <h1 style={{ fontWeight: 700, fontSize: 22, marginBottom: 12 }}>
-        Gestión de Usuarios
-      </h1>
-      <table className="w-full border">
+    <div className="min-h-screen flex flex-col items-center bg-background">
+      <Card className="w-full max-w-5xl mt-8">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft />
+            </Button>
+            <CardTitle className="text-2xl font-bold">Gestión de Usuarios</CardTitle>
+          </div>
+          <Button variant="default" onClick={() => alert("Funcionalidad de crear usuario no implementada")}>
+            <Plus className="mr-2" /> Crear Usuario
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={tab} onValueChange={v => setTab(v as "activos" | "inactivos")}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="activos">Activos</TabsTrigger>
+              <TabsTrigger value="inactivos">Inactivos</TabsTrigger>
+            </TabsList>
+            <TabsContent value="activos">
+              <UserTable
+                users={users}
+                onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+                onDeactivate={handleDeactivate}
+                type="activos"
+              />
+            </TabsContent>
+            <TabsContent value="inactivos">
+              <UserTable
+                users={users}
+                onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+                onActivate={handleActivate}
+                type="inactivos"
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+      {showModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full shadow-lg">
+            <div className="border-b pb-3">
+              <h3 className="text-lg font-medium">
+                {selectedUser.is_active ? "Confirmar Desactivación" : "Confirmar Activación"}
+              </h3>
+            </div>
+            <div className="py-4 space-y-3">
+              <p>
+                ¿Estás seguro de que deseas {selectedUser.is_active ? "desactivar" : "activar"} al usuario <strong>{selectedUser.first_name} {selectedUser.last_name}</strong>?
+              </p>
+            </div>
+            <div className="border-t pt-3 flex justify-end space-x-3">
+              <Button
+                variant={selectedUser.is_active ? "destructive" : "default"}
+                onClick={confirmAction}
+              >
+                {selectedUser.is_active ? "Desactivar" : "Activar"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowModal(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserTable({
+  users,
+  onEdit,
+  onDeactivate,
+  onActivate,
+  type,
+}: {
+  users: User[];
+  onEdit: (user: User) => void;
+  onDeactivate?: (user: User) => void;
+  onActivate?: (user: User) => void;
+  type: "activos" | "inactivos";
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border rounded-lg bg-white shadow">
         <thead>
           <tr>
-            <th className="text-left p-2 border">Nombre y Apellido</th>
-            <th className="text-left p-2 border">Email</th>
-            <th className="text-left p-2 border">Rol</th>
-            <th className="text-left p-2 border">Activo</th>
-            <th className="text-left p-2 border">Fecha registro</th>
+            <th className="text-left p-2 border font-semibold">Nombre y Apellido</th>
+            <th className="text-left p-2 border font-semibold">Email</th>
+            <th className="text-left p-2 border font-semibold">Rol</th>
+            <th className="text-left p-2 border font-semibold">Activo</th>
+            <th className="text-left p-2 border font-semibold">Fecha registro</th>
+            <th className="text-left p-2 border font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {users.map((u) => (
-            <tr key={u.id}>
-              <td className="p-2 border">
-                {u.first_name} {u.last_name}
-              </td>
+            <tr key={u.id} className="hover:bg-muted/30 transition-colors">
+              <td className="p-2 border">{u.first_name} {u.last_name}</td>
               <td className="p-2 border">{u.email}</td>
               <td className="p-2 border">{u.role}</td>
               <td className="p-2 border">{u.is_active ? "Sí" : "No"}</td>
+              <td className="p-2 border">{new Date(u.date_joined).toLocaleString()}</td>
               <td className="p-2 border">
-                {new Date(u.date_joined).toLocaleString()}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(u)}
+                  >
+                    <Pencil size={16} className="mr-1" /> Editar
+                  </Button>
+                  {type === "activos" && onDeactivate && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => onDeactivate(u)}
+                    >
+                      <UserX size={16} className="mr-1" /> Desactivar
+                    </Button>
+                  )}
+                  {type === "inactivos" && onActivate && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onActivate(u)}
+                    >
+                      <UserCheck size={16} className="mr-1" /> Activar
+                    </Button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {users.length === 0 && (
+        <div className="text-center text-muted-foreground py-6">
+          No hay usuarios {type === "activos" ? "activos" : "inactivos"}.
+        </div>
+      )}
     </div>
   );
 }
