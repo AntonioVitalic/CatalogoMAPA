@@ -280,7 +280,245 @@ export default function CrearPieza() {
               {tipologias.map(t => <option key={t} value={t} />)}
             </datalist>
           </div>
-          {/* ...otros campos de pieza... */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Ubicación</label>
+            <input
+              type="text"
+              name="ubicacion"
+              className="w-full input"
+              value={pieceData.ubicacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Depósito</label>
+            <input
+              type="text"
+              name="deposito"
+              className="w-full input"
+              value={pieceData.deposito}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Estante</label>
+            <input
+              type="text"
+              name="estante"
+              className="w-full input"
+              value={pieceData.estante}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Caja actual</label>
+            <input
+              type="text"
+              name="caja_actual"
+              className="w-full input"
+              value={pieceData.caja_actual}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Clasificación</label>
+            <input
+              type="text"
+              name="clasificacion"
+              className="w-full input"
+              value={pieceData.clasificacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Conjunto</label>
+            <input
+              type="text"
+              name="conjunto"
+              className="w-full input"
+              value={pieceData.conjunto}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Descripción catálogo</label>
+            <textarea
+              name="descripcion"
+              className="w-full textarea"
+              value={pieceData.descripcion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Marcas o inscripciones</label>
+            <input
+              type="text"
+              name="marcas_inscripciones"
+              className="w-full input"
+              value={pieceData.marcas_inscripciones}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Contexto histórico</label>
+            <input
+              type="text"
+              name="contexto_historico"
+              className="w-full input"
+              value={pieceData.contexto_historico}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Bibliografía</label>
+            <input
+              type="text"
+              name="bibliografia"
+              className="w-full input"
+              value={pieceData.bibliografia}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Iconografía</label>
+            <input
+              type="text"
+              name="iconografia"
+              className="w-full input"
+              value={pieceData.iconografia}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Notas de investigación</label>
+            <input
+              type="text"
+              name="notas_investigacion"
+              className="w-full input"
+              value={pieceData.notas_investigacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Estado de conservación</label>
+            <input
+              type="text"
+              name="estado_conservacion"
+              className="w-full input"
+              value={pieceData.estado_conservacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Descripción conservación</label>
+            <input
+              type="text"
+              name="descripcion_conservacion"
+              className="w-full input"
+              value={pieceData.descripcion_conservacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Responsable conservación</label>
+            <input
+              type="text"
+              name="responsable_conservacion"
+              className="w-full input"
+              value={pieceData.responsable_conservacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Fecha actualización conservación</label>
+            <input
+              type="text"
+              name="fecha_actualizacion_conservacion"
+              className="w-full input"
+              value={pieceData.fecha_actualizacion_conservacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Comentarios conservación</label>
+            <input
+              type="text"
+              name="comentarios_conservacion"
+              className="w-full input"
+              value={pieceData.comentarios_conservacion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Avaluo</label>
+            <input
+              type="text"
+              name="avaluo"
+              className="w-full input"
+              value={pieceData.avaluo}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Procedencia</label>
+            <input
+              type="text"
+              name="procedencia"
+              className="w-full input"
+              value={pieceData.procedencia}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Donante</label>
+            <input
+              type="text"
+              name="donante"
+              className="w-full input"
+              value={pieceData.donante}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Fecha ingreso</label>
+            <input
+              type="text"
+              name="fecha_ingreso"
+              className="w-full input"
+              value={pieceData.fecha_ingreso}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Responsable colección</label>
+            <input
+              type="text"
+              name="responsable_coleccion"
+              className="w-full input"
+              value={pieceData.responsable_coleccion}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Filiación cultural</label>
+            <input
+              type="text"
+              name="filiacion_cultural"
+              className="w-full input"
+              value={pieceData.filiacion_cultural}
+              onChange={handleChangePiece}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Fecha última modificación</label>
+            <input
+              type="text"
+              name="fecha_ultima_modificacion"
+              className="w-full input"
+              value={pieceData.fecha_ultima_modificacion}
+              disabled
+            />
+          </div>
         </div>
 
         <h3 className="text-xl font-semibold mt-6 mb-2">Componentes</h3>
