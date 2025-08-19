@@ -19,13 +19,23 @@ type User = {
   date_joined: string;
 };
 
+type LogEntry = {
+  id: number;
+  usuario: User;
+  pieza_id: string;
+  accion: string;
+  fecha: string;
+  detalle: string;
+};
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [me, setMe] = useState<User | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"activos" | "inactivos">("activos");
+  const [tab, setTab] = useState<"activos" | "inactivos" | "historial">("activos");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,12 +48,16 @@ export default function AdminUsers() {
       try {
         const meRes = await api.get<User>("/accounts/me/", { baseURL: API_URL });
         setMe(meRes.data);
-        if (meRes.data.role !== "admin") {
-          setError("Solo el administrador puede ver esta página.");
+        if (meRes.data.role !== "admin" && meRes.data.role !== "editor") {
+          setError("Solo administradores y editores pueden ver esta página.");
           setMe(meRes.data);
           return;
         }
-        await fetchUsers(tab);
+        await fetchUsers(tab === "historial" ? "activos" : tab);
+        if (meRes.data.role === "admin" || meRes.data.role === "editor") {
+          const logsRes = await api.get<LogEntry[]>("/accounts/registro-cambios-catalogo/", { baseURL: API_URL });
+          setLogs(logsRes.data);
+        }
       } catch (err: any) {
         const msg =
           err?.response?.data?.detail ||
@@ -82,7 +96,7 @@ export default function AdminUsers() {
       await api.patch(`/accounts/user/${selectedUser.id}/`, { is_active: !selectedUser.is_active });
       setShowModal(false);
       setSelectedUser(null);
-      await fetchUsers(tab);
+      await fetchUsers(tab === "historial" ? "activos" : tab);
     } catch (err) {
       setError("Error al actualizar usuario");
     }
@@ -119,10 +133,11 @@ export default function AdminUsers() {
           </Button>
         </CardHeader>
         <CardContent>
-          <Tabs value={tab} onValueChange={v => setTab(v as "activos" | "inactivos")}>
+          <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>
             <TabsList className="mb-4">
               <TabsTrigger value="activos">Activos</TabsTrigger>
               <TabsTrigger value="inactivos">Inactivos</TabsTrigger>
+              <TabsTrigger value="historial">Historial de cambios</TabsTrigger>
             </TabsList>
             <TabsContent value="activos">
               <UserTable
@@ -139,6 +154,9 @@ export default function AdminUsers() {
                 onActivate={handleActivate}
                 type="inactivos"
               />
+            </TabsContent>
+            <TabsContent value="historial">
+              <ChangeLogTable logs={logs} />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -244,6 +262,42 @@ function UserTable({
       {users.length === 0 && (
         <div className="text-center text-muted-foreground py-6">
           No hay usuarios {type === "activos" ? "activos" : "inactivos"}.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChangeLogTable({ logs }: { logs: LogEntry[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border rounded-lg bg-white shadow">
+        <thead>
+          <tr>
+            <th className="text-left p-2 border font-semibold">Usuario</th>
+            <th className="text-left p-2 border font-semibold">Email</th>
+            <th className="text-left p-2 border font-semibold">Pieza</th>
+            <th className="text-left p-2 border font-semibold">Acción</th>
+            <th className="text-left p-2 border font-semibold">Fecha y hora</th>
+            <th className="text-left p-2 border font-semibold">Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map(log => (
+            <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+              <td className="p-2 border">{log.usuario.first_name} {log.usuario.last_name}</td>
+              <td className="p-2 border">{log.usuario.email}</td>
+              <td className="p-2 border">{log.pieza_id}</td>
+              <td className="p-2 border">{log.accion}</td>
+              <td className="p-2 border">{new Date(log.fecha).toLocaleString()}</td>
+              <td className="p-2 border">{log.detalle}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {logs.length === 0 && (
+        <div className="text-center text-muted-foreground py-6">
+          No hay registros de cambios.
         </div>
       )}
     </div>

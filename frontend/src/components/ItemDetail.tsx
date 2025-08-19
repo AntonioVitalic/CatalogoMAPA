@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { saveAs } from "file-saver";
+import { useNavigate } from "react-router-dom";
 
 interface ItemDetailProps {
   item: CollectionItem;
@@ -15,9 +16,10 @@ interface ItemDetailProps {
 const ItemDetail = ({ item }: ItemDetailProps) => {
   const { role } = useAuth();
   const isEditorOrAdmin = role === "editor" || role === "admin";
+  const navigate = useNavigate();
 
   const handleEdit = () => {
-    toast.info("Funcionalidad de edición no implementada en esta demo");
+    navigate(`/editar-pieza/${item.inventoryNumber}`); // ¿podria ser item.id?
   };
 
   const downloadImage = async () => {

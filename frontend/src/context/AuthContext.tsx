@@ -11,6 +11,7 @@ export interface User {
   role: Role;
   is_active: boolean;
   date_joined: string;
+  name?: string; // opcional, para compatibilidad con el header
 }
 
 interface AuthContextType {

@@ -261,7 +261,39 @@ export default function Index() {
               <p className="text-sm text-muted-foreground">
                 Mostrando {pagination.totalItems ? start : 0}-{end} de {pagination.totalItems} piezas
               </p>
-              <ExportButton selectedItems={selectedItems} user={user} />
+              <div className="flex items-center gap-2">
+                <ExportButton
+                  selectedItems={selectedItems}
+                  user={user ? { ...user, id: String(user.id), name: user.name ?? `${user.first_name} ${user.last_name}` } : null}
+                />
+                {user && (user.role === "admin" || user.role === "editor") && (
+                  <>
+                    <Button variant="default" onClick={() => navigate("/crear-pieza")}>
+                      Crear pieza
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        // Eliminar piezas seleccionadas
+                        if (selectedItems.length === 0) return;
+                        if (!window.confirm(`¿Seguro que deseas eliminar ${selectedItems.length} pieza(s)?`)) return;
+                        selectedItems.forEach(async (item) => {
+                          try {
+                            await api.delete(`/api/piezas/${item.inventoryNumber}/`);
+                          } catch (err) {
+                            console.error("Error eliminando pieza", item.inventoryNumber, err);
+                          }
+                        });
+                        setSelectedItems([]);
+                        fetchPiezas(pagination.page, searchFilters);
+                      }}
+                      disabled={selectedItems.length === 0}
+                    >
+                      Eliminar pieza
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Grid / Listado */}

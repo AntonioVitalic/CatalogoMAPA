@@ -15,7 +15,7 @@ from .serializers import (
     ImagenOutSerializer, ImagenListSerializer, PiezaExportSerializer
 )
 
-
+from accounts.models import RegistroCambioPieza
 
 class PiezaViewSet(viewsets.ViewSet):
     def _parse_filters(self, request):
@@ -83,10 +83,6 @@ class PiezaViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'], url_path='export')
     def export_all(self, request):
-        """
-        Devuelve TODAS las piezas que cumplen los filtros, SIN paginar.
-        Pensado para selección masiva/exportación en el front sin múltiples requests.
-        """
         params = self._parse_filters(request)
         q = self._cypher_base()
 
@@ -100,6 +96,167 @@ class PiezaViewSet(viewsets.ViewSet):
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
 
+    def create(self, request):
+        data = request.data
+        # Crear la pieza en Neo4j
+        pieza = Pieza(
+            numero_inventario=data.get('numero_inventario'),
+            revision=data.get('revision', ''),
+            numero_registro_anterior=data.get('numero_registro_anterior', ''),
+            codigo_surdoc=data.get('codigo_surdoc', ''),
+            ubicacion=data.get('ubicacion', ''),
+            deposito=data.get('deposito', ''),
+            estante=data.get('estante', ''),
+            caja_actual=data.get('caja_actual', ''),
+            tipologia=data.get('tipologia', ''),
+            clasificacion=data.get('clasificacion', ''),
+            conjunto=data.get('conjunto', ''),
+            nombre_comun=data.get('nombre_comun', ''),
+            nombre_especifico=data.get('nombre_especifico', ''),
+            fecha_creacion=data.get('fecha_creacion', ''),
+            descripcion=data.get('descripcion', ''),
+            marcas_inscripciones=data.get('marcas_inscripciones', ''),
+            contexto_historico=data.get('contexto_historico', ''),
+            bibliografia=data.get('bibliografia', ''),
+            iconografia=data.get('iconografia', ''),
+            notas_investigacion=data.get('notas_investigacion', ''),
+            avaluo=data.get('avaluo', ''),
+            procedencia=data.get('procedencia', ''),
+            donante=data.get('donante', ''),
+            fecha_ingreso=data.get('fecha_ingreso', ''),
+            estado_conservacion=data.get('estado_conservacion', ''),
+            descripcion_conservacion=data.get('descripcion_conservacion', ''),
+            responsable_conservacion=data.get('responsable_conservacion', ''),
+            fecha_actualizacion_conservacion=data.get('fecha_actualizacion_conservacion', ''),
+            comentarios_conservacion=data.get('comentarios_conservacion', ''),
+            responsable_coleccion=data.get('responsable_coleccion', ''),
+            filiacion_cultural=data.get('filiacion_cultural', ''),
+            pais=data.get('pais', ''),
+            localidad=data.get('localidad', ''),
+            coleccion=data.get('coleccion', ''),
+            materialidad=data.get('materialidad', ''),
+            tecnica=data.get('tecnica', ''),
+        ).save()
+
+        # Componentes
+        componentes = data.get('componentes')
+        if componentes:
+            import json
+            comps = json.loads(componentes) if isinstance(componentes, str) else componentes
+            for comp in comps:
+                c = Componente(
+                    pieza_numero_inventario=pieza.numero_inventario,
+                    letra=comp.get('letra', ''),
+                    nombre_comun=comp.get('nombre_comun', ''),
+                    nombre_atribuido=comp.get('nombre_atribuido', ''),
+                    descripcion=comp.get('descripcion', ''),
+                    funcion=comp.get('funcion', ''),
+                    forma=comp.get('forma', ''),
+                    marcas_inscripciones=comp.get('marcas_inscripciones', ''),
+                    peso_kg=float(comp.get('peso_kg', 0) or 0),
+                    alto_cm=float(comp.get('alto_cm', 0) or 0),
+                    ancho_cm=float(comp.get('ancho_cm', 0) or 0),
+                    profundidad_cm=float(comp.get('profundidad_cm', 0) or 0),
+                    diametro_cm=float(comp.get('diametro_cm', 0) or 0),
+                    espesor_mm=float(comp.get('espesor_mm', 0) or 0),
+                    estado_conservacion=comp.get('estado_conservacion', ''),
+                    materialidad=comp.get('materialidad', ''),
+                    tecnica=comp.get('tecnica', ''),
+                ).save()
+                pieza.componentes.connect(c)
+
+        # Imagen (si se subió)
+        imagen = request.FILES.get('imagen')
+        if imagen:
+            file_name = imagen.name
+            img = Imagen(file_name=file_name, descripcion="").save()
+            pieza.imagenes.connect(img)
+
+        # Auditoría
+        RegistroCambioPieza.objects.create(
+            usuario=request.user,
+            pieza_id=pieza.numero_inventario,
+            accion="CREAR",
+            detalle=f"Pieza creada por {request.user.email}"
+        )
+
+        return Response(PiezaOutSerializer(pieza, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None):
+        data = request.data
+        pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
+        # Actualizar campos
+        for field in [
+            'revision', 'numero_registro_anterior', 'codigo_surdoc', 'ubicacion', 'deposito', 'estante', 'caja_actual',
+            'tipologia', 'clasificacion', 'conjunto', 'nombre_comun', 'nombre_especifico', 'fecha_creacion',
+            'descripcion', 'marcas_inscripciones', 'contexto_historico', 'bibliografia', 'iconografia',
+            'notas_investigacion', 'avaluo', 'procedencia', 'donante', 'fecha_ingreso', 'estado_conservacion',
+            'descripcion_conservacion', 'responsable_conservacion', 'fecha_actualizacion_conservacion',
+            'comentarios_conservacion', 'responsable_coleccion', 'filiacion_cultural', 'pais', 'localidad',
+            'coleccion', 'materialidad', 'tecnica'
+        ]:
+            if field in data:
+                setattr(pieza, field, data.get(field))
+        pieza.save()
+
+        # Componentes (actualización simple: eliminar y volver a crear)
+        componentes = data.get('componentes')
+        if componentes:
+            import json
+            comps = json.loads(componentes) if isinstance(componentes, str) else componentes
+            # Eliminar componentes previos
+            for c in pieza.componentes.all():
+                pieza.componentes.disconnect(c)
+                c.delete()
+            # Crear nuevos
+            for comp in comps:
+                c = Componente(
+                    pieza_numero_inventario=pieza.numero_inventario,
+                    letra=comp.get('letra', ''),
+                    nombre_comun=comp.get('nombre_comun', ''),
+                    nombre_atribuido=comp.get('nombre_atribuido', ''),
+                    descripcion=comp.get('descripcion', ''),
+                    funcion=comp.get('funcion', ''),
+                    forma=comp.get('forma', ''),
+                    marcas_inscripciones=comp.get('marcas_inscripciones', ''),
+                    peso_kg=float(comp.get('peso_kg', 0) or 0),
+                    alto_cm=float(comp.get('alto_cm', 0) or 0),
+                    ancho_cm=float(comp.get('ancho_cm', 0) or 0),
+                    profundidad_cm=float(comp.get('profundidad_cm', 0) or 0),
+                    diametro_cm=float(comp.get('diametro_cm', 0) or 0),
+                    espesor_mm=float(comp.get('espesor_mm', 0) or 0),
+                    estado_conservacion=comp.get('estado_conservacion', ''),
+                    materialidad=comp.get('materialidad', ''),
+                    tecnica=comp.get('tecnica', ''),
+                ).save()
+                pieza.componentes.connect(c)
+
+        # Imagen (si se subió)
+        imagen = request.FILES.get('imagen')
+        if imagen:
+            file_name = imagen.name
+            img = Imagen(file_name=file_name, descripcion="").save()
+            pieza.imagenes.connect(img)
+
+        RegistroCambioPieza.objects.create(
+            usuario=request.user,
+            pieza_id=pieza.numero_inventario,
+            accion="EDITAR",
+            detalle=f"Pieza editada por {request.user.email}"
+        )
+
+        return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
+
+    def destroy(self, request, pk=None):
+        pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
+        RegistroCambioPieza.objects.create(
+            usuario=request.user,
+            pieza_id=pieza.numero_inventario,
+            accion="ELIMINAR",
+            detalle=f"Pieza eliminada por {request.user.email}"
+        )
+        pieza.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ------- COMPONENTES -------
 class ComponenteViewSet(viewsets.ViewSet):
@@ -112,7 +269,6 @@ class ComponenteViewSet(viewsets.ViewSet):
         comp = Componente.nodes.get(uid=pk)
         ser = ComponenteOutSerializer(comp, context={'request': request})
         return Response(ser.data)
-
 
 class ImagenViewSet(viewsets.ViewSet):
     def list(self, request):
@@ -159,7 +315,6 @@ class ImagenViewSet(viewsets.ViewSet):
         img = Imagen.nodes.get(id=int(pk))
         img.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 # helpers para catálogos
 def _catalog_json(names_iterable):
