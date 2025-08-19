@@ -220,18 +220,20 @@ const ItemGrid = ({
                   ? pagination.totalPages - 4 + i
                   : pagination.page - 2 + i;
               if (pageNum < 1 || pageNum > pagination.totalPages) return null;
+              const isActive = pagination.page === pageNum;
               return (
-                <PaginationItem key={pageNum}>
+                 <PaginationItem key={pageNum}>
                   <button
                     onClick={() => onPageChange(pageNum)}
                     className={cn(
                       buttonVariants({
-                        variant:
-                          pagination.page === pageNum ? "outline" : "ghost",
+                        variant: isActive ? "outline" : "ghost",
                         size: "default",
                       }),
-                      "min-w-[2rem] h-9 px-2"
+                      "min-w-[2rem] h-9 px-2",
+                      isActive && "bg-primary/10 border-primary shadow font-bold text-primary"
                     )}
+                    aria-current={isActive ? "page" : undefined}
                   >
                     {pageNum}
                   </button>
