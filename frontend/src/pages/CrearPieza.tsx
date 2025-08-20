@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { Button } from "@/components/ui/button";
+import Header from "@/components/Header";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react"; 
 
@@ -32,6 +33,7 @@ const initialComp: ComponentForm = {
 };
 
 export default function CrearPieza() {
+  const [showLogin, setShowLogin] = useState(false);
   const navigate = useNavigate();
   const [pieceData, setPieceData] = useState({
     numero_inventario: "",
@@ -186,8 +188,10 @@ export default function CrearPieza() {
   };
 
   return (
-  <div className="flex justify-center items-start min-h-screen bg-muted/40 py-8">
-    <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6">
+    <div className="min-h-screen flex flex-col">
+      <Header onLoginClick={() => setShowLogin(true)} />
+      <div className="flex justify-center items-start bg-muted/40 py-8">
+      <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6">
       <div className="relative flex items-center gap-4 mb-6">
         {/* Left: Volver */}
         <div>
@@ -763,6 +767,25 @@ export default function CrearPieza() {
           </form>
         </DialogContent>
       </Dialog>
+      {showLogin && (
+        <Dialog open onOpenChange={setShowLogin}>
+          <DialogContent>
+            <h2 className="text-lg font-semibold mb-4">Iniciar sesión</h2>
+            <form className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Email</label>
+                <input type="email" className="w-full input" placeholder="admin@mapa.cl o editor@mapa.cl" />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Contraseña</label>
+                <input type="password" className="w-full input" placeholder="Cualquier texto (demo)" />
+              </div>
+              <Button className="w-full">Iniciar sesión</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
     </div>
   </div>
 );

@@ -4,6 +4,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pencil, UserX, UserCheck, Plus, ArrowLeft } from "lucide-react";
+import Header from "@/components/Header";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import api from "@/services/api";
 import { useNavigate } from "react-router-dom";
 
@@ -36,6 +38,7 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogin, setShowLogin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -119,6 +122,8 @@ export default function AdminUsers() {
   if (!me) return <div>Cargando…</div>;
 
   return (
+   <div className="min-h-screen flex flex-col">
+    <Header onLoginClick={() => setShowLogin(true)} />
     <div className="min-h-screen flex flex-col items-center bg-background">
       <Card className="w-full max-w-5xl mt-8">
         <CardHeader className="relative flex flex-row items-center justify-between">
@@ -199,6 +204,26 @@ export default function AdminUsers() {
         </div>
       )}
     </div>
+     {/* Dialog de login sencillo (igual que Index) */}
+     {showLogin && (
+       <Dialog open onOpenChange={setShowLogin}>
+         <DialogContent>
+           <h2 className="text-lg font-semibold mb-4">Iniciar sesión</h2>
+           <form className="space-y-4">
+             <div className="space-y-2">
+               <label className="block text-sm font-medium">Email</label>
+               <input type="email" className="w-full input" placeholder="admin@mapa.cl o editor@mapa.cl" />
+             </div>
+             <div className="space-y-2">
+               <label className="block text-sm font-medium">Contraseña</label>
+               <input type="password" className="w-full input" placeholder="Cualquier texto (demo)" />
+             </div>
+             <Button className="w-full">Iniciar sesión</Button>
+           </form>
+         </DialogContent>
+       </Dialog>
+     )}
+   </div>
   );
 }
 
@@ -278,7 +303,8 @@ function UserTable({
   );
 }
 
-function ChangeLogTable({ logs }: { logs: LogEntry[] }) {
+ function ChangeLogTable({ logs }: { logs: LogEntry[] }) {
+  const fmt = (v: any) => (v === null || v === undefined ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v)));
   return (
     <div className="overflow-x-auto">
       <table className="w-full border rounded-lg bg-white shadow">
@@ -289,20 +315,33 @@ function ChangeLogTable({ logs }: { logs: LogEntry[] }) {
             <th className="text-left p-2 border font-semibold">Pieza</th>
             <th className="text-left p-2 border font-semibold">Acción</th>
             <th className="text-left p-2 border font-semibold">Fecha y hora</th>
-            <th className="text-left p-2 border font-semibold">Detalle</th>
+            <th className="text-left p-2 border font-semibold">Antes</th>
+            <th className="text-left p-2 border font-semibold">Después</th>
           </tr>
         </thead>
         <tbody>
-          {logs.map(log => (
-            <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-              <td className="p-2 border">{log.usuario.first_name} {log.usuario.last_name}</td>
-              <td className="p-2 border">{log.usuario.email}</td>
-              <td className="p-2 border">{log.pieza_id}</td>
-              <td className="p-2 border">{log.accion}</td>
-              <td className="p-2 border">{new Date(log.fecha).toLocaleString()}</td>
-              <td className="p-2 border">{log.detalle}</td>
-            </tr>
-          ))}
+          {logs.map(log => {
+            let before: any = "";
+            let after: any = "";
+            try {
+              const parsed = JSON.parse(log.detalle);
+              before = parsed?.before ?? "";
+              after = parsed?.after ?? "";
+            } catch {
+              after = log.detalle ?? "";
+            }
+            return (
+              <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                <td className="p-2 border">{log.usuario.first_name} {log.usuario.last_name}</td>
+                <td className="p-2 border">{log.usuario.email}</td>
+                <td className="p-2 border">{log.pieza_id}</td>
+                <td className="p-2 border">{log.accion}</td>
+                <td className="p-2 border">{new Date(log.fecha).toLocaleString()}</td>
+                <td className="p-2 border"><pre className="whitespace-pre-wrap text-sm">{fmt(before)}</pre></td>
+                <td className="p-2 border"><pre className="whitespace-pre-wrap text-sm">{fmt(after)}</pre></td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {logs.length === 0 && (

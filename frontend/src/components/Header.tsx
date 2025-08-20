@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types";
-import { LogIn, LogOut, User } from "lucide-react";
+import { LogIn, LogOut, User, Clock } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -49,7 +49,7 @@ const Header = ({ onLoginClick }: HeaderProps) => {
         </div>
 
         <div className="flex items-center gap-4">
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
           
           {user ? (
             <DropdownMenu>
@@ -66,10 +66,19 @@ const Header = ({ onLoginClick }: HeaderProps) => {
                 {user.role === "admin" && (
                    <DropdownMenuItem
                       className="flex items-center gap-2 cursor-pointer"
-                      onClick={() => navigate("/admin/users")} // <-- usa navigate en vez de window.location.href
+                      onClick={() => navigate("/admin/users")}
                     >
                     <User size={16} />
                     <span>Gestión de usuarios</span>
+                  </DropdownMenuItem>
+                )}
+                {user.role === "editor" && (
+                   <DropdownMenuItem
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => navigate("/historial-cambios")}
+                    >
+                    <Clock size={16} />
+                    <span>Historial de cambios</span>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem className="flex items-center gap-2" onClick={logout}>

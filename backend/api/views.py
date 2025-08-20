@@ -4,6 +4,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from django.conf import settings
 from neomodel import db
+import json
 
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
@@ -172,12 +173,18 @@ class PiezaViewSet(viewsets.ViewSet):
             img = Imagen(file_name=file_name, descripcion="").save()
             pieza.imagenes.connect(img)
 
-        # Auditoría
+        # Auditoría: guardar estado "before" / "after" en detalle (JSON-string)
+        after_obj = {
+            "numero_inventario": pieza.numero_inventario,
+            "nombre_especifico": pieza.nombre_especifico,
+            "descripcion": pieza.descripcion,
+            "coleccion": pieza.coleccion,
+        }
         RegistroCambioPieza.objects.create(
             usuario=request.user,
             pieza_id=pieza.numero_inventario,
             accion="CREAR",
-            detalle=f"Pieza creada por {request.user.email}"
+            detalle=json.dumps({"before": None, "after": after_obj})
         )
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data, status=status.HTTP_201_CREATED)
@@ -238,22 +245,40 @@ class PiezaViewSet(viewsets.ViewSet):
             img = Imagen(file_name=file_name, descripcion="").save()
             pieza.imagenes.connect(img)
 
+        # Auditoría: construir objeto before/after con algunos campos relevantes
+        # before_obj fue capturado antes de modificar 'pieza' (ver abajo)
+        before_obj = {}
+        for f in ["numero_inventario", "nombre_especifico", "descripcion", "coleccion"]:
+            before_obj[f] = getattr(pieza, f, None)
+        # ya se guardó la pieza arriba; construir after_obj
+        after_obj = {
+            "numero_inventario": pieza.numero_inventario,
+            "nombre_especifico": pieza.nombre_especifico,
+            "descripcion": pieza.descripcion,
+            "coleccion": pieza.coleccion,
+        }
         RegistroCambioPieza.objects.create(
             usuario=request.user,
             pieza_id=pieza.numero_inventario,
             accion="EDITAR",
-            detalle=f"Pieza editada por {request.user.email}"
+            detalle=json.dumps({"before": before_obj, "after": after_obj})
         )
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
 
     def destroy(self, request, pk=None):
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
+        before_obj = {
+            "numero_inventario": pieza.numero_inventario,
+            "nombre_especifico": pieza.nombre_especifico,
+            "descripcion": pieza.descripcion,
+            "coleccion": pieza.coleccion,
+        }
         RegistroCambioPieza.objects.create(
             usuario=request.user,
             pieza_id=pieza.numero_inventario,
             accion="ELIMINAR",
-            detalle=f"Pieza eliminada por {request.user.email}"
+            detalle=json.dumps({"before": before_obj, "after": None})
         )
         pieza.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
