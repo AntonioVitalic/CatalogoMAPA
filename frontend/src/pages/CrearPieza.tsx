@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ArrowLeft } from "lucide-react"; 
 
 type ComponentForm = {
   letra: string;
@@ -69,7 +70,8 @@ export default function CrearPieza() {
     localidad: "",
     coleccion: "",
     materialidad: "",
-    tecnica: ""
+    tecnica: "",
+    fecha_ultima_modificacion: ""
   });
   const [components, setComponents] = useState<ComponentForm[]>([]);
   const [compForm, setCompForm] = useState<ComponentForm>(initialComp);
@@ -184,28 +186,42 @@ export default function CrearPieza() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">Crear nueva pieza</h2>
+  <div className="flex justify-center items-start min-h-screen bg-muted/40 py-8">
+    <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6">
+      <div className="relative flex items-center gap-4 mb-6">
+        {/* Left: Volver */}
+        <div>
+          <Button variant="default" onClick={() => navigate("/")}>
+            <ArrowLeft className="mr-2" />
+            Volver
+          </Button>
+        </div>
+
+        {/* Centered title */}
+        <h2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold m-0">
+          Crear nueva pieza
+        </h2>
+      </div>
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium mb-1">Número de inventario</label>
             <input
               type="text"
               name="numero_inventario"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.numero_inventario}
               onChange={handleChangePiece}
               disabled
             />
-            <small className="text-gray-600">Este número se asigna automáticamente. (Se toma el siguiente número disponible en la base de datos)</small>
+            <small className="text-gray-600">Este número se asigna automáticamente.</small>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Código SURDOC</label>
             <input
               type="text"
               name="codigo_surdoc"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.codigo_surdoc}
               onChange={handleChangePiece}
             />
@@ -216,7 +232,7 @@ export default function CrearPieza() {
               type="text"
               name="autor"
               list="list-autores"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.autor}
               onChange={handleChangePiece}
             />
@@ -230,7 +246,7 @@ export default function CrearPieza() {
               type="text"
               name="pais"
               list="list-paises"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.pais}
               onChange={handleChangePiece}
             />
@@ -244,7 +260,7 @@ export default function CrearPieza() {
               type="text"
               name="localidad"
               list="list-localidades"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.localidad}
               onChange={handleChangePiece}
             />
@@ -258,7 +274,7 @@ export default function CrearPieza() {
               type="text"
               name="coleccion"
               list="list-colecciones"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.coleccion}
               onChange={handleChangePiece}
             />
@@ -272,7 +288,7 @@ export default function CrearPieza() {
               type="text"
               name="tipologia"
               list="list-tipologias"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.tipologia}
               onChange={handleChangePiece}
             />
@@ -285,7 +301,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="ubicacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.ubicacion}
               onChange={handleChangePiece}
             />
@@ -295,7 +311,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="deposito"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.deposito}
               onChange={handleChangePiece}
             />
@@ -305,7 +321,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="estante"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.estante}
               onChange={handleChangePiece}
             />
@@ -315,7 +331,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="caja_actual"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.caja_actual}
               onChange={handleChangePiece}
             />
@@ -325,7 +341,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="clasificacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.clasificacion}
               onChange={handleChangePiece}
             />
@@ -335,16 +351,16 @@ export default function CrearPieza() {
             <input
               type="text"
               name="conjunto"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.conjunto}
               onChange={handleChangePiece}
             />
           </div>
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-1">Descripción catálogo</label>
             <textarea
               name="descripcion"
-              className="w-full textarea"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.descripcion}
               onChange={handleChangePiece}
             />
@@ -354,7 +370,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="marcas_inscripciones"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.marcas_inscripciones}
               onChange={handleChangePiece}
             />
@@ -364,7 +380,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="contexto_historico"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.contexto_historico}
               onChange={handleChangePiece}
             />
@@ -374,7 +390,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="bibliografia"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.bibliografia}
               onChange={handleChangePiece}
             />
@@ -384,7 +400,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="iconografia"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.iconografia}
               onChange={handleChangePiece}
             />
@@ -394,7 +410,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="notas_investigacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.notas_investigacion}
               onChange={handleChangePiece}
             />
@@ -404,7 +420,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="estado_conservacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.estado_conservacion}
               onChange={handleChangePiece}
             />
@@ -414,7 +430,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="descripcion_conservacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.descripcion_conservacion}
               onChange={handleChangePiece}
             />
@@ -424,7 +440,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="responsable_conservacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.responsable_conservacion}
               onChange={handleChangePiece}
             />
@@ -434,7 +450,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="fecha_actualizacion_conservacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.fecha_actualizacion_conservacion}
               onChange={handleChangePiece}
             />
@@ -444,7 +460,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="comentarios_conservacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.comentarios_conservacion}
               onChange={handleChangePiece}
             />
@@ -454,7 +470,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="avaluo"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.avaluo}
               onChange={handleChangePiece}
             />
@@ -464,7 +480,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="procedencia"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.procedencia}
               onChange={handleChangePiece}
             />
@@ -474,7 +490,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="donante"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.donante}
               onChange={handleChangePiece}
             />
@@ -484,7 +500,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="fecha_ingreso"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.fecha_ingreso}
               onChange={handleChangePiece}
             />
@@ -494,7 +510,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="responsable_coleccion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.responsable_coleccion}
               onChange={handleChangePiece}
             />
@@ -504,7 +520,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="filiacion_cultural"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.filiacion_cultural}
               onChange={handleChangePiece}
             />
@@ -514,7 +530,7 @@ export default function CrearPieza() {
             <input
               type="text"
               name="fecha_ultima_modificacion"
-              className="w-full input"
+              className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               value={pieceData.fecha_ultima_modificacion}
               disabled
             />
@@ -565,181 +581,189 @@ export default function CrearPieza() {
       </form>
 
       <Dialog open={showCompModal} onOpenChange={setShowCompModal}>
-        <DialogContent className="max-w-lg w-full">
-          <h3 className="text-lg font-semibold mb-4">
+        <DialogContent className="max-w-3xl w-full bg-white p-8 overflow-y-auto" style={{ maxHeight: "90vh" }}>
+          <h3 className="text-lg font-semibold mb-6">
             {editIndex !== null ? `Editar componente ${compForm.letra.toUpperCase()}` : "Añadir componente"}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Letra *</label>
-              <input
-                type="text"
-                name="letra"
-                maxLength={1}
-                className="w-full input"
-                value={compForm.letra}
-                onChange={handleChangeComp}
-              />
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              handleSaveComponent();
+            }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">Letra *</label>
+                <input
+                  type="text"
+                  name="letra"
+                  maxLength={1}
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.letra}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Nombre común</label>
+                <input
+                  type="text"
+                  name="nombre_comun"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.nombre_comun}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Nombre atribuido</label>
+                <input
+                  type="text"
+                  name="nombre_atribuido"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.nombre_atribuido}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2">Descripción</label>
+                <textarea
+                  name="descripcion"
+                  rows={2}
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.descripcion}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Función</label>
+                <input
+                  type="text"
+                  name="funcion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.funcion}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Forma</label>
+                <input
+                  type="text"
+                  name="forma"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.forma}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Peso (kg)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="peso_kg"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.peso_kg}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Alto (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="alto_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.alto_cm}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Ancho (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="ancho_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.ancho_cm}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Profundidad (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="profundidad_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.profundidad_cm}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Diámetro (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="diametro_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.diametro_cm}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Espesor (mm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="espesor_mm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.espesor_mm}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Estado de conservación</label>
+                <input
+                  type="text"
+                  name="estado_conservacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.estado_conservacion}
+                  onChange={handleChangeComp}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Materialidad</label>
+                <input
+                  type="text"
+                  name="materialidad"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.materialidad}
+                  onChange={handleChangeComp}
+                />
+                <small className="text-gray-500">* Separe múltiples materiales con coma</small>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Técnica</label>
+                <input
+                  type="text"
+                  name="tecnica"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={compForm.tecnica}
+                  onChange={handleChangeComp}
+                />
+                <small className="text-gray-500">* Separe múltiples técnicas con coma</small>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Nombre común</label>
-              <input
-                type="text"
-                name="nombre_comun"
-                className="w-full input"
-                value={compForm.nombre_comun}
-                onChange={handleChangeComp}
-              />
+            <div className="mt-6 flex justify-end gap-2">
+              <Button type="submit" variant="default">
+                Guardar
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCompModal(false)}>
+                Cancelar
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Nombre atribuido</label>
-              <input
-                type="text"
-                name="nombre_atribuido"
-                className="w-full input"
-                value={compForm.nombre_atribuido}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Descripción</label>
-              <textarea
-                name="descripcion"
-                rows={2}
-                className="w-full textarea"
-                value={compForm.descripcion}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Función</label>
-              <input
-                type="text"
-                name="funcion"
-                className="w-full input"
-                value={compForm.funcion}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Forma</label>
-              <input
-                type="text"
-                name="forma"
-                className="w-full input"
-                value={compForm.forma}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Peso (kg)</label>
-              <input
-                type="number"
-                step="any"
-                name="peso_kg"
-                className="w-full input"
-                value={compForm.peso_kg}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Alto (cm)</label>
-              <input
-                type="number"
-                step="any"
-                name="alto_cm"
-                className="w-full input"
-                value={compForm.alto_cm}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Ancho (cm)</label>
-              <input
-                type="number"
-                step="any"
-                name="ancho_cm"
-                className="w-full input"
-                value={compForm.ancho_cm}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Profundidad (cm)</label>
-              <input
-                type="number"
-                step="any"
-                name="profundidad_cm"
-                className="w-full input"
-                value={compForm.profundidad_cm}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Diámetro (cm)</label>
-              <input
-                type="number"
-                step="any"
-                name="diametro_cm"
-                className="w-full input"
-                value={compForm.diametro_cm}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Espesor (mm)</label>
-              <input
-                type="number"
-                step="any"
-                name="espesor_mm"
-                className="w-full input"
-                value={compForm.espesor_mm}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Estado de conservación</label>
-              <input
-                type="text"
-                name="estado_conservacion"
-                className="w-full input"
-                value={compForm.estado_conservacion}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Materialidad</label>
-              <input
-                type="text"
-                name="materialidad"
-                className="w-full input"
-                value={compForm.materialidad}
-                onChange={handleChangeComp}
-              />
-              <small className="text-gray-500">* Separe múltiples materiales con coma</small>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Técnica</label>
-              <input
-                type="text"
-                name="tecnica"
-                className="w-full input"
-                value={compForm.tecnica}
-                onChange={handleChangeComp}
-              />
-              <small className="text-gray-500">* Separe múltiples técnicas con coma</small>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="default" onClick={handleSaveComponent}>
-              Guardar
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setShowCompModal(false)}>
-              Cancelar
-            </Button>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
-  );
+  </div>
+);
 }

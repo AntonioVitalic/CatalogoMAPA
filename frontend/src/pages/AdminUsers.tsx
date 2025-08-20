@@ -121,16 +121,26 @@ export default function AdminUsers() {
   return (
     <div className="min-h-screen flex flex-col items-center bg-background">
       <Card className="w-full max-w-5xl mt-8">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="relative flex flex-row items-center justify-between">
+          {/* Left: Volver */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft />
+            <Button variant="default" onClick={() => navigate("/")}>
+              <ArrowLeft className="mr-2" />
+              Volver
             </Button>
-            <CardTitle className="text-2xl font-bold">Gestión de Usuarios</CardTitle>
           </div>
-          <Button variant="default" onClick={() => alert("Funcionalidad de crear usuario no implementada")}>
-            <Plus className="mr-2" /> Crear Usuario
-          </Button>
+
+          {/* Centered title (absolutely positioned) */}
+          <CardTitle className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold">
+            Gestión de Usuarios
+          </CardTitle>
+
+          {/* Right: Crear Usuario */}
+          <div className="flex items-center">
+            <Button variant="default" onClick={() => alert("Funcionalidad de crear usuario no implementada")}>
+              <Plus className="mr-2" /> Crear Usuario
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>

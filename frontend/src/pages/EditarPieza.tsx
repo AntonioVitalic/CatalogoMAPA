@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ArrowLeft } from "lucide-react";
 
 type ComponentForm = {
   letra: string;
@@ -21,13 +22,14 @@ type ComponentForm = {
   estado_conservacion: string;
   materialidad: string;
   tecnica: string;
+  fecha_ultima_modificacion: string;
 };
 
 const initialComp: ComponentForm = {
   letra: "", nombre_comun: "", nombre_atribuido: "", descripcion: "",
   funcion: "", forma: "", marcas_inscripciones: "",
   peso_kg: "", alto_cm: "", ancho_cm: "", profundidad_cm: "", diametro_cm: "", espesor_mm: "",
-  estado_conservacion: "", materialidad: "", tecnica: ""
+  estado_conservacion: "", materialidad: "", tecnica: "", fecha_ultima_modificacion: ""
 };
 
 export default function EditarPieza() {
@@ -71,7 +73,8 @@ export default function EditarPieza() {
     localidad: "",
     coleccion: "",
     materialidad: "",
-    tecnica: ""
+    tecnica: "",
+    fecha_ultima_modificacion: ""
   });
   const [components, setComponents] = useState<ComponentForm[]>([]);
   const [compForm, setCompForm] = useState<ComponentForm>(initialComp);
@@ -143,7 +146,8 @@ export default function EditarPieza() {
           localidad: p.localidad || "",
           coleccion: p.coleccion || "",
           materialidad: Array.isArray(p.materiales) ? p.materiales.join(", ") : "",
-          tecnica: Array.isArray(p.tecnica) ? p.tecnica.join(", ") : ""
+          tecnica: Array.isArray(p.tecnica) ? p.tecnica.join(", ") : "",
+          fecha_ultima_modificacion: p.fecha_ultima_modificacion || ""
         });
         if (p.componentes && Array.isArray(p.componentes)) {
           const compList: ComponentForm[] = p.componentes.map((c: any) => ({
@@ -246,561 +250,547 @@ export default function EditarPieza() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">Editar pieza #{id}</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="flex justify-center items-start min-h-screen bg-muted/40 py-8">
+      <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6">
+        <div className="relative flex items-center gap-4 mb-6">
+          {/* Left: Volver */}
           <div>
-            <label className="block text-sm font-medium mb-1">Número de inventario</label>
-            <input
-              type="text"
-              name="numero_inventario"
-              className="w-full input"
-              value={pieceData.numero_inventario}
-              disabled
-            />
+            <Button variant="default" onClick={() => navigate("/")}>
+              <ArrowLeft className="mr-2" />
+              Volver
+            </Button>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Código SURDOC</label>
-            <input
-              type="text"
-              name="codigo_surdoc"
-              className="w-full input"
-              value={pieceData.codigo_surdoc}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Autor</label>
-            <input
-              type="text"
-              name="autor"
-              list="list-autores"
-              className="w-full input"
-              value={pieceData.autor}
-              onChange={handleChangePiece}
-            />
-            <datalist id="list-autores">
-              {authors.map(a => <option key={a} value={a} />)}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">País</label>
-            <input
-              type="text"
-              name="pais"
-              list="list-paises"
-              className="w-full input"
-              value={pieceData.pais}
-              onChange={handleChangePiece}
-            />
-            <datalist id="list-paises">
-              {countries.map(p => <option key={p} value={p} />)}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Localidad</label>
-            <input
-              type="text"
-              name="localidad"
-              list="list-localidades"
-              className="w-full input"
-              value={pieceData.localidad}
-              onChange={handleChangePiece}
-            />
-            <datalist id="list-localidades">
-              {localidades.map(l => <option key={l} value={l} />)}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Colección</label>
-            <input
-              type="text"
-              name="coleccion"
-              list="list-colecciones"
-              className="w-full input"
-              value={pieceData.coleccion}
-              onChange={handleChangePiece}
-            />
-            <datalist id="list-colecciones">
-              {collections.map(c => <option key={c} value={c} />)}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Tipología</label>
-            <input
-              type="text"
-              name="tipologia"
-              list="list-tipologias"
-              className="w-full input"
-              value={pieceData.tipologia}
-              onChange={handleChangePiece}
-            />
-            <datalist id="list-tipologias">
-              {tipologias.map(t => <option key={t} value={t} />)}
-            </datalist>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Ubicación</label>
-            <input
-              type="text"
-              name="ubicacion"
-              className="w-full input"
-              value={pieceData.ubicacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Depósito</label>
-            <input
-              type="text"
-              name="deposito"
-              className="w-full input"
-              value={pieceData.deposito}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Estante</label>
-            <input
-              type="text"
-              name="estante"
-              className="w-full input"
-              value={pieceData.estante}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Caja actual</label>
-            <input
-              type="text"
-              name="caja_actual"
-              className="w-full input"
-              value={pieceData.caja_actual}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Clasificación</label>
-            <input
-              type="text"
-              name="clasificacion"
-              className="w-full input"
-              value={pieceData.clasificacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Conjunto</label>
-            <input
-              type="text"
-              name="conjunto"
-              className="w-full input"
-              value={pieceData.conjunto}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Descripción catálogo</label>
-            <textarea
-              name="descripcion"
-              className="w-full textarea"
-              value={pieceData.descripcion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Marcas o inscripciones</label>
-            <input
-              type="text"
-              name="marcas_inscripciones"
-              className="w-full input"
-              value={pieceData.marcas_inscripciones}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Contexto histórico</label>
-            <input
-              type="text"
-              name="contexto_historico"
-              className="w-full input"
-              value={pieceData.contexto_historico}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Bibliografía</label>
-            <input
-              type="text"
-              name="bibliografia"
-              className="w-full input"
-              value={pieceData.bibliografia}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Iconografía</label>
-            <input
-              type="text"
-              name="iconografia"
-              className="w-full input"
-              value={pieceData.iconografia}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Notas de investigación</label>
-            <input
-              type="text"
-              name="notas_investigacion"
-              className="w-full input"
-              value={pieceData.notas_investigacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Estado de conservación</label>
-            <input
-              type="text"
-              name="estado_conservacion"
-              className="w-full input"
-              value={pieceData.estado_conservacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Descripción conservación</label>
-            <input
-              type="text"
-              name="descripcion_conservacion"
-              className="w-full input"
-              value={pieceData.descripcion_conservacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Responsable conservación</label>
-            <input
-              type="text"
-              name="responsable_conservacion"
-              className="w-full input"
-              value={pieceData.responsable_conservacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Fecha actualización conservación</label>
-            <input
-              type="text"
-              name="fecha_actualizacion_conservacion"
-              className="w-full input"
-              value={pieceData.fecha_actualizacion_conservacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Comentarios conservación</label>
-            <input
-              type="text"
-              name="comentarios_conservacion"
-              className="w-full input"
-              value={pieceData.comentarios_conservacion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Avaluo</label>
-            <input
-              type="text"
-              name="avaluo"
-              className="w-full input"
-              value={pieceData.avaluo}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Procedencia</label>
-            <input
-              type="text"
-              name="procedencia"
-              className="w-full input"
-              value={pieceData.procedencia}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Donante</label>
-            <input
-              type="text"
-              name="donante"
-              className="w-full input"
-              value={pieceData.donante}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Fecha ingreso</label>
-            <input
-              type="text"
-              name="fecha_ingreso"
-              className="w-full input"
-              value={pieceData.fecha_ingreso}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Responsable colección</label>
-            <input
-              type="text"
-              name="responsable_coleccion"
-              className="w-full input"
-              value={pieceData.responsable_coleccion}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Filiación cultural</label>
-            <input
-              type="text"
-              name="filiacion_cultural"
-              className="w-full input"
-              value={pieceData.filiacion_cultural}
-              onChange={handleChangePiece}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Fecha última modificación</label>
-            <input
-              type="text"
-              name="fecha_ultima_modificacion"
-              className="w-full input"
-              value={pieceData.fecha_ultima_modificacion}
-              disabled
-            />
-          </div>
+
+          {/* Centered title */}
+          <h2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold m-0">
+            Editar pieza #{id}
+          </h2>
         </div>
 
-        <h3 className="text-xl font-semibold mt-6 mb-2">Componentes</h3>
-        {components.length > 0 ? (
-          <div className="mb-4 space-y-2">
-            {components.map((comp, idx) => (
-              <div key={idx} className="p-2 bg-gray-50 border rounded flex items-center justify-between">
-                <div>
-                  <strong>Componente {comp.letra.toUpperCase()}</strong>
-                  {comp.nombre_comun && ` – ${comp.nombre_comun}`}
-                  {comp.nombre_atribuido && ` (${comp.nombre_atribuido})`}
-                </div>
-                <div className="space-x-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => handleEditComponentModal(idx)}>
-                    Editar
-                  </Button>
-                  <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveComponent(idx)}>
-                    Quitar
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mb-4 text-sm text-muted-foreground">Esta pieza no tiene componentes.</p>
-        )}
-        <Button type="button" variant="secondary" onClick={handleAddComponentModal}>
-          Añadir componente
-        </Button>
-
-        <div className="mt-6">
-          <label className="block text-sm font-medium mb-1">Nueva imagen (opcional, .jpg)</label>
-          <input
-            type="file"
-            accept=".jpg"
-            onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-          />
-          <small className="text-gray-600">Sube un archivo solo si deseas reemplazar la imagen actual.</small>
-        </div>
-
-        <div className="mt-6 flex items-center gap-4">
-          <Button type="submit" variant="default">Guardar cambios</Button>
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>
-        </div>
-      </form>
-
-      <Dialog open={showCompModal} onOpenChange={setShowCompModal}>
-        <DialogContent className="max-w-lg w-full">
-          <h3 className="text-lg font-semibold mb-4">
-            {editIndex !== null ? `Editar componente ${compForm.letra.toUpperCase()}` : "Añadir componente"}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-1">Letra *</label>
+              <label className="block text-sm font-medium mb-1">Número de inventario</label>
               <input
                 type="text"
-                name="letra"
-                maxLength={1}
-                className="w-full input"
-                value={compForm.letra}
-                onChange={handleChangeComp}
+                name="numero_inventario"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.numero_inventario}
+                disabled
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Nombre común</label>
+              <label className="block text-sm font-medium mb-1">Código SURDOC</label>
               <input
                 type="text"
-                name="nombre_comun"
-                className="w-full input"
-                value={compForm.nombre_comun}
-                onChange={handleChangeComp}
+                name="codigo_surdoc"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.codigo_surdoc}
+                onChange={handleChangePiece}
               />
             </div>
+
+            {/* Resto de campos: usar el mismo estilo que CrearPieza */}
             <div>
-              <label className="block text-sm font-medium mb-1">Nombre atribuido</label>
+              <label className="block text-sm font-medium mb-1">Autor</label>
               <input
                 type="text"
-                name="nombre_atribuido"
-                className="w-full input"
-                value={compForm.nombre_atribuido}
-                onChange={handleChangeComp}
+                name="autor"
+                list="list-autores"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.autor}
+                onChange={handleChangePiece}
+              />
+              <datalist id="list-autores">
+                {authors.map(a => <option key={a} value={a} />)}
+              </datalist>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">País</label>
+              <input
+                type="text"
+                name="pais"
+                list="list-paises"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.pais}
+                onChange={handleChangePiece}
+              />
+              <datalist id="list-paises">
+                {countries.map(p => <option key={p} value={p} />)}
+              </datalist>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Localidad</label>
+              <input
+                type="text"
+                name="localidad"
+                list="list-localidades"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.localidad}
+                onChange={handleChangePiece}
+              />
+              <datalist id="list-localidades">
+                {localidades.map(l => <option key={l} value={l} />)}
+              </datalist>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Colección</label>
+              <input
+                type="text"
+                name="coleccion"
+                list="list-colecciones"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.coleccion}
+                onChange={handleChangePiece}
+              />
+              <datalist id="list-colecciones">
+                {collections.map(c => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Tipología</label>
+              <input
+                type="text"
+                name="tipologia"
+                list="list-tipologias"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.tipologia}
+                onChange={handleChangePiece}
+              />
+              <datalist id="list-tipologias">
+                {tipologias.map(t => <option key={t} value={t} />)}
+              </datalist>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Ubicación</label>
+              <input
+                type="text"
+                name="ubicacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.ubicacion}
+                onChange={handleChangePiece}
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Depósito</label>
+              <input
+                type="text"
+                name="deposito"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.deposito}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Estante</label>
+              <input
+                type="text"
+                name="estante"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.estante}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Caja actual</label>
+              <input
+                type="text"
+                name="caja_actual"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.caja_actual}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Clasificación</label>
+              <input
+                type="text"
+                name="clasificacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.clasificacion}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Conjunto</label>
+              <input
+                type="text"
+                name="conjunto"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.conjunto}
+                onChange={handleChangePiece}
+              />
+            </div>
+
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Descripción</label>
+              <label className="block text-sm font-medium mb-1">Descripción catálogo</label>
               <textarea
                 name="descripcion"
-                rows={2}
-                className="w-full textarea"
-                value={compForm.descripcion}
-                onChange={handleChangeComp}
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.descripcion}
+                onChange={handleChangePiece}
               />
             </div>
+
+            {/* Resto de campos (marcas, contexto, bibliografía, etc.) */}
             <div>
-              <label className="block text-sm font-medium mb-1">Función</label>
+              <label className="block text-sm font-medium mb-1">Marcas o inscripciones</label>
               <input
                 type="text"
-                name="funcion"
-                className="w-full input"
-                value={compForm.funcion}
-                onChange={handleChangeComp}
+                name="marcas_inscripciones"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.marcas_inscripciones}
+                onChange={handleChangePiece}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Forma</label>
+              <label className="block text-sm font-medium mb-1">Contexto histórico</label>
               <input
                 type="text"
-                name="forma"
-                className="w-full input"
-                value={compForm.forma}
-                onChange={handleChangeComp}
+                name="contexto_historico"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.contexto_historico}
+                onChange={handleChangePiece}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Peso (kg)</label>
+              <label className="block text-sm font-medium mb-1">Bibliografía</label>
               <input
-                type="number"
-                step="any"
-                name="peso_kg"
-                className="w-full input"
-                value={compForm.peso_kg}
-                onChange={handleChangeComp}
+                type="text"
+                name="bibliografia"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.bibliografia}
+                onChange={handleChangePiece}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Alto (cm)</label>
+              <label className="block text-sm font-medium mb-1">Iconografía</label>
               <input
-                type="number"
-                step="any"
-                name="alto_cm"
-                className="w-full input"
-                value={compForm.alto_cm}
-                onChange={handleChangeComp}
+                type="text"
+                name="iconografia"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.iconografia}
+                onChange={handleChangePiece}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Ancho (cm)</label>
+              <label className="block text-sm font-medium mb-1">Notas de investigación</label>
               <input
-                type="number"
-                step="any"
-                name="ancho_cm"
-                className="w-full input"
-                value={compForm.ancho_cm}
-                onChange={handleChangeComp}
+                type="text"
+                name="notas_investigacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.notas_investigacion}
+                onChange={handleChangePiece}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Profundidad (cm)</label>
-              <input
-                type="number"
-                step="any"
-                name="profundidad_cm"
-                className="w-full input"
-                value={compForm.profundidad_cm}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Diámetro (cm)</label>
-              <input
-                type="number"
-                step="any"
-                name="diametro_cm"
-                className="w-full input"
-                value={compForm.diametro_cm}
-                onChange={handleChangeComp}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Espesor (mm)</label>
-              <input
-                type="number"
-                step="any"
-                name="espesor_mm"
-                className="w-full input"
-                value={compForm.espesor_mm}
-                onChange={handleChangeComp}
-              />
-            </div>
+
+            {/* Campos de conservación y demás */}
             <div>
               <label className="block text-sm font-medium mb-1">Estado de conservación</label>
               <input
                 type="text"
                 name="estado_conservacion"
-                className="w-full input"
-                value={compForm.estado_conservacion}
-                onChange={handleChangeComp}
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.estado_conservacion}
+                onChange={handleChangePiece}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Materialidad</label>
+              <label className="block text-sm font-medium mb-1">Descripción conservación</label>
               <input
                 type="text"
-                name="materialidad"
-                className="w-full input"
-                value={compForm.materialidad}
-                onChange={handleChangeComp}
+                name="descripcion_conservacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.descripcion_conservacion}
+                onChange={handleChangePiece}
               />
-              <small className="text-gray-500">* Separe múltiples materiales con coma</small>
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Técnica</label>
+              <label className="block text-sm font-medium mb-1">Responsable conservación</label>
               <input
                 type="text"
-                name="tecnica"
-                className="w-full input"
-                value={compForm.tecnica}
-                onChange={handleChangeComp}
+                name="responsable_conservacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.responsable_conservacion}
+                onChange={handleChangePiece}
               />
-              <small className="text-gray-500">* Separe múltiples técnicas con coma</small>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Fecha actualización conservación</label>
+              <input
+                type="text"
+                name="fecha_actualizacion_conservacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.fecha_actualizacion_conservacion}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Comentarios conservación</label>
+              <input
+                type="text"
+                name="comentarios_conservacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.comentarios_conservacion}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Avaluo</label>
+              <input
+                type="text"
+                name="avaluo"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.avaluo}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Procedencia</label>
+              <input
+                type="text"
+                name="procedencia"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.procedencia}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Donante</label>
+              <input
+                type="text"
+                name="donante"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.donante}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Fecha ingreso</label>
+              <input
+                type="text"
+                name="fecha_ingreso"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.fecha_ingreso}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Responsable colección</label>
+              <input
+                type="text"
+                name="responsable_coleccion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.responsable_coleccion}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Filiación cultural</label>
+              <input
+                type="text"
+                name="filiacion_cultural"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.filiacion_cultural}
+                onChange={handleChangePiece}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Fecha última modificación</label>
+              <input
+                type="text"
+                name="fecha_ultima_modificacion"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.fecha_ultima_modificacion}
+                disabled
+              />
             </div>
           </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="default" onClick={handleSaveComponent}>
-              Guardar
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setShowCompModal(false)}>
-              Cancelar
-            </Button>
+
+          <h3 className="text-xl font-semibold mt-6 mb-2">Componentes</h3>
+          {components.length > 0 ? (
+            <div className="mb-4 space-y-2">
+              {components.map((comp, idx) => (
+                <div key={idx} className="p-2 bg-gray-50 border rounded flex items-center justify-between">
+                  <div>
+                    <strong>Componente {comp.letra.toUpperCase()}</strong>
+                    {comp.nombre_comun && ` – ${comp.nombre_comun}`}
+                    {comp.nombre_atribuido && ` (${comp.nombre_atribuido})`}
+                  </div>
+                  <div className="space-x-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => handleEditComponentModal(idx)}>
+                      Editar
+                    </Button>
+                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveComponent(idx)}>
+                      Quitar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mb-4 text-sm text-muted-foreground">Esta pieza no tiene componentes.</p>
+          )}
+          <Button type="button" variant="secondary" onClick={handleAddComponentModal}>
+            Añadir componente
+          </Button>
+
+          <div className="mt-6">
+            <label className="block text-sm font-medium mb-1">Nueva imagen (opcional, .jpg)</label>
+            <input
+              type="file"
+              accept=".jpg"
+              onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+            />
+            <small className="text-gray-600">Sube un archivo solo si deseas reemplazar la imagen actual.</small>
           </div>
-        </DialogContent>
-      </Dialog>
+
+          <div className="mt-6 flex items-center gap-4">
+            <Button type="submit" variant="default">Guardar cambios</Button>
+            <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>
+          </div>
+        </form>
+
+        <Dialog open={showCompModal} onOpenChange={setShowCompModal}>
+          <DialogContent className="max-w-3xl w-full bg-white p-8 overflow-y-auto" style={{ maxHeight: "90vh" }}>
+            <h3 className="text-lg font-semibold mb-6">
+              {editIndex !== null ? `Editar componente ${compForm.letra.toUpperCase()}` : "Añadir componente"}
+            </h3>
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleSaveComponent();
+              }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Letra *</label>
+                  <input
+                    type="text"
+                    name="letra"
+                    maxLength={1}
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={compForm.letra}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nombre común</label>
+                  <input
+                    type="text"
+                    name="nombre_comun"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={compForm.nombre_comun}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nombre atribuido</label>
+                  <input
+                    type="text"
+                    name="nombre_atribuido"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={compForm.nombre_atribuido}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Descripción</label>
+                  <textarea
+                    name="descripcion"
+                    rows={2}
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={compForm.descripcion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+
+                {/* Resto campos del modal con el mismo estilo */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Función</label>
+                  <input type="text" name="funcion" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.funcion} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Forma</label>
+                  <input type="text" name="forma" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.forma} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Peso (kg)</label>
+                  <input type="number" step="any" name="peso_kg" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.peso_kg} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Alto (cm)</label>
+                  <input type="number" step="any" name="alto_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.alto_cm} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Ancho (cm)</label>
+                  <input type="number" step="any" name="ancho_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.ancho_cm} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Profundidad (cm)</label>
+                  <input type="number" step="any" name="profundidad_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.profundidad_cm} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Diámetro (cm)</label>
+                  <input type="number" step="any" name="diametro_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.diametro_cm} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Espesor (mm)</label>
+                  <input type="number" step="any" name="espesor_mm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.espesor_mm} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Estado de conservación</label>
+                  <input type="text" name="estado_conservacion" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.estado_conservacion} onChange={handleChangeComp}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Materialidad</label>
+                  <input type="text" name="materialidad" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.materialidad} onChange={handleChangeComp}/>
+                  <small className="text-gray-500">* Separe múltiples materiales con coma</small>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Técnica</label>
+                  <input type="text" name="tecnica" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.tecnica} onChange={handleChangeComp}/>
+                  <small className="text-gray-500">* Separe múltiples técnicas con coma</small>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2">
+                <Button type="button" variant="default" onClick={handleSaveComponent}>
+                  Guardar
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowCompModal(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CollectionItem, PaginationState, SearchFilters, ViewMode } from "@/types";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import api from "@/services/api";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 const ITEMS_PER_PAGE = 10;

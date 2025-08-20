@@ -10,7 +10,9 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const access = localStorage.getItem("access");
   if (access) {
-    config.headers = config.headers || {};
+    if (!config.headers) {
+      config.headers = {} as typeof config.headers;
+    }
     config.headers.Authorization = `Bearer ${access}`;
   }
   return config;

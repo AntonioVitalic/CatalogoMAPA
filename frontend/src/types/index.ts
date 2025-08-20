@@ -37,6 +37,7 @@ export interface CollectionItem {
   author?: string;
   exhibitions?: string[];
   auditInfo?: AuditInfo;
+  letra?: string;
 }
 
 export interface SearchFilters {
