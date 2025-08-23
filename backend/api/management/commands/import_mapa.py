@@ -78,6 +78,7 @@ class Command(BaseCommand):
             responsable_conservacion='responsable_conservacion',
             fecha_actualizacion_conservacion='fecha_actualizacion_cr',
             comentarios_conservacion='comentarios_cr',
+            exposiciones='exposiciones',
             responsable_coleccion='responsable_coleccion',
             fecha_ultima_modificacion='fecha_ultima_modificacion',
             autor='autor',
@@ -389,6 +390,9 @@ class Command(BaseCommand):
 
         pd.DataFrame({"nombre": _uniq_series(piezas_df.get("tipologia", pd.Series(dtype=str)))}) \
           .to_csv(os.path.join(aux_dir, "tipologias.csv"), index=False)
+        
+        pd.DataFrame({"nombre": _uniq_series(piezas_df.get("exposiciones", pd.Series(dtype=str)))}) \
+          .to_csv(os.path.join(aux_dir, "exposiciones.csv"), index=False)
 
         self.stdout.write(self.style.SUCCESS(
             f"✅ Import finalizado: {len(piezas_df)} piezas, {len(img_rows)} imágenes, en {time.monotonic()-t0:.2f}s"

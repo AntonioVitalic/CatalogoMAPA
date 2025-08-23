@@ -380,3 +380,14 @@ class TipologiaViewSet(viewsets.ViewSet):
         nombres = [r[0] for r in rows]
         data = _catalog_json(nombres)
         return Response(data)
+    
+class ExposicionViewSet(viewsets.ViewSet):
+    def list(self, request):
+        import os
+        import pandas as pd
+        csv_path = os.path.join(os.getcwd(), "neo4j", "import", "exposiciones.csv")
+        expos = []
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+            expos = [{"id": i + 1, "nombre": str(n)} for i, n in enumerate(df["nombre"].dropna().unique())]
+        return Response(expos)

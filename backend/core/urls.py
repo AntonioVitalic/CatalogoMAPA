@@ -23,7 +23,7 @@ from rest_framework.routers import DefaultRouter
 from api.views import (
     PiezaViewSet, ComponenteViewSet, ImagenViewSet, 
     AutorViewSet, PaisViewSet, LocalidadViewSet, 
-    TipologiaViewSet, ColeccionViewSet
+    TipologiaViewSet, ColeccionViewSet, ExposicionViewSet
 )
 
 router = DefaultRouter()
@@ -35,6 +35,7 @@ router.register(r'colecciones', ColeccionViewSet, basename='coleccion')
 router.register(r'autores', AutorViewSet, basename='autor')
 router.register(r'localidades', LocalidadViewSet, basename='localidad')
 router.register(r'tipologias', TipologiaViewSet, basename='tipologia')
+router.register(r'exposiciones', ExposicionViewSet, basename='exposicion')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

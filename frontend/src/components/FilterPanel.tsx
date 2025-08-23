@@ -14,16 +14,8 @@ type FilterOptions = {
   authors: string[];
   localities: string[];
   tipologias: string[];
+  exhibitions: string[];
 };
-
-// Exhibiciones (de momento mock)
-const mockExhibitions = [
-  "Textiles Andinos",
-  "Artesanía Contemporánea",
-  "Cerámica Precolombina",
-  "Arte Popular Chileno",
-  "Máscaras Ceremoniales",
-];
 
 interface FilterPanelProps {
   onApplyFilters: (filters: SearchFilters) => void;
@@ -50,6 +42,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
     authors: [],
     localities: [],
     tipologias: [],
+    exhibitions: [],
   });
 
   // sync si nos pasan initialFilters (reabrir panel)
@@ -67,15 +60,17 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
           fetch(`${API_URL}/api/autores/`),
           fetch(`${API_URL}/api/localidades/`),
           fetch(`${API_URL}/api/tipologias/`),
+          fetch(`${API_URL}/api/exposiciones/`),
         ]);
         resps.forEach(r => { if (!r.ok) throw new Error("Error al cargar filtros"); });
-        const [paises, coles, autores, locs, tips] = await Promise.all(resps.map(r => r.json()));
+        const [paises, coles, autores, locs, tips, expos] = await Promise.all(resps.map(r => r.json()));
         setOpts({
           countries: paises.map((x: any) => x.nombre),
           collections: coles.map((x: any) => x.nombre),
           authors: autores.map((x: any) => x.nombre),
           localities: locs.map((x: any) => x.nombre),
           tipologias: tips.map((x: any) => x.nombre),
+          exhibitions: expos.map((x: any) => x.nombre),
         });
       } catch (e) {
         console.error("Error fetching filter options:", e);
@@ -170,13 +165,13 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
         </div>
 
         <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium w-28">Exhibición</Label>
+          <Label className="text-sm font-medium w-28">Exposiciones</Label>
           <SearchableMultiSelect
-            options={mockExhibitions}
+            options={opts.exhibitions}
             selectedValues={filters.exhibitions || []}
             onSelectionChange={(v) => onMulti("exhibitions", v)}
-            placeholder="Seleccionar exhibiciones"
-            label="Exhibición"
+            placeholder="Seleccionar exposiciones"
+            label="Exposiciones"
           />
         </div>
 
