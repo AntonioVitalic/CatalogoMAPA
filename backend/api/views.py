@@ -115,7 +115,7 @@ class PiezaViewSet(viewsets.ViewSet):
             nombre_comun=data.get('nombre_comun', ''),
             nombre_especifico=data.get('nombre_especifico', ''),
             fecha_creacion=data.get('fecha_creacion', ''),
-            descripcion=data.get('descripcion', ''),
+            descripcion_col=data.get('descripcion_col', ''),
             marcas_inscripciones=data.get('marcas_inscripciones', ''),
             contexto_historico=data.get('contexto_historico', ''),
             bibliografia=data.get('bibliografia', ''),
@@ -150,11 +150,11 @@ class PiezaViewSet(viewsets.ViewSet):
                     letra=comp.get('letra', ''),
                     nombre_comun=comp.get('nombre_comun', ''),
                     nombre_atribuido=comp.get('nombre_atribuido', ''),
-                    descripcion=comp.get('descripcion', ''),
+                    descripcion_col=comp.get('descripcion_col', ''),
                     funcion=comp.get('funcion', ''),
                     forma=comp.get('forma', ''),
                     marcas_inscripciones=comp.get('marcas_inscripciones', ''),
-                    peso_kg=float(comp.get('peso_kg', 0) or 0),
+                    peso_gr=float(comp.get('peso_gr', 0) or 0),
                     alto_cm=float(comp.get('alto_cm', 0) or 0),
                     ancho_cm=float(comp.get('ancho_cm', 0) or 0),
                     profundidad_cm=float(comp.get('profundidad_cm', 0) or 0),
@@ -287,8 +287,13 @@ class PiezaViewSet(viewsets.ViewSet):
 class ComponenteViewSet(viewsets.ViewSet):
     def list(self, request):
         comps = Componente.nodes.all()
-        ser = ComponenteOutSerializer(comps, many=True, context={'request': request})
-        return Response(ser.data)
+        # Ordenar por pieza_numero_inventario (convertido a int para orden numérico)
+        comps = sorted(comps, key=lambda c: int(c.pieza_numero_inventario))
+        paginator = PageNumberPagination()
+        paginator.page_size = settings.REST_FRAMEWORK['PAGE_SIZE']
+        page = paginator.paginate_queryset(list(comps), request)
+        ser = ComponenteOutSerializer(page, many=True, context={'request': request})
+        return paginator.get_paginated_response(ser.data)
 
     def retrieve(self, request, pk=None):
         comp = Componente.nodes.get(uid=pk)

@@ -38,28 +38,63 @@ class Imagen(StructuredNode):
 
 class Componente(StructuredNode):
     uid = UniqueIdProperty()
-    # vínculo “lógico” con la pieza por su número
-    pieza_numero_inventario = StringProperty(index=True)  # "27"
+    pieza_numero_inventario = StringProperty(index=True)
     letra = StringProperty(index=True)
-    nombre_comun = StringProperty()
-    nombre_atribuido = StringProperty()
-    descripcion = StringProperty()
-    funcion = StringProperty()
-    forma = StringProperty()
+    revision = StringProperty()
 
-    # dimensiones / peso
-    peso_kg = FloatProperty()
+    numero_registro_anterior = StringProperty()
+    codigo_surdoc = StringProperty()
+
+    ubicacion = StringProperty()
+    deposito = StringProperty()
+    estante = StringProperty()
+    caja_actual = StringProperty()
+
+    tipologia = StringProperty()
+    coleccion = StringProperty()
+    clasificacion = StringProperty()
+    conjunto = StringProperty()
+    nombre_comun = StringProperty()
+    nombre_especifico = StringProperty()
+    autor = StringProperty()
+    filiacion_cultural = StringProperty()
+    pais = StringProperty()
+    localidad = StringProperty()
+    fecha_creacion = StringProperty()
+    descripcion_col = StringProperty()
+
+    marcas_inscripciones = StringProperty()
+    tecnica = StringProperty()
+    materialidad = StringProperty()
+    descripcion_cr = StringProperty()
     alto_cm = FloatProperty()
     ancho_cm = FloatProperty()
     profundidad_cm = FloatProperty()
     diametro_cm = FloatProperty()
     espesor_mm = FloatProperty()
+    peso_gr = FloatProperty()
+
+    funcion = StringProperty()
+    contexto_historico = StringProperty()
+    bibliografia = StringProperty()
+    iconografia = StringProperty()
+    notas_investigacion = StringProperty()
 
     estado_conservacion = StringProperty()
+    responsable_conservacion = StringProperty()
+    fecha_actualizacion_conservacion = StringProperty()
+    comentarios_conservacion = StringProperty()
 
+    exposiciones = StringProperty()
+    avaluo = StringProperty()
+    procedencia = StringProperty()
+    donante = StringProperty()
+    fecha_ingreso = StringProperty()
+    responsable_coleccion = StringProperty()
+    fecha_ultima_modificacion = StringProperty()
     # relaciones
-    materiales = RelationshipTo(Material, 'USO_MATERIAL')
-    tecnica    = RelationshipTo(Tecnica,  'USO_TECNICA')
+    # materiales = RelationshipTo(Material, 'USO_MATERIAL')
+    # tecnica    = RelationshipTo(Tecnica,  'USO_TECNICA')
     imagenes   = RelationshipTo(Imagen,   'TIENE_IMAGEN')
 
 class Pieza(StructuredNode):
@@ -69,46 +104,59 @@ class Pieza(StructuredNode):
     numero_inventario = StringProperty(index=True)
     numero_inventario_int = IntegerProperty(index=True)  # para ordenar rápido
 
-    # Campos 1:1 con tu modelo sqlite
+    letra = StringProperty(index=True)
     revision = StringProperty()
+
     numero_registro_anterior = StringProperty()
     codigo_surdoc = StringProperty()
+
     ubicacion = StringProperty()
     deposito = StringProperty()
     estante = StringProperty()
     caja_actual = StringProperty()
+
     tipologia = StringProperty()
+    coleccion  = RelationshipTo(Coleccion, 'PERTENECE_A')
     clasificacion = StringProperty()
     conjunto = StringProperty()
     nombre_comun = StringProperty()
     nombre_especifico = StringProperty()
+    autor      = RelationshipTo(Autor, 'CREADO_POR')
+    filiacion_cultural = RelationshipTo(Cultura, 'FILIACION')
+    pais       = RelationshipTo(Pais, 'PROCEDENTE_DE')
+    localidad  = RelationshipTo(Localidad, 'LOCALIZADO_EN')
     fecha_creacion = StringProperty()
-    descripcion = StringProperty()
+    descripcion_col = StringProperty()
+
     marcas_inscripciones = StringProperty()
+    tecnica    = RelationshipTo(Tecnica,  'HECHO_CON')
+    materiales = RelationshipTo(Material, 'HECHO_DE')
+    descripcion_cr = StringProperty()
+    alto_cm = FloatProperty()
+    ancho_cm = FloatProperty()
+    profundidad_cm = FloatProperty()
+    diametro_cm = FloatProperty()
+    espesor_mm = FloatProperty()
+    peso_gr = FloatProperty()
+
+    funcion = StringProperty()
     contexto_historico = StringProperty()
     bibliografia = StringProperty()
     iconografia = StringProperty()
     notas_investigacion = StringProperty()
-    avaluo = StringProperty()
-    procedencia = StringProperty()
-    donante = StringProperty()
-    fecha_ingreso = StringProperty()
+
     estado_conservacion = StringProperty()
-    descripcion_conservacion = StringProperty()
     responsable_conservacion = StringProperty()
     fecha_actualizacion_conservacion = StringProperty()
     comentarios_conservacion = StringProperty()
+    
+    exposiciones = RelationshipTo(Exposicion, 'EXHIBIDO_EN')
+    avaluo = StringProperty()
+    procedencia = StringProperty()
+    donante = StringProperty()
+    fecha_ingreso = StringProperty()    
     responsable_coleccion = StringProperty()
     fecha_ultima_modificacion = StringProperty()
-
-    # relaciones
-    pais       = RelationshipTo(Pais, 'PROCEDENTE_DE')
-    localidad  = RelationshipTo(Localidad, 'LOCALIZADO_EN')
-    filiacion_cultural = RelationshipTo(Cultura, 'FILIACION')
-    coleccion  = RelationshipTo(Coleccion, 'PERTENECE_A')
-    autor      = RelationshipTo(Autor, 'CREADO_POR')
-    exposiciones = RelationshipTo(Exposicion, 'EXHIBIDO_EN')
-    materiales = RelationshipTo(Material, 'HECHO_DE')
-    tecnica    = RelationshipTo(Tecnica,  'HECHO_CON')
+    
     componentes = RelationshipTo(Componente, 'TIENE_COMPONENTE')
     imagenes    = RelationshipTo(Imagen, 'TIENE_IMAGEN')
