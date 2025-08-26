@@ -113,6 +113,40 @@ const Detail = () => {
       <Header onLoginClick={() => setShowLogin(true)} />
       <div className="flex-1">
         <ItemDetail item={item} />
+        {item.componentes && item.componentes.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">Componentes</h2>
+          {item.componentes.map((comp, idx) => (
+            <div key={idx} className="mb-6 border rounded-lg p-4 bg-muted/10">
+              <h3 className="font-semibold mb-2">
+                Componente {comp.letra ? comp.letra.toUpperCase() : idx + 1}
+              </h3>
+              <table className="w-full text-sm">
+                <tbody>
+                  {Object.entries(comp).map(([key, value]) => (
+                    key !== "imagenes" && (
+                      <tr key={key}>
+                        <td className="font-medium pr-2">{key}</td>
+                        <td>{String(value)}</td>
+                      </tr>
+                    )
+                  ))}
+                  {comp.imagenes && comp.imagenes.length > 0 && (
+                    <tr>
+                      <td className="font-medium pr-2">Imágenes</td>
+                      <td>
+                        {comp.imagenes.map((img: any, i: number) => (
+                          <img key={i} src={img.imagen} alt={img.descripcion || ""} className="inline-block h-16 mr-2" />
+                        ))}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      )}
       </div>
 
       <Dialog open={showLogin} onOpenChange={setShowLogin}>

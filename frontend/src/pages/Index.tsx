@@ -76,7 +76,9 @@ export default function Index() {
       thumbnailUrl: imageUrl,
       collection: p.coleccion || "",
       author: p.autor || "",
-      // exhibitions: p.exposiciones ?? [],
+      exhibitions: p.exposiciones ?? [],
+      componentes: p.componentes ?? [],
+      imagenes: p.imagenes ?? [],
     };
   };
 
@@ -93,7 +95,7 @@ export default function Index() {
     // importante: coincide con views.py (getlist('tipologia'))
     filters.tipologias?.forEach((t) => params.append("tipologia", t));
     // exposiciones si aplica
-    // filters.exhibitions?.forEach((e) => params.append("exposiciones__titulo", e)); // en el excel no hay columna de exhibiciones / exposiciones aún...
+    filters.exhibitions?.forEach((e) => params.append("exposiciones__titulo", e)); // en el excel sí hay columnas de exposiciones
     if (filters.dateFrom) params.append("fecha_creacion_after", filters.dateFrom);
     if (filters.dateTo) params.append("fecha_creacion_before", filters.dateTo);
 

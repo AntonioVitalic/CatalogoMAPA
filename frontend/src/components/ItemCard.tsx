@@ -2,6 +2,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CollectionItem } from "@/types";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye } from "lucide-react";
 
@@ -72,7 +73,13 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
               <p className="text-sm line-clamp-1">{item.author}</p>
             </div>
           )}
-
+          {item.componentes && item.componentes.length > 0 && (
+            <div className="my-2">
+              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded">
+                Posee componente(s)
+              </span>
+            </div>
+          )}
           {item.materials && item.materials.length > 0 && (
             <div>
               <p className="text-xs font-medium">Materialidad</p>

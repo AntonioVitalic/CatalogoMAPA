@@ -98,42 +98,35 @@ const ItemGrid = ({
           <div className="flex-1 min-w-0">
             <div className="flex justify-between">
               <div className="max-w-[70%] space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  {item.inventoryNumber}
-                </p>
-                <h3 className="font-medium text-sm truncate">
-                  {item.commonName}
-                </h3>
-                {item.attributedName && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {item.attributedName}
-                  </p>
+              <p className="text-xs text-muted-foreground">
+                {item.inventoryNumber}
+              </p>
+              <h3 className="font-medium text-sm truncate">
+                {item.commonName}
+              </h3>
+              {item.componentes && item.componentes.length > 0 && (
+                <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded inline-block my-1">
+                  Posee componente(s)
+                </span>
+              )}
+              <div className="flex flex-wrap gap-4 items-center mt-1">
+                {item.collection && (
+                  <span className="text-xs">
+                    <span className="font-medium">Colección:</span> {item.collection}
+                  </span>
                 )}
-                {item.author && (
-                  <p className="text-xs">
-                    <span className="font-medium">Autor:</span> {item.author}
-                  </p>
+                {item.conservationState && (
+                  <span className="text-xs">
+                    <span className="font-medium">Estado:</span> {item.conservationState}
+                  </span>
                 )}
-                <p className="text-xs">
-                  <span className="font-medium">Estado:</span>{" "}
-                  {item.conservationState}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {item.materials.slice(0, 2).map((m, i) => (
-                    <span
-                      key={i}
-                      className="text-xs bg-secondary px-1.5 py-0.5 rounded"
-                    >
-                      {m}
-                    </span>
-                  ))}
-                  {item.materials.length > 2 && (
-                    <span className="text-xs bg-secondary px-1.5 py-0.5 rounded">
-                      +{item.materials.length - 2}
-                    </span>
-                  )}
-                </div>
+                {(item.country || item.locality) && (
+                  <span className="text-xs text-muted-foreground">
+                    {item.country}{item.locality ? `, ${item.locality}` : ""}
+                  </span>
+                )}
               </div>
+            </div>
               <div className="flex flex-col space-y-1 ml-2">
                 <Button
                   variant="outline"

@@ -38,7 +38,35 @@ export interface CollectionItem {
   exhibitions?: string[];
   auditInfo?: AuditInfo;
   letra?: string;
+  componentes?: ComponenteItem[];
+  imagenes?: { imagen: string; descripcion?: string }[];
 }
+
+export type ComponenteItem = {
+  id: string;
+  inventoryNumber: string;
+  previousRegistryNumber?: string;
+  surdoc?: string;
+  commonName: string;
+  attributedName?: string;
+  country: string;
+  locality?: string;
+  creationDate?: string;
+  materials: string[];
+  collectionDescription: string;
+  conservationState: string;
+  location?: string;
+  deposit?: string;
+  shelf?: string;
+  imageUrl: string;
+  thumbnailUrl: string;
+  collection: string;
+  author?: string;
+  exhibitions?: string[];
+  auditInfo?: AuditInfo;
+  letra?: string;
+  imagenes?: { imagen: string; descripcion?: string }[];
+};
 
 export interface SearchFilters {
   query: string;

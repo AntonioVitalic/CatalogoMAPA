@@ -49,8 +49,8 @@ const Header = ({ onLoginClick }: HeaderProps) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* <ThemeToggle /> */}
-          
+          <ThemeToggle /> {/* Pendiente: mejorar tema oscuro en los formularios y tablas */}
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
