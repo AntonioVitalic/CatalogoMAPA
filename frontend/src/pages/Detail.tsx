@@ -33,39 +33,65 @@ const Detail = () => {
         const mappedItem: CollectionItem = {
           id: data.id ? String(data.id) : "",
           inventoryNumber: data.numero_inventario || "Sin dato",
-          previousRegistryNumber: data.numero_registro_anterior && data.numero_registro_anterior.trim() !== "" ? data.numero_registro_anterior : "Sin dato",
-          surdoc: data.codigo_surdoc && data.codigo_surdoc.trim() !== "" ? data.codigo_surdoc : "Sin dato",
-          commonName: data.nombre_comun && data.nombre_comun.trim() !== "" ? data.nombre_comun : "Sin dato",
-          attributedName: data.nombre_especifico && data.nombre_especifico.trim() !== "" ? data.nombre_especifico : "",
-          country: data.pais || "Sin dato",
-          locality: data.localidad || "Sin dato",
-          creationDate: data.fecha_creacion && data.fecha_creacion.trim() !== "" ? data.fecha_creacion : "Sin dato",
-          materials: (data.materiales && Array.isArray(data.materiales) && data.materiales.length > 0) ? data.materiales : ["Sin dato"],
-          collectionDescription: data.descripcion_col && data.descripcion_col.trim() !== "" ? data.descripcion_col : "Sin dato",
-          conservationState: data.estado_conservacion && data.estado_conservacion.trim() !== "" ? data.estado_conservacion : "Sin dato",
-          location: data.ubicacion && data.ubicacion.trim() !== "" ? data.ubicacion : "Sin dato",
-          deposit: data.deposito && data.deposito.trim() !== "" ? data.deposito : "Sin dato",
-          shelf: data.estante && data.estante.trim() !== "" ? data.estante : "Sin dato",
-          collection: data.coleccion || "Sin dato",
-          author: data.autor || "Sin dato",
-          exhibitions: data.exposiciones && Array.isArray(data.exposiciones) ? data.exposiciones : [],
-          auditInfo: undefined,
-          imageUrl: "",
-          thumbnailUrl: ""
+          letra: data.letra || "",
+          revision: data.revision || "",
+          previousRegistryNumber: data.numero_registro_anterior || "",
+          surdoc: data.codigo_surdoc || "",
+          ubicacion: data.ubicacion || "",
+          deposito: data.deposito || "",
+          estante: data.estante || "",
+          caja_actual: data.caja_actual || "",
+          tipologia: data.tipologia || "",
+          coleccion: data.coleccion || "",
+          clasificacion: data.clasificacion || "",
+          conjunto: data.conjunto || "",
+          nombre_comun: data.nombre_comun || "",
+          nombre_especifico: data.nombre_especifico || "",
+          autor: data.autor || "",
+          filiacion_cultural: data.filiacion_cultural || "",
+          pais: data.pais || "",
+          localidad: data.localidad || "",
+          fecha_creacion: data.fecha_creacion || "",
+          descripcion_col: data.descripcion_col || "",
+          marcas_inscripciones: data.marcas_inscripciones || "",
+          tecnica: data.tecnica || [],
+          materialidad: data.materialidad || "",
+          descripcion_cr: data.descripcion_cr || "",
+          alto_cm: data.alto_cm ?? null,
+          ancho_cm: data.ancho_cm ?? null,
+          profundidad_cm: data.profundidad_cm ?? null,
+          diametro_cm: data.diametro_cm ?? null,
+          espesor_mm: data.espesor_mm ?? null,
+          peso_gr: data.peso_gr ?? null,
+          funcion: data.funcion || "",
+          contexto_historico: data.contexto_historico || "",
+          bibliografia: data.bibliografia || "",
+          iconografia: data.iconografia || "",
+          notas_investigacion: data.notas_investigacion || "",
+          estado_conservacion: data.estado_conservacion || "",
+          responsable_conservacion: data.responsable_conservacion || "",
+          fecha_actualizacion_conservacion: data.fecha_actualizacion_conservacion || "",
+          comentarios_conservacion: data.comentarios_conservacion || "",
+          exposiciones: data.exposiciones || "",
+          avaluo: data.avaluo || "",
+          procedencia: data.procedencia || "",
+          donante: data.donante || "",
+          fecha_ingreso: data.fecha_ingreso || "",
+          responsable_coleccion: data.responsable_coleccion || "",
+          fecha_ultima_modificacion: data.fecha_ultima_modificacion || "",
+          componentes: data.componentes ?? [],
+          imagenes: Array.isArray(data.imagenes)
+            ? data.imagenes.map((img: any) => ({
+                ...img,
+                imagen: img.imagen.startsWith("http") ? img.imagen : `${API_URL}${img.imagen}`,
+              }))
+            : [],
         };
-        // If there's at least one image, build its URL
-        if (data.imagenes && Array.isArray(data.imagenes) && data.imagenes.length > 0) {
-          const imgObj = data.imagenes[0];
-          if (imgObj && imgObj.imagen) {
-            // Prepend API_URL if the image path is not absolute
-            mappedItem.imageUrl = imgObj.imagen.startsWith("http") ? imgObj.imagen : `${API_URL}${imgObj.imagen}`;
-            mappedItem.thumbnailUrl = mappedItem.imageUrl;
-          }
-        }
-        // If commonName is missing but attributedName exists, use attributedName as commonName
-        if (mappedItem.commonName === "Sin dato" && mappedItem.attributedName) {
-          mappedItem.commonName = mappedItem.attributedName;
-          mappedItem.attributedName = "";
+        
+        // If nombre_comun is missing but nombre_especifico exists, use nombre_especifico as nombre_comun
+        if (mappedItem.nombre_comun === "Sin dato" && mappedItem.nombre_especifico) {
+          mappedItem.nombre_comun = mappedItem.nombre_especifico;
+          mappedItem.nombre_especifico = "";
         }
         setItem(mappedItem);
       } catch (error) {

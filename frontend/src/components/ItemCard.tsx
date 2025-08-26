@@ -23,15 +23,16 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
   return (
     <Card className={`overflow-hidden hover:shadow-md transition-shadow ${isSelected ? 'ring-2 ring-primary' : ''}`}>
       <div className="relative aspect-square">
-        <div className="absolute inset-0 flex justify-center items-center bg-muted/30">
-          {!item.thumbnailUrl && <span className="text-muted-foreground text-sm">Sin imagen</span>}
-        </div>
-        {item.thumbnailUrl && (
-          <img
-            src={item.thumbnailUrl}
-            alt={item.commonName}
-            className="w-full h-full object-cover"
-          />
+        {item.imagenes && item.imagenes.length > 0 ? (
+        <img
+              src={item.imagenes[0].imagen}
+              alt={item.imagenes[0].descripcion || item.nombre_comun || "Sin imagen"}
+              className="w-full h-full object-cover"
+            />
+        ) : (
+            <div className="absolute inset-0 flex justify-center items-center bg-muted/30">
+              <span className="text-muted-foreground text-sm">Sin imagen</span>
+            </div>
         )}
         {isSelected && (
           <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
@@ -54,23 +55,23 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
         <div className="space-y-2">
           <div>
             <p className="text-xs text-muted-foreground">{item.inventoryNumber}</p>
-            <h3 className="font-medium line-clamp-2">{item.commonName}</h3>
-            {item.attributedName && (
-              <p className="text-sm text-muted-foreground line-clamp-1">{item.attributedName}</p>
+            <h3 className="font-medium line-clamp-2">{item.nombre_comun}</h3>
+            {item.nombre_especifico && (
+              <p className="text-sm text-muted-foreground line-clamp-1">{item.nombre_especifico}</p>
             )}
           </div>
-          
-          {item.collection && (
+
+          {item.coleccion && (
             <div>
               <p className="text-xs font-medium">Colección</p>
-              <p className="text-sm line-clamp-1">{item.collection}</p>
+              <p className="text-sm line-clamp-1">{item.coleccion}</p>
             </div>
           )}
 
-          {item.author && (
+          {item.autor && (
             <div>
               <p className="text-xs font-medium">Autor</p>
-              <p className="text-sm line-clamp-1">{item.author}</p>
+              <p className="text-sm line-clamp-1">{item.autor}</p>
             </div>
           )}
           {item.componentes && item.componentes.length > 0 && (
@@ -80,22 +81,22 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
               </span>
             </div>
           )}
-          {item.materials && item.materials.length > 0 && (
+          {item.materialidad && item.materialidad.length > 0 && (
             <div>
               <p className="text-xs font-medium">Materialidad</p>
-              <p className="text-sm line-clamp-2">{item.materials.join(", ")}</p>
+              <p className="text-sm line-clamp-2">{item.materialidad}</p>
             </div>
           )}
 
-          {item.conservationState && (
+          {item.estado_conservacion && (
             <div>
               <p className="text-xs font-medium">Estado de conservación</p>
-              <p className="text-sm">{item.conservationState}</p>
+              <p className="text-sm">{item.estado_conservacion}</p>
             </div>
           )}
 
           <p className="text-xs text-muted-foreground">
-            {item.country}{item.locality ? `, ${item.locality}` : ''}
+            {item.pais}{item.localidad ? `, ${item.localidad}` : ''}
           </p>
         </div>
       </CardContent>

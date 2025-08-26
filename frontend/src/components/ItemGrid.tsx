@@ -80,10 +80,10 @@ const ItemGrid = ({
         >
           <div className="flex-shrink-0 mr-3">
             <div className="relative h-16 w-16 overflow-hidden rounded-md">
-              {item.imageUrl ? (
+              {item.imagenes && item.imagenes.length > 0 ? (
                 <img
-                  src={item.imageUrl}
-                  alt={item.commonName}
+                  src={item.imagenes[0].imagen}
+                  alt={item.imagenes[0].descripcion || ""}
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -102,7 +102,7 @@ const ItemGrid = ({
                 {item.inventoryNumber}
               </p>
               <h3 className="font-medium text-sm truncate">
-                {item.commonName}
+                {item.nombre_comun}
               </h3>
               {item.componentes && item.componentes.length > 0 && (
                 <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded inline-block my-1">
@@ -110,19 +110,19 @@ const ItemGrid = ({
                 </span>
               )}
               <div className="flex flex-wrap gap-4 items-center mt-1">
-                {item.collection && (
+                {item.coleccion && (
                   <span className="text-xs">
-                    <span className="font-medium">Colección:</span> {item.collection}
+                    <span className="font-medium">Colección:</span> {item.coleccion}
                   </span>
                 )}
-                {item.conservationState && (
+                {item.estado_conservacion && (
                   <span className="text-xs">
-                    <span className="font-medium">Estado:</span> {item.conservationState}
+                    <span className="font-medium">Estado:</span> {item.estado_conservacion}
                   </span>
                 )}
-                {(item.country || item.locality) && (
+                {(item.pais || item.localidad) && (
                   <span className="text-xs text-muted-foreground">
-                    {item.country}{item.locality ? `, ${item.locality}` : ""}
+                    {item.pais}{item.localidad ? `, ${item.localidad}` : ""}
                   </span>
                 )}
               </div>
