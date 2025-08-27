@@ -229,7 +229,7 @@ class PiezaOutSerializer(serializers.Serializer):
     responsable_conservacion = serializers.CharField(allow_blank=True, required=False)
     fecha_actualizacion_conservacion = serializers.SerializerMethodField()
     comentarios_conservacion = serializers.SerializerMethodField()
-    exposiciones = serializers.CharField(allow_blank=True, required=False)
+    exposiciones = serializers.SerializerMethodField()
     avaluo = serializers.CharField(allow_blank=True, required=False)
     procedencia = serializers.CharField(allow_blank=True, required=False)
     donante = serializers.CharField(allow_blank=True, required=False)
@@ -269,6 +269,10 @@ class PiezaOutSerializer(serializers.Serializer):
     def get_fecha_actualizacion_conservacion(self, p: Pieza):
         return _fmt_fecha_con_hora_or_nat(getattr(p, 'fecha_actualizacion_conservacion', None))
 
+    def get_exposiciones(self, p: Pieza):
+        # Devuelve lista de títulos de exposiciones conectadas
+        return [e.titulo for e in p.exposiciones.all()]
+    
     def to_representation(self, p: Pieza):
         comp_counter = [0]
         def next_comp_id():

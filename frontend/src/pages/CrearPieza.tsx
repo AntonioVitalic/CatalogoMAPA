@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react";
+import { set } from "date-fns";
 
 type ComponentForm = {
   id?: string;
@@ -128,11 +129,19 @@ export default function CrearPieza() {
     nombre_especifico: "",
     fecha_creacion: "",
     descripcion: "",
+    alto_cm: "",
+    ancho_cm: "",
+    profundidad_cm: "",
+    diametro_cm: "",
+    espesor_mm: "",
+    peso_gr: "",
+    funcion: "",
     marcas_inscripciones: "",
     contexto_historico: "",
     bibliografia: "",
     iconografia: "",
     notas_investigacion: "",
+    exposiciones: "",
     avaluo: "",
     procedencia: "",
     donante: "",
@@ -165,22 +174,25 @@ export default function CrearPieza() {
   const [localidades, setLocalidades] = useState<string[]>([]);
   const [collections, setCollections] = useState<string[]>([]);
   const [tipologias, setTipologias] = useState<string[]>([]);
+  const [exposiciones, setExposiciones] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
-        const [autRes, paisRes, locRes, colRes, tipRes] = await Promise.all([
+        const [autRes, paisRes, locRes, colRes, tipRes, expRes] = await Promise.all([
           api.get("/api/autores/"),
           api.get("/api/paises/"),
           api.get("/api/localidades/"),
           api.get("/api/colecciones/"),
           api.get("/api/tipologias/"),
+          api.get("/api/exposiciones/")
         ]);
         setAuthors(autRes.data.map((a: any) => a.nombre));
         setCountries(paisRes.data.map((p: any) => p.nombre));
         setLocalidades(locRes.data.map((l: any) => l.nombre));
         setCollections(colRes.data.map((c: any) => c.nombre));
         setTipologias(tipRes.data.map((t: any) => t.nombre));
+        setExposiciones(expRes.data.map((e: any) => e.nombre));
       } catch (err) {
         console.error("Error cargando catálogos:", err);
       }
@@ -288,6 +300,7 @@ export default function CrearPieza() {
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Número de inventario */}
               <div>
                 <label className="block text-sm font-medium mb-1">Número de inventario</label>
                 <input
@@ -300,8 +313,43 @@ export default function CrearPieza() {
                 />
                 <small className="text-gray-600">Se asigna automáticamente (máx + 1).</small>
               </div>
+              {/* Letra
               <div>
-                <label className="block text-sm font-medium mb-1">Código SURDOC</label>
+                <label className="block text-sm font-medium mb-1">Letra</label>
+                <input
+                  type="text"
+                  name="letra"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.letra}
+                  onChange={handleChangePiece}
+                  disabled
+                />
+              </div> */}
+              {/* Revisión */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Revisión</label>
+                <input
+                  type="text"
+                  name="revision"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.revision}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Número de registro anterior */}
+              <div>
+                <label className="block text-sm font-medium mb-1">N° de registro anterior</label>
+                <input
+                  type="text"
+                  name="numero_registro_anterior"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.numero_registro_anterior}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* SURDOC */}
+              <div>
+                <label className="block text-sm font-medium mb-1">SURDOC</label>
                 <input
                   type="text"
                   name="codigo_surdoc"
@@ -310,82 +358,7 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Autor</label>
-                <input
-                  type="text"
-                  name="autor"
-                  list="list-autores"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.autor}
-                  onChange={handleChangePiece}
-                />
-                <datalist id="list-autores">
-                  {authors.map(a => <option key={a} value={a} />)}
-                </datalist>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">País</label>
-                <input
-                  type="text"
-                  name="pais"
-                  list="list-paises"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.pais}
-                  onChange={handleChangePiece}
-                />
-                <datalist id="list-paises">
-                  {countries.map(p => <option key={p} value={p} />)}
-                </datalist>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Localidad</label>
-                <input
-                  type="text"
-                  name="localidad"
-                  list="list-localidades"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.localidad}
-                  onChange={handleChangePiece}
-                />
-                <datalist id="list-localidades">
-                  {localidades.map(l => <option key={l} value={l} />)}
-                </datalist>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Colección</label>
-                <input
-                  type="text"
-                  name="coleccion"
-                  list="list-colecciones"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.coleccion}
-                  onChange={handleChangePiece}
-                />
-                <datalist id="list-colecciones">
-                  {collections.map(c => <option key={c} value={c} />)}
-                </datalist>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Tipología</label>
-                <input
-                  type="text"
-                  name="tipologia"
-                  list="list-tipologias"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.tipologia}
-                  onChange={handleChangePiece}
-                />
-                <datalist id="list-tipologias">
-                  {tipologias.map(t => <option key={t} value={t} />)}
-                </datalist>
-              </div>
-
+              {/* Ubicación */}
               <div>
                 <label className="block text-sm font-medium mb-1">Ubicación</label>
                 <input
@@ -396,7 +369,7 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* Depósito */}
               <div>
                 <label className="block text-sm font-medium mb-1">Depósito</label>
                 <input
@@ -407,7 +380,7 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* Estante */}
               <div>
                 <label className="block text-sm font-medium mb-1">Estante</label>
                 <input
@@ -418,7 +391,7 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* Caja actual */}
               <div>
                 <label className="block text-sm font-medium mb-1">Caja actual</label>
                 <input
@@ -429,7 +402,39 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* Tipología */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipología</label>
+                <input
+                  type="text"
+                  name="tipologia"
+                  list="list-tipologias"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.tipologia}
+                  onChange={handleChangePiece}
+                />
+                <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                <datalist id="list-tipologias">
+                  {tipologias.map(t => <option key={t} value={t} />)}
+                </datalist>
+              </div>
+              {/* Colección */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Colección</label>
+                <input
+                  type="text"
+                  name="coleccion"
+                  list="list-colecciones"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.coleccion}
+                  onChange={handleChangePiece}
+                />
+                <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                <datalist id="list-colecciones">
+                  {collections.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+              {/* Clasificación */}
               <div>
                 <label className="block text-sm font-medium mb-1">Clasificación</label>
                 <input
@@ -440,7 +445,7 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* Conjunto */}
               <div>
                 <label className="block text-sm font-medium mb-1">Conjunto</label>
                 <input
@@ -451,182 +456,45 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Descripción catálogo</label>
-                <textarea
-                  name="descripcion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.descripcion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
+              {/* Nombre común */}
               <div>
-                <label className="block text-sm font-medium mb-1">Marcas o inscripciones</label>
+                <label className="block text-sm font-medium mb-1">Nombre común</label>
                 <input
                   type="text"
-                  name="marcas_inscripciones"
+                  name="nombre_comun"
                   className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.marcas_inscripciones}
+                  value={pieceData.nombre_comun}
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* Nombre atribuido */}
               <div>
-                <label className="block text-sm font-medium mb-1">Contexto histórico</label>
+                <label className="block text-sm font-medium mb-1">Nombre atribuido</label>
                 <input
                   type="text"
-                  name="contexto_historico"
+                  name="nombre_especifico"
                   className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.contexto_historico}
+                  value={pieceData.nombre_especifico}
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* Autor */}
               <div>
-                <label className="block text-sm font-medium mb-1">Bibliografía</label>
+                <label className="block text-sm font-medium mb-1">Autor</label>
                 <input
                   type="text"
-                  name="bibliografia"
+                  name="autor"
+                  list="list-autores"
                   className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.bibliografia}
+                  value={pieceData.autor}
                   onChange={handleChangePiece}
                 />
+                <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                <datalist id="list-autores">
+                  {authors.map(a => <option key={a} value={a} />)}
+                </datalist>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Iconografía</label>
-                <input
-                  type="text"
-                  name="iconografia"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.iconografia}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Notas de investigación</label>
-                <input
-                  type="text"
-                  name="notas_investigacion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.notas_investigacion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Estado de conservación</label>
-                <input
-                  type="text"
-                  name="estado_conservacion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.estado_conservacion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Descripción conservación</label>
-                <input
-                  type="text"
-                  name="descripcion_conservacion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.descripcion_conservacion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Responsable conservación</label>
-                <input
-                  type="text"
-                  name="responsable_conservacion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.responsable_conservacion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Fecha actualización conservación</label>
-                <input
-                  type="text"
-                  name="fecha_actualizacion_conservacion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.fecha_actualizacion_conservacion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Comentarios conservación</label>
-                <input
-                  type="text"
-                  name="comentarios_conservacion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.comentarios_conservacion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Avaluo</label>
-                <input
-                  type="text"
-                  name="avaluo"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.avaluo}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Procedencia</label>
-                <input
-                  type="text"
-                  name="procedencia"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.procedencia}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Donante</label>
-                <input
-                  type="text"
-                  name="donante"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.donante}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Fecha ingreso</label>
-                <input
-                  type="text"
-                  name="fecha_ingreso"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.fecha_ingreso}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Responsable colección</label>
-                <input
-                  type="text"
-                  name="responsable_coleccion"
-                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={pieceData.responsable_coleccion}
-                  onChange={handleChangePiece}
-                />
-              </div>
-
+              {/* Filiación cultural */}
               <div>
                 <label className="block text-sm font-medium mb-1">Filiación cultural</label>
                 <input
@@ -637,7 +505,348 @@ export default function CrearPieza() {
                   onChange={handleChangePiece}
                 />
               </div>
-
+              {/* País */}
+              <div>
+                <label className="block text-sm font-medium mb-1">País</label>
+                <input
+                  type="text"
+                  name="pais"
+                  list="list-paises"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.pais}
+                  onChange={handleChangePiece}
+                />
+                <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                <datalist id="list-paises">
+                  {countries.map(p => <option key={p} value={p} />)}
+                </datalist>
+              </div>
+              {/* Localidad */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Localidad</label>
+                <input
+                  type="text"
+                  name="localidad"
+                  list="list-localidades"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.localidad}
+                  onChange={handleChangePiece}
+                />
+                <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                <datalist id="list-localidades">
+                  {localidades.map(l => <option key={l} value={l} />)}
+                </datalist>
+              </div>
+              {/* Fecha de creación */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Fecha de creación</label>
+                <input
+                  type="text"
+                  name="fecha_creacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.fecha_creacion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Descripción catálogo */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Descripción catálogo</label>
+                <textarea
+                  name="descripcion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.descripcion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Marcas o inscripciones */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Marcas o inscripciones</label>
+                <textarea
+                  name="marcas_inscripciones"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={2}
+                  value={pieceData.marcas_inscripciones}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Técnica */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Técnica</label>
+                <input
+                  type="text"
+                  name="tecnica"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.tecnica}
+                  onChange={handleChangePiece}
+                />
+                <small className="text-gray-500">* Separe múltiples técnicas con coma</small>
+              </div>
+              {/* Materialidad */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Materialidad</label>
+                <input
+                  type="text"
+                  name="materialidad"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.materialidad}
+                  onChange={handleChangePiece}
+                />
+                <small className="text-gray-500">* Separe múltiples materiales con coma</small>
+              </div>
+              {/* Descripción conservación */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Descripción conservación</label>
+                <input
+                  type="text"
+                  name="descripcion_conservacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.descripcion_conservacion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Alto (cm) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Alto (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="alto_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.alto_cm}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Ancho (cm) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Ancho (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="ancho_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.ancho_cm}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Profundidad (cm) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Profundidad (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="profundidad_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.profundidad_cm}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Diámetro (cm) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Diámetro (cm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="diametro_cm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.diametro_cm}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Espesor (mm) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Espesor (mm)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="espesor_mm"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.espesor_mm}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Peso (gr) */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Peso (gr)</label>
+                <input
+                  type="number"
+                  step="any"
+                  name="peso_gr"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.peso_gr}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Función */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Función</label>
+                <input
+                  type="text"
+                  name="funcion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.funcion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Contexto histórico */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Contexto histórico</label>
+                <input
+                  type="text"
+                  name="contexto_historico"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.contexto_historico}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Bibliografía */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Bibliografía</label>
+                <input
+                  type="text"
+                  name="bibliografia"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.bibliografia}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Iconografía */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Iconografía</label>
+                <input
+                  type="text"
+                  name="iconografia"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.iconografia}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Notas de investigación */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Notas de investigación</label>
+                <input
+                  type="text"
+                  name="notas_investigacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.notas_investigacion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Estado de conservación */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Estado de conservación</label>
+                <input
+                  type="text"
+                  name="estado_conservacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.estado_conservacion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Responsable conservación */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Responsable conservación</label>
+                <input
+                  type="text"
+                  name="responsable_conservacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.responsable_conservacion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Fecha actualización conservación */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Fecha actualización conservación</label>
+                <input
+                  type="text"
+                  name="fecha_actualizacion_conservacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.fecha_actualizacion_conservacion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Comentarios conservación */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Comentarios conservación</label>
+                <input
+                  type="text"
+                  name="comentarios_conservacion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.comentarios_conservacion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Exposiciones */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Exposiciones</label>
+                <input
+                  type="text"
+                  name="exposiciones"
+                  list="list-exposiciones"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.exposiciones}
+                  onChange={handleChangePiece}
+                />
+                <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                <datalist id="list-exposiciones">
+                  {exposiciones.map(e => <option key={e} value={e} />)}
+                </datalist>
+              </div>
+              {/* Avaluo */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Avaluo</label>
+                <input
+                  type="text"
+                  name="avaluo"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.avaluo}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Procedencia */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Procedencia</label>
+                <input
+                  type="text"
+                  name="procedencia"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.procedencia}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Donante */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Donante</label>
+                <input
+                  type="text"
+                  name="donante"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.donante}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Fecha ingreso */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Fecha ingreso</label>
+                <input
+                  type="text"
+                  name="fecha_ingreso"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.fecha_ingreso}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Responsable colección */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Responsable colección</label>
+                <input
+                  type="text"
+                  name="responsable_coleccion"
+                  className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={pieceData.responsable_coleccion}
+                  onChange={handleChangePiece}
+                />
+              </div>
+              {/* Fecha última modificación */}
               <div>
                 <label className="block text-sm font-medium mb-1">Fecha última modificación</label>
                 <input
@@ -906,14 +1115,14 @@ export default function CrearPieza() {
                       onChange={handleChangeComp}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Marcas o inscripciones</label>
-                    <input
-                      type="text"
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-1">Marcas o inscripciones</label>
+                    <textarea
                       name="marcas_inscripciones"
-                      className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                      value={compForm.marcas_inscripciones}
-                      onChange={handleChangeComp}
+                      rows={2}
+                      className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={pieceData.marcas_inscripciones}
+                      onChange={handleChangePiece}
                     />
                   </div>
                   <div>
