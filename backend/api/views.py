@@ -137,8 +137,23 @@ class PiezaViewSet(viewsets.ViewSet):
         params = self._parse_filters(request)
         q = self._cypher_base()
 
-        rows, _ = db.cypher_query(q, params)
-        piezas = [Pieza.inflate(r[0]) for r in rows]
+        # --- Búsqueda simple ---
+        search = request.query_params.get("search", "").strip()
+        if search:
+            # Filtra por número de inventario, nombre común y nombre atribuido
+            q = f"""
+            MATCH (p:Pieza)
+            WHERE toString(p.numero_inventario) CONTAINS '{search}'
+            OR toLower(coalesce(p.nombre_comun, '')) CONTAINS '{search.lower()}'
+            OR toLower(coalesce(p.nombre_especifico, '')) CONTAINS '{search.lower()}'
+            RETURN p
+            ORDER BY p.numero_inventario_int
+            """
+            rows, _ = db.cypher_query(q)
+            piezas = [Pieza.inflate(r[0]) for r in rows]
+        else:
+            rows, _ = db.cypher_query(q, params)
+            piezas = [Pieza.inflate(r[0]) for r in rows]
 
         paginator = PageNumberPagination()
         paginator.page_size = settings.REST_FRAMEWORK['PAGE_SIZE']

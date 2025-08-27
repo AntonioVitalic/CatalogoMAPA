@@ -299,13 +299,14 @@ export default function Index() {
                   selectedItems={selectedItems}
                   user={user ? { ...user, id: String(user.id), name: user.name ?? `${user.first_name} ${user.last_name}` } : null}
                 />
-                <Button
-                  variant="default"
-                  onClick={() => navigate("/importacion-masiva")}
-                  disabled={user?.role !== "admin"}
-                >
-                  Importación masiva
-                </Button>
+                {user?.role === "admin" && (
+                  <Button
+                    variant="default"
+                    onClick={() => navigate("/importacion-masiva")}
+                  >
+                    Importación masiva
+                  </Button>
+                )}
                 {user && (user.role === "admin" || user.role === "editor") && (
                   <>
                     <Button variant="default" onClick={() => navigate("/crear-pieza")}>
