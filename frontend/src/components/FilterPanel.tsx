@@ -115,7 +115,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             options={opts.countries}
             selectedValues={filters.country || []}
             onSelectionChange={(v) => onMulti("country", v)}
-            placeholder="Seleccionar países"
+            placeholder="Selec. países"
             label="País"
           />
         </div>
@@ -126,7 +126,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             options={opts.collections}
             selectedValues={filters.collection || []}
             onSelectionChange={(v) => onMulti("collection", v)}
-            placeholder="Seleccionar colecciones"
+            placeholder="Selec. colecciones"
             label="Colección"
           />
         </div>
@@ -137,7 +137,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             options={opts.authors}
             selectedValues={filters.author || []}
             onSelectionChange={(v) => onMulti("author", v)}
-            placeholder="Seleccionar autores"
+            placeholder="Selec. autores"
             label="Autor"
           />
         </div>
@@ -148,7 +148,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             options={opts.localities}
             selectedValues={filters.locality || []}
             onSelectionChange={(v) => onMulti("locality", v)}
-            placeholder="Seleccionar localidades"
+            placeholder="Selec. localidades"
             label="Localidad"
           />
         </div>
@@ -159,7 +159,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             options={opts.tipologias}
             selectedValues={filters.tipologias || []}
             onSelectionChange={(v) => onMulti("tipologias", v)}
-            placeholder="Seleccionar tipologías"
+            placeholder="Selec. tipologías"
             label="Tipología"
           />
         </div>
@@ -170,7 +170,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             options={opts.exhibitions}
             selectedValues={filters.exhibitions || []}
             onSelectionChange={(v) => onMulti("exhibitions", v)}
-            placeholder="Seleccionar exposiciones"
+            placeholder="Selec. exposiciones"
             label="Exposiciones"
           />
         </div>

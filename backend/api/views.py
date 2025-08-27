@@ -18,6 +18,66 @@ from .serializers import (
 
 from accounts.models import RegistroCambioPieza
 
+def _get(field, data, *aliases, default=""):
+    """
+    Obtiene un campo desde request.data con soporte de alias.
+    """
+    if field in data and data.get(field) not in (None, ""):
+        return data.get(field)
+    for a in aliases:
+        if a in data and data.get(a) not in (None, ""):
+            return data.get(a)
+    return default
+
+def _split_list(value: str) -> list[str]:
+    """
+    Divide cadenas en elementos por ; o , y limpia espacios. Devuelve lista sin vacíos.
+    """
+    if value is None:
+        return []
+    raw = str(value)
+    # Acepta ; o , como separador
+    parts = [p.strip() for p in raw.replace(",", ";").split(";")]
+    return [p for p in parts if p]
+
+def _set_single_rel(node, rel_attr: str, label_cls, name: str | None):
+    """
+    Setea una relación 1–1 opcional (ej: autor, coleccion, pais, localidad).
+    Limpia relaciones previas y conecta si 'name' viene no vacío.
+    """
+    rel = getattr(node, rel_attr)  # RelationshipTo
+    # limpiar vínculos actuales
+    for x in rel.all():
+        rel.disconnect(x)
+    if name:
+        inst = label_cls.nodes.first_or_none(nombre=name.strip())
+        if not inst:
+            inst = label_cls(nombre=name.strip()).save()
+        rel.connect(inst)
+
+def _set_many_names(node, rel_attr: str, label_cls, names: list[str]):
+    """
+    Setea relaciones N–N desde lista de nombres (ej: materiales, tecnicas, exposiciones).
+    Sobrescribe: limpia y vuelve a conectar.
+    """
+    rel = getattr(node, rel_attr)  # RelationshipTo
+    for x in rel.all():
+        rel.disconnect(x)
+    for n in names:
+        nn = n.strip()
+        if not nn:
+            continue
+        # Para Exposicion usamos 'titulo' en el modelo
+        if label_cls.__name__ == "Exposicion":
+            inst = label_cls.nodes.first_or_none(titulo=nn)
+            if not inst:
+                inst = label_cls(titulo=nn).save()
+        else:
+            inst = label_cls.nodes.first_or_none(nombre=nn)
+            if not inst:
+                inst = label_cls(nombre=nn).save()
+        rel.connect(inst)
+
 class PiezaViewSet(viewsets.ViewSet):
     def _parse_filters(self, request):
         colecciones = request.query_params.getlist('coleccion__nombre')
@@ -99,86 +159,139 @@ class PiezaViewSet(viewsets.ViewSet):
 
     def create(self, request):
         data = request.data
-        # Crear la pieza en Neo4j
+
+        # 1) Campos planos de Pieza (propiedades que SÍ existen como String/Float en el modelo)
         pieza = Pieza(
-            numero_inventario=data.get('numero_inventario'),
-            revision=data.get('revision', ''),
-            numero_registro_anterior=data.get('numero_registro_anterior', ''),
-            codigo_surdoc=data.get('codigo_surdoc', ''),
-            ubicacion=data.get('ubicacion', ''),
-            deposito=data.get('deposito', ''),
-            estante=data.get('estante', ''),
-            caja_actual=data.get('caja_actual', ''),
-            tipologia=data.get('tipologia', ''),
-            clasificacion=data.get('clasificacion', ''),
-            conjunto=data.get('conjunto', ''),
-            nombre_comun=data.get('nombre_comun', ''),
-            nombre_especifico=data.get('nombre_especifico', ''),
-            fecha_creacion=data.get('fecha_creacion', ''),
-            descripcion_col=data.get('descripcion_col', ''),
-            marcas_inscripciones=data.get('marcas_inscripciones', ''),
-            contexto_historico=data.get('contexto_historico', ''),
-            bibliografia=data.get('bibliografia', ''),
-            iconografia=data.get('iconografia', ''),
-            notas_investigacion=data.get('notas_investigacion', ''),
-            avaluo=data.get('avaluo', ''),
-            procedencia=data.get('procedencia', ''),
-            donante=data.get('donante', ''),
-            fecha_ingreso=data.get('fecha_ingreso', ''),
-            estado_conservacion=data.get('estado_conservacion', ''),
-            descripcion_conservacion=data.get('descripcion_conservacion', ''),
-            responsable_conservacion=data.get('responsable_conservacion', ''),
-            fecha_actualizacion_conservacion=data.get('fecha_actualizacion_conservacion', ''),
-            comentarios_conservacion=data.get('comentarios_conservacion', ''),
-            responsable_coleccion=data.get('responsable_coleccion', ''),
-            filiacion_cultural=data.get('filiacion_cultural', ''),
-            pais=data.get('pais', ''),
-            localidad=data.get('localidad', ''),
-            coleccion=data.get('coleccion', ''),
-            materialidad=data.get('materialidad', ''),
-            tecnica=data.get('tecnica', ''),
+            numero_inventario=_get('numero_inventario', data),
+            revision=_get('revision', data),
+            numero_registro_anterior=_get('numero_registro_anterior', data),
+            codigo_surdoc=_get('codigo_surdoc', data),
+            ubicacion=_get('ubicacion', data),
+            deposito=_get('deposito', data),
+            estante=_get('estante', data),
+            caja_actual=_get('caja_actual', data),
+            tipologia=_get('tipologia', data),
+            clasificacion=_get('clasificacion', data),
+            conjunto=_get('conjunto', data),
+            nombre_comun=_get('nombre_comun', data),
+            nombre_especifico=_get('nombre_especifico', data),
+            fecha_creacion=_get('fecha_creacion', data),
+            # Alias: descripcion ⇢ descripcion_col
+            descripcion_col=_get('descripcion_col', data, 'descripcion'),
+            marcas_inscripciones=_get('marcas_inscripciones', data),
+            contexto_historico=_get('contexto_historico', data),
+            bibliografia=_get('bibliografia', data),
+            iconografia=_get('iconografia', data),
+            notas_investigacion=_get('notas_investigacion', data),
+            # Alias: descripcion_conservacion ⇢ descripcion_cr
+            descripcion_cr=_get('descripcion_cr', data, 'descripcion_conservacion'),
+            # medidas / pesos (acepta string numérica; si vacío, None)
+            alto_cm=float(_get('alto_cm', data) or 0) or None,
+            ancho_cm=float(_get('ancho_cm', data) or 0) or None,
+            profundidad_cm=float(_get('profundidad_cm', data) or 0) or None,
+            diametro_cm=float(_get('diametro_cm', data) or 0) or None,
+            espesor_mm=float(_get('espesor_mm', data) or 0) or None,
+            peso_gr=float(_get('peso_gr', data) or 0) or None,
+            funcion=_get('funcion', data),
+            estado_conservacion=_get('estado_conservacion', data),
+            responsable_conservacion=_get('responsable_conservacion', data),
+            fecha_actualizacion_conservacion=_get('fecha_actualizacion_conservacion', data),
+            comentarios_conservacion=_get('comentarios_conservacion', data),
+            avaluo=_get('avaluo', data),
+            procedencia=_get('procedencia', data),
+            donante=_get('donante', data),
+            fecha_ingreso=_get('fecha_ingreso', data),
+            responsable_coleccion=_get('responsable_coleccion', data),
+            fecha_ultima_modificacion=_get('fecha_ultima_modificacion', data),
         ).save()
 
-        # Componentes
+        # 2) Relaciones 1–1 (strings del form)
+        _set_single_rel(pieza, 'autor', Autor, _get('autor', data))
+        _set_single_rel(pieza, 'coleccion', Coleccion, _get('coleccion', data))
+        _set_single_rel(pieza, 'pais', Pais, _get('pais', data))
+        _set_single_rel(pieza, 'localidad', Localidad, _get('localidad', data))
+        _set_single_rel(pieza, 'filiacion_cultural', Cultura, _get('filiacion_cultural', data))
+
+        # 3) Relaciones N–N (listas desde string con ; o ,)
+        _set_many_names(pieza, 'materiales', Material, _split_list(_get('materialidad', data)))
+        _set_many_names(pieza, 'tecnica', Tecnica, _split_list(_get('tecnica', data)))
+        _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(_get('exposiciones', data)))
+
+        # 4) Componentes (lista JSON serializada o nativa)
         componentes = data.get('componentes')
         if componentes:
-            import json
             comps = json.loads(componentes) if isinstance(componentes, str) else componentes
             for comp in comps:
                 c = Componente(
                     pieza_numero_inventario=pieza.numero_inventario,
-                    letra=comp.get('letra', ''),
+                    letra=(comp.get('letra') or '').strip().lower(),
+                    revision=comp.get('revision', ''),
+
+                    numero_registro_anterior=comp.get('numero_registro_anterior', ''),
+                    codigo_surdoc=comp.get('codigo_surdoc', ''),
+
+                    ubicacion=comp.get('ubicacion', ''),
+                    deposito=comp.get('deposito', ''),
+                    estante=comp.get('estante', ''),
+                    caja_actual=comp.get('caja_actual', ''),
+
+                    tipologia=comp.get('tipologia', ''),
+                    coleccion=comp.get('coleccion', ''),
+                    clasificacion=comp.get('clasificacion', ''),
+                    conjunto=comp.get('conjunto', ''),
                     nombre_comun=comp.get('nombre_comun', ''),
-                    nombre_atribuido=comp.get('nombre_atribuido', ''),
+                    nombre_especifico=comp.get('nombre_especifico', ''),
+                    autor=comp.get('autor', ''),
+                    filiacion_cultural=comp.get('filiacion_cultural', ''),
+                    pais=comp.get('pais', ''),
+                    localidad=comp.get('localidad', ''),
+                    fecha_creacion=comp.get('fecha_creacion', ''),
                     descripcion_col=comp.get('descripcion_col', ''),
-                    funcion=comp.get('funcion', ''),
-                    forma=comp.get('forma', ''),
+
                     marcas_inscripciones=comp.get('marcas_inscripciones', ''),
-                    peso_gr=float(comp.get('peso_gr', 0) or 0),
-                    alto_cm=float(comp.get('alto_cm', 0) or 0),
-                    ancho_cm=float(comp.get('ancho_cm', 0) or 0),
-                    profundidad_cm=float(comp.get('profundidad_cm', 0) or 0),
-                    diametro_cm=float(comp.get('diametro_cm', 0) or 0),
-                    espesor_mm=float(comp.get('espesor_mm', 0) or 0),
-                    estado_conservacion=comp.get('estado_conservacion', ''),
-                    materialidad=comp.get('materialidad', ''),
                     tecnica=comp.get('tecnica', ''),
+                    materialidad=comp.get('materialidad', ''),
+                    descripcion_cr=comp.get('descripcion_cr', ''),
+                    alto_cm=float(comp.get('alto_cm') or 0) or None,
+                    ancho_cm=float(comp.get('ancho_cm') or 0) or None,
+                    profundidad_cm=float(comp.get('profundidad_cm') or 0) or None,
+                    diametro_cm=float(comp.get('diametro_cm') or 0) or None,
+                    espesor_mm=float(comp.get('espesor_mm') or 0) or None,
+                    peso_gr=float(comp.get('peso_gr') or 0) or None,
+
+                    funcion=comp.get('funcion', ''),
+                    contexto_historico=comp.get('contexto_historico', ''),
+                    bibliografia=comp.get('bibliografia', ''),
+                    iconografia=comp.get('iconografia', ''),
+                    notas_investigacion=comp.get('notas_investigacion', ''),
+
+                    estado_conservacion=comp.get('estado_conservacion', ''),
+                    responsable_conservacion=comp.get('responsable_conservacion', ''),
+                    fecha_actualizacion_conservacion=comp.get('fecha_actualizacion_conservacion', ''),
+                    comentarios_conservacion=comp.get('comentarios_conservacion', ''),
+
+                    exposiciones=comp.get('exposiciones', ''),
+                    avaluo=comp.get('avaluo', ''),
+                    procedencia=comp.get('procedencia', ''),
+                    donante=comp.get('donante', ''),
+                    fecha_ingreso=comp.get('fecha_ingreso', ''),
+                    responsable_coleccion=comp.get('responsable_coleccion', ''),
+                    fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 pieza.componentes.connect(c)
 
-        # Imagen (si se subió)
+        # 5) Imagen de pieza (opcional)
         imagen = request.FILES.get('imagen')
         if imagen:
-            file_name = imagen.name
-            img = Imagen(file_name=file_name, descripcion="").save()
+            img = Imagen(file_name=imagen.name, descripcion="").save()
             pieza.imagenes.connect(img)
 
-        # Auditoría: guardar estado "before" / "after" en detalle (JSON-string)
+        # 6) Auditoría
         after_obj = {
             "numero_inventario": pieza.numero_inventario,
             "nombre_especifico": pieza.nombre_especifico,
-            "descripcion": pieza.descripcion,
-            "coleccion": pieza.coleccion,
+            "descripcion_col": pieza.descripcion_col,
+            "coleccion": _get('coleccion', data),
         }
         RegistroCambioPieza.objects.create(
             usuario=request.user,
@@ -188,74 +301,158 @@ class PiezaViewSet(viewsets.ViewSet):
         )
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data, status=status.HTTP_201_CREATED)
-
+    
     def update(self, request, pk=None):
         data = request.data
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
-        # Actualizar campos
-        for field in [
-            'revision', 'numero_registro_anterior', 'codigo_surdoc', 'ubicacion', 'deposito', 'estante', 'caja_actual',
-            'tipologia', 'clasificacion', 'conjunto', 'nombre_comun', 'nombre_especifico', 'fecha_creacion',
-            'descripcion', 'marcas_inscripciones', 'contexto_historico', 'bibliografia', 'iconografia',
-            'notas_investigacion', 'avaluo', 'procedencia', 'donante', 'fecha_ingreso', 'estado_conservacion',
-            'descripcion_conservacion', 'responsable_conservacion', 'fecha_actualizacion_conservacion',
-            'comentarios_conservacion', 'responsable_coleccion', 'filiacion_cultural', 'pais', 'localidad',
-            'coleccion', 'materialidad', 'tecnica'
-        ]:
-            if field in data:
-                setattr(pieza, field, data.get(field))
+
+        # ===== BEFORE para auditoría =====
+        before_obj = {
+            "numero_inventario": pieza.numero_inventario,
+            "nombre_especifico": pieza.nombre_especifico,
+            "descripcion_col": pieza.descripcion_col,
+            "coleccion": None,  # la relación se resuelve aparte
+        }
+
+        # 1) Actualizar PROPIEDADES planas (sin tocar relaciones)
+        fields_scalar = {
+            'revision': _get('revision', data),
+            'numero_registro_anterior': _get('numero_registro_anterior', data),
+            'codigo_surdoc': _get('codigo_surdoc', data),
+            'ubicacion': _get('ubicacion', data),
+            'deposito': _get('deposito', data),
+            'estante': _get('estante', data),
+            'caja_actual': _get('caja_actual', data),
+            'tipologia': _get('tipologia', data),
+            'clasificacion': _get('clasificacion', data),
+            'conjunto': _get('conjunto', data),
+            'nombre_comun': _get('nombre_comun', data),
+            'nombre_especifico': _get('nombre_especifico', data),
+            'fecha_creacion': _get('fecha_creacion', data),
+            'descripcion_col': _get('descripcion_col', data, 'descripcion'),
+            'marcas_inscripciones': _get('marcas_inscripciones', data),
+            'contexto_historico': _get('contexto_historico', data),
+            'bibliografia': _get('bibliografia', data),
+            'iconografia': _get('iconografia', data),
+            'notas_investigacion': _get('notas_investigacion', data),
+
+            'descripcion_cr': _get('descripcion_cr', data, 'descripcion_conservacion'),
+            'alto_cm': float(_get('alto_cm', data) or 0) or None,
+            'ancho_cm': float(_get('ancho_cm', data) or 0) or None,
+            'profundidad_cm': float(_get('profundidad_cm', data) or 0) or None,
+            'diametro_cm': float(_get('diametro_cm', data) or 0) or None,
+            'espesor_mm': float(_get('espesor_mm', data) or 0) or None,
+            'peso_gr': float(_get('peso_gr', data) or 0) or None,
+
+            'funcion': _get('funcion', data),
+            'estado_conservacion': _get('estado_conservacion', data),
+            'responsable_conservacion': _get('responsable_conservacion', data),
+            'fecha_actualizacion_conservacion': _get('fecha_actualizacion_conservacion', data),
+            'comentarios_conservacion': _get('comentarios_conservacion', data),
+
+            'avaluo': _get('avaluo', data),
+            'procedencia': _get('procedencia', data),
+            'donante': _get('donante', data),
+            'fecha_ingreso': _get('fecha_ingreso', data),
+            'responsable_coleccion': _get('responsable_coleccion', data),
+            'fecha_ultima_modificacion': _get('fecha_ultima_modificacion', data),
+        }
+        for k, v in fields_scalar.items():
+            setattr(pieza, k, v)
         pieza.save()
 
-        # Componentes (actualización simple: eliminar y volver a crear)
+        # 2) Relaciones 1–1
+        _set_single_rel(pieza, 'autor', Autor, _get('autor', data))
+        _set_single_rel(pieza, 'coleccion', Coleccion, _get('coleccion', data))
+        _set_single_rel(pieza, 'pais', Pais, _get('pais', data))
+        _set_single_rel(pieza, 'localidad', Localidad, _get('localidad', data))
+        _set_single_rel(pieza, 'filiacion_cultural', Cultura, _get('filiacion_cultural', data))
+
+        # 3) Relaciones N–N
+        _set_many_names(pieza, 'materiales', Material, _split_list(_get('materialidad', data)))
+        _set_many_names(pieza, 'tecnica', Tecnica, _split_list(_get('tecnica', data)))
+        _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(_get('exposiciones', data)))
+
+        # 4) Componentes (modo “reemplazar” como ya hacías)
         componentes = data.get('componentes')
-        if componentes:
-            import json
+        if componentes is not None:
             comps = json.loads(componentes) if isinstance(componentes, str) else componentes
-            # Eliminar componentes previos
+            # eliminar actuales
             for c in pieza.componentes.all():
                 pieza.componentes.disconnect(c)
                 c.delete()
-            # Crear nuevos
+            # crear de nuevo
             for comp in comps:
                 c = Componente(
                     pieza_numero_inventario=pieza.numero_inventario,
-                    letra=comp.get('letra', ''),
+                    letra=(comp.get('letra') or '').strip().lower(),
+                    revision=comp.get('revision', ''),
+
+                    numero_registro_anterior=comp.get('numero_registro_anterior', ''),
+                    codigo_surdoc=comp.get('codigo_surdoc', ''),
+
+                    ubicacion=comp.get('ubicacion', ''),
+                    deposito=comp.get('deposito', ''),
+                    estante=comp.get('estante', ''),
+                    caja_actual=comp.get('caja_actual', ''),
+
+                    tipologia=comp.get('tipologia', ''),
+                    coleccion=comp.get('coleccion', ''),
+                    clasificacion=comp.get('clasificacion', ''),
+                    conjunto=comp.get('conjunto', ''),
                     nombre_comun=comp.get('nombre_comun', ''),
-                    nombre_atribuido=comp.get('nombre_atribuido', ''),
-                    descripcion=comp.get('descripcion', ''),
-                    funcion=comp.get('funcion', ''),
-                    forma=comp.get('forma', ''),
+                    nombre_especifico=comp.get('nombre_especifico', ''),
+                    autor=comp.get('autor', ''),
+                    filiacion_cultural=comp.get('filiacion_cultural', ''),
+                    pais=comp.get('pais', ''),
+                    localidad=comp.get('localidad', ''),
+                    fecha_creacion=comp.get('fecha_creacion', ''),
+                    descripcion_col=comp.get('descripcion_col', ''),
+
                     marcas_inscripciones=comp.get('marcas_inscripciones', ''),
-                    peso_kg=float(comp.get('peso_kg', 0) or 0),
-                    alto_cm=float(comp.get('alto_cm', 0) or 0),
-                    ancho_cm=float(comp.get('ancho_cm', 0) or 0),
-                    profundidad_cm=float(comp.get('profundidad_cm', 0) or 0),
-                    diametro_cm=float(comp.get('diametro_cm', 0) or 0),
-                    espesor_mm=float(comp.get('espesor_mm', 0) or 0),
-                    estado_conservacion=comp.get('estado_conservacion', ''),
-                    materialidad=comp.get('materialidad', ''),
                     tecnica=comp.get('tecnica', ''),
+                    materialidad=comp.get('materialidad', ''),
+                    descripcion_cr=comp.get('descripcion_cr', ''),
+                    alto_cm=float(comp.get('alto_cm') or 0) or None,
+                    ancho_cm=float(comp.get('ancho_cm') or 0) or None,
+                    profundidad_cm=float(comp.get('profundidad_cm') or 0) or None,
+                    diametro_cm=float(comp.get('diametro_cm') or 0) or None,
+                    espesor_mm=float(comp.get('espesor_mm') or 0) or None,
+                    peso_gr=float(comp.get('peso_gr') or 0) or None,
+
+                    funcion=comp.get('funcion', ''),
+                    contexto_historico=comp.get('contexto_historico', ''),
+                    bibliografia=comp.get('bibliografia', ''),
+                    iconografia=comp.get('iconografia', ''),
+                    notas_investigacion=comp.get('notas_investigacion', ''),
+
+                    estado_conservacion=comp.get('estado_conservacion', ''),
+                    responsable_conservacion=comp.get('responsable_conservacion', ''),
+                    fecha_actualizacion_conservacion=comp.get('fecha_actualizacion_conservacion', ''),
+                    comentarios_conservacion=comp.get('comentarios_conservacion', ''),
+
+                    exposiciones=comp.get('exposiciones', ''),
+                    avaluo=comp.get('avaluo', ''),
+                    procedencia=comp.get('procedencia', ''),
+                    donante=comp.get('donante', ''),
+                    fecha_ingreso=comp.get('fecha_ingreso', ''),
+                    responsable_coleccion=comp.get('responsable_coleccion', ''),
+                    fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 pieza.componentes.connect(c)
 
-        # Imagen (si se subió)
+        # 5) Imagen de pieza (opcional)
         imagen = request.FILES.get('imagen')
         if imagen:
-            file_name = imagen.name
-            img = Imagen(file_name=file_name, descripcion="").save()
+            img = Imagen(file_name=imagen.name, descripcion="").save()
             pieza.imagenes.connect(img)
 
-        # Auditoría: construir objeto before/after con algunos campos relevantes
-        # before_obj fue capturado antes de modificar 'pieza' (ver abajo)
-        before_obj = {}
-        for f in ["numero_inventario", "nombre_especifico", "descripcion", "coleccion"]:
-            before_obj[f] = getattr(pieza, f, None)
-        # ya se guardó la pieza arriba; construir after_obj
+        # 6) Auditoría
         after_obj = {
             "numero_inventario": pieza.numero_inventario,
             "nombre_especifico": pieza.nombre_especifico,
-            "descripcion": pieza.descripcion,
-            "coleccion": pieza.coleccion,
+            "descripcion_col": pieza.descripcion_col,
+            "coleccion": _get('coleccion', data),
         }
         RegistroCambioPieza.objects.create(
             usuario=request.user,
@@ -265,6 +462,7 @@ class PiezaViewSet(viewsets.ViewSet):
         )
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
+
 
     def destroy(self, request, pk=None):
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))

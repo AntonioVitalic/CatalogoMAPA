@@ -7,31 +7,108 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react";
 
 type ComponentForm = {
+  id?: string;
+  pieza_numero_inventario: string;
   letra: string;
-  nombre_comun: string;
-  nombre_atribuido: string;
-  descripcion: string;
-  funcion: string;
-  forma: string;
-  marcas_inscripciones: string;
-  peso_kg: string;
-  alto_cm: string;
-  ancho_cm: string;
-  profundidad_cm: string;
-  diametro_cm: string;
-  espesor_mm: string;
-  estado_conservacion: string;
-  materialidad: string;
-  tecnica: string;
-  fecha_ultima_modificacion: string;
+  revision?: string;
+  numero_registro_anterior?: string;
+  codigo_surdoc?: string;
+  ubicacion?: string;
+  deposito?: string;
+  estante?: string;
+  caja_actual?: string;
+  tipologia?: string;
+  coleccion?: string;
+  clasificacion?: string;
+  conjunto?: string;
+  nombre_comun?: string;
+  nombre_especifico?: string;
+  autor?: string;
+  filiacion_cultural?: string;
+  pais?: string;
+  localidad?: string;
+  fecha_creacion?: string;
+  descripcion_col?: string;
+  marcas_inscripciones?: string;
+  tecnica?: string;
+  materialidad?: string;
+  descripcion_cr?: string;
+  alto_cm?: string;
+  ancho_cm?: string;
+  profundidad_cm?: string;
+  diametro_cm?: string;
+  espesor_mm?: string;
+  peso_gr?: string;
+  funcion?: string;
+  contexto_historico?: string;
+  bibliografia?: string;
+  iconografia?: string;
+  notas_investigacion?: string;
+  estado_conservacion?: string;
+  responsable_conservacion?: string;
+  fecha_actualizacion_conservacion?: string;
+  comentarios_conservacion?: string;
+  exposiciones?: string;
+  avaluo?: string;
+  procedencia?: string;
+  donante?: string;
+  fecha_ingreso?: string;
+  responsable_coleccion?: string;
+  fecha_ultima_modificacion?: string;
+  imagenes?: { imagen: string; descripcion?: string }[];
 };
 
 const initialComp: ComponentForm = {
-  letra: "", nombre_comun: "", nombre_atribuido: "", descripcion: "",
-  funcion: "", forma: "", marcas_inscripciones: "",
-  peso_kg: "", alto_cm: "", ancho_cm: "", profundidad_cm: "", diametro_cm: "", espesor_mm: "",
-  estado_conservacion: "", materialidad: "", tecnica: "", fecha_ultima_modificacion: ""
+  pieza_numero_inventario: "",
+  letra: "",
+  revision: "",
+  numero_registro_anterior: "",
+  codigo_surdoc: "",
+  ubicacion: "",
+  deposito: "",
+  estante: "",
+  caja_actual: "",
+  tipologia: "",
+  coleccion: "",
+  clasificacion: "",
+  conjunto: "",
+  nombre_comun: "",
+  nombre_especifico: "",
+  autor: "",
+  filiacion_cultural: "",
+  pais: "",
+  localidad: "",
+  fecha_creacion: "",
+  descripcion_col: "",
+  marcas_inscripciones: "",
+  tecnica: "",
+  materialidad: "",
+  descripcion_cr: "",
+  alto_cm: "",
+  ancho_cm: "",
+  profundidad_cm: "",
+  diametro_cm: "",
+  espesor_mm: "",
+  peso_gr: "",
+  funcion: "",
+  contexto_historico: "",
+  bibliografia: "",
+  iconografia: "",
+  notas_investigacion: "",
+  estado_conservacion: "",
+  responsable_conservacion: "",
+  fecha_actualizacion_conservacion: "",
+  comentarios_conservacion: "",
+  exposiciones: "",
+  avaluo: "",
+  procedencia: "",
+  donante: "",
+  fecha_ingreso: "",
+  responsable_coleccion: "",
+  fecha_ultima_modificacion: "",
+  imagenes: []
 };
+  
 
 export default function EditarPieza() {
   const [showLogin, setShowLogin] = useState(false);
@@ -39,44 +116,55 @@ export default function EditarPieza() {
   const { id } = useParams<{ id: string }>();
 
   const [pieceData, setPieceData] = useState({
-    numero_inventario: "",
+    id: "",
+    inventoryNumber: "",
+    letra: "",
     revision: "",
-    numero_registro_anterior: "",
-    codigo_surdoc: "",
+    previousRegistryNumber: "",
+    surdoc: "",
     ubicacion: "",
     deposito: "",
     estante: "",
     caja_actual: "",
     tipologia: "",
+    coleccion: "",
     clasificacion: "",
     conjunto: "",
     nombre_comun: "",
     nombre_especifico: "",
-    fecha_creacion: "",
-    descripcion: "",
-    marcas_inscripciones: "",
-    contexto_historico: "",
-    bibliografia: "",
-    iconografia: "",
-    notas_investigacion: "",
-    avaluo: "",
-    procedencia: "",
-    donante: "",
-    fecha_ingreso: "",
-    estado_conservacion: "",
-    descripcion_conservacion: "",
-    responsable_conservacion: "",
-    fecha_actualizacion_conservacion: "",
-    comentarios_conservacion: "",
-    responsable_coleccion: "",
     autor: "",
     filiacion_cultural: "",
     pais: "",
     localidad: "",
-    coleccion: "",
-    materialidad: "",
+    fecha_creacion: "",
+    descripcion_col: "",
+    marcas_inscripciones: "",
     tecnica: "",
-    fecha_ultima_modificacion: ""
+    materialidad: "",
+    descripcion_cr: "",
+    alto_cm: "",
+    ancho_cm: "",
+    profundidad_cm: "",
+    diametro_cm: "",
+    espesor_mm: "",
+    peso_gr: "",
+    funcion: "",
+    contexto_historico: "",
+    bibliografia: "",
+    iconografia: "",
+    notas_investigacion: "",
+    estado_conservacion: "",
+    responsable_conservacion: "",
+    fecha_actualizacion_conservacion: "",
+    comentarios_conservacion: "",
+    exposiciones: "",
+    avaluo: "",
+    procedencia: "",
+    donante: "",
+    fecha_ingreso: "",
+    responsable_coleccion: "",
+    fecha_ultima_modificacion: "",
+    imagenes: [],
   });
   const [components, setComponents] = useState<ComponentForm[]>([]);
   const [compForm, setCompForm] = useState<ComponentForm>(initialComp);
@@ -112,63 +200,106 @@ export default function EditarPieza() {
         const res = await api.get(`/api/piezas/${id}/`);
         const p = res.data;
         setPieceData({
-          numero_inventario: p.numero_inventario || "",
+          id: p.id || "",
+          inventoryNumber: p.numero_inventario || "",
+          letra: p.letra || "",
           revision: p.revision || "",
-          numero_registro_anterior: p.numero_registro_anterior || "",
-          codigo_surdoc: p.codigo_surdoc || "",
+          previousRegistryNumber: p.numero_registro_anterior || "",
+          surdoc: p.codigo_surdoc || "",
           ubicacion: p.ubicacion || "",
           deposito: p.deposito || "",
           estante: p.estante || "",
           caja_actual: p.caja_actual || "",
           tipologia: p.tipologia || "",
+          coleccion: p.coleccion || "",
           clasificacion: p.clasificacion || "",
           conjunto: p.conjunto || "",
           nombre_comun: p.nombre_comun || "",
           nombre_especifico: p.nombre_especifico || "",
-          fecha_creacion: p.fecha_creacion || "",
-          descripcion: p.descripcion_col || p.descripcion || "",
-          marcas_inscripciones: p.marcas_inscripciones || "",
-          contexto_historico: p.contexto_historico || "",
-          bibliografia: p.bibliografia || "",
-          iconografia: p.iconografia || "",
-          notas_investigacion: p.notas_investigacion || "",
-          avaluo: p.avaluo || "",
-          procedencia: p.procedencia || "",
-          donante: p.donante || "",
-          fecha_ingreso: p.fecha_ingreso || "",
-          estado_conservacion: p.estado_conservacion || "",
-          descripcion_conservacion: p.descripcion_conservacion || "",
-          responsable_conservacion: p.responsable_conservacion || "",
-          fecha_actualizacion_conservacion: p.fecha_actualizacion_conservacion || "",
-          comentarios_conservacion: p.comentarios_conservacion || "",
-          responsable_coleccion: p.responsable_coleccion || "",
           autor: p.autor || "",
           filiacion_cultural: p.filiacion_cultural || "",
           pais: p.pais || "",
           localidad: p.localidad || "",
-          coleccion: p.coleccion || "",
-          materialidad: Array.isArray(p.materiales) ? p.materiales.join(", ") : "",
-          tecnica: Array.isArray(p.tecnica) ? p.tecnica.join(", ") : "",
-          fecha_ultima_modificacion: p.fecha_ultima_modificacion || ""
+          fecha_creacion: p.fecha_creacion || "",
+          descripcion_col: p.descripcion_col || "",
+          marcas_inscripciones: p.marcas_inscripciones || "",
+          tecnica: Array.isArray(p.tecnica) ? p.tecnica.join(", ") : p.tecnica || "",
+          materialidad: Array.isArray(p.materialidad) ? p.materialidad.join(", ") : p.materialidad || "",
+          descripcion_cr: p.descripcion_cr || "",
+          alto_cm: p.alto_cm?.toString() || "",
+          ancho_cm: p.ancho_cm?.toString() || "",
+          profundidad_cm: p.profundidad_cm?.toString() || "",
+          diametro_cm: p.diametro_cm?.toString() || "",
+          espesor_mm: p.espesor_mm?.toString() || "",
+          peso_gr: p.peso_gr?.toString() || "",
+          funcion: p.funcion || "",
+          contexto_historico: p.contexto_historico || "",
+          bibliografia: p.bibliografia || "",
+          iconografia: p.iconografia || "",
+          notas_investigacion: p.notas_investigacion || "",
+          estado_conservacion: p.estado_conservacion || "",
+          responsable_conservacion: p.responsable_conservacion || "",
+          fecha_actualizacion_conservacion: p.fecha_actualizacion_conservacion || "",
+          comentarios_conservacion: p.comentarios_conservacion || "",
+          exposiciones: p.exposiciones || "",
+          avaluo: p.avaluo || "",
+          procedencia: p.procedencia || "",
+          donante: p.donante || "",
+          fecha_ingreso: p.fecha_ingreso || "",
+          responsable_coleccion: p.responsable_coleccion || "",
+          fecha_ultima_modificacion: p.fecha_ultima_modificacion || "",
+          imagenes: p.imagenes ?? [],
         });
         if (p.componentes && Array.isArray(p.componentes)) {
           const compList: ComponentForm[] = p.componentes.map((c: any) => ({
+            pieza_numero_inventario: c.pieza_numero_inventario || "",
             letra: c.letra || "",
+            revision: c.revision || "",
+            numero_registro_anterior: c.numero_registro_anterior || "",
+            codigo_surdoc: c.codigo_surdoc || "",
+            ubicacion: c.ubicacion || "",
+            deposito: c.deposito || "",
+            estante: c.estante || "",
+            caja_actual: c.caja_actual || "",
+            tipologia: c.tipologia || "",
+            coleccion: c.coleccion || "",
+            clasificacion: c.clasificacion || "",
+            conjunto: c.conjunto || "",
             nombre_comun: c.nombre_comun || "",
-            nombre_atribuido: c.nombre_atribuido || "",
-            descripcion: c.descripcion || "",
-            funcion: c.funcion || "",
-            forma: c.forma || "",
+            nombre_especifico: c.nombre_especifico || "",
+            autor: c.autor || "",
+            filiacion_cultural: c.filiacion_cultural || "",
+            pais: c.pais || "",
+            localidad: c.localidad || "",
+            fecha_creacion: c.fecha_creacion || "",
+            descripcion_col: c.descripcion_col || "",
             marcas_inscripciones: c.marcas_inscripciones || "",
-            peso_kg: c.peso_kg?.toString() || "",
+            tecnica: Array.isArray(c.tecnica) ? c.tecnica.join(", ") : c.tecnica || "",
+            materialidad: Array.isArray(c.materialidad) ? c.materialidad.join(", ") : c.materialidad || "",
+            descripcion_cr: c.descripcion_cr || "",
             alto_cm: c.alto_cm?.toString() || "",
             ancho_cm: c.ancho_cm?.toString() || "",
             profundidad_cm: c.profundidad_cm?.toString() || "",
             diametro_cm: c.diametro_cm?.toString() || "",
             espesor_mm: c.espesor_mm?.toString() || "",
+            peso_gr: c.peso_gr?.toString() || "",
+            funcion: c.funcion || "",
+            contexto_historico: c.contexto_historico || "",
+            bibliografia: c.bibliografia || "",
+            iconografia: c.iconografia || "",
+            notas_investigacion: c.notas_investigacion || "",
             estado_conservacion: c.estado_conservacion || "",
-            materialidad: Array.isArray(c.materiales) ? c.materiales.join(", ") : "",
-            tecnica: Array.isArray(c.tecnica) ? c.tecnica.join(", ") : ""
+            responsable_conservacion: c.responsable_conservacion || "",
+            fecha_actualizacion_conservacion: c.fecha_actualizacion_conservacion || "",
+            comentarios_conservacion: c.comentarios_conservacion || "",
+            exposiciones: c.exposiciones || "",
+            avaluo: c.avaluo || "",
+            procedencia: c.procedencia || "",
+            donante: c.donante || "",
+            fecha_ingreso: c.fecha_ingreso || "",
+            responsable_coleccion: c.responsable_coleccion || "",
+            fecha_ultima_modificacion: c.fecha_ultima_modificacion || "",
+            imagenes: c.imagenes ?? [],
           }));
           setComponents(compList);
         }
@@ -235,7 +366,11 @@ export default function EditarPieza() {
     try {
       const formData = new FormData();
       Object.entries(pieceData).forEach(([key, value]) => {
-        formData.append(key, value ?? "");
+        if (Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, value ?? "");
+        }
       });
       formData.append("componentes", JSON.stringify(components));
       if (file) {
@@ -279,7 +414,7 @@ export default function EditarPieza() {
                 type="text"
                 name="numero_inventario"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.numero_inventario}
+                value={pieceData.inventoryNumber}
                 disabled
               />
             </div>
@@ -289,7 +424,7 @@ export default function EditarPieza() {
                 type="text"
                 name="codigo_surdoc"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.codigo_surdoc}
+                value={pieceData.surdoc}
                 onChange={handleChangePiece}
               />
             </div>
@@ -441,7 +576,7 @@ export default function EditarPieza() {
               <textarea
                 name="descripcion"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.descripcion}
+                value={pieceData.descripcion_col}
                 onChange={handleChangePiece}
               />
             </div>
@@ -520,7 +655,7 @@ export default function EditarPieza() {
                 type="text"
                 name="descripcion_conservacion"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.descripcion_conservacion}
+                value={pieceData.descripcion_cr}
                 onChange={handleChangePiece}
               />
             </div>
@@ -644,7 +779,7 @@ export default function EditarPieza() {
                   <div>
                     <strong>Componente {comp.letra.toUpperCase()}</strong>
                     {comp.nombre_comun && ` – ${comp.nombre_comun}`}
-                    {comp.nombre_atribuido && ` (${comp.nombre_atribuido})`}
+                    {comp.nombre_especifico && ` (${comp.nombre_especifico})`}
                   </div>
                   <div className="space-x-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => handleEditComponentModal(idx)}>
@@ -693,7 +828,7 @@ export default function EditarPieza() {
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Letra *</label>
+                  <label className="block text-sm font-medium mb-2">Letra*</label>
                   <input
                     type="text"
                     name="letra"
@@ -704,11 +839,121 @@ export default function EditarPieza() {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium mb-2">Revisión</label>
+                  <input
+                    type="text"
+                    name="revision"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.revision}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Número de registro anterior</label>
+                  <input
+                    type="text"
+                    name="numero_registro_anterior"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.numero_registro_anterior}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Código SURDOC</label>
+                  <input
+                    type="text"
+                    name="codigo_surdoc"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.codigo_surdoc}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Ubicación</label>
+                  <input
+                    type="text"
+                    name="ubicacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.ubicacion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Depósito</label>
+                  <input
+                    type="text"
+                    name="deposito"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.deposito}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Estante</label>
+                  <input
+                    type="text"
+                    name="estante"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.estante}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Caja actual</label>
+                  <input
+                    type="text"
+                    name="caja_actual"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.caja_actual}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Tipología</label>
+                  <input
+                    type="text"
+                    name="tipologia"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.tipologia}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Colección</label>
+                  <input
+                    type="text"
+                    name="coleccion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.coleccion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Clasificación</label>
+                  <input
+                    type="text"
+                    name="clasificacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.clasificacion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Conjunto</label>
+                  <input
+                    type="text"
+                    name="conjunto"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.conjunto}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
                   <label className="block text-sm font-medium mb-2">Nombre común</label>
                   <input
                     type="text"
                     name="nombre_comun"
-                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.nombre_comun}
                     onChange={handleChangeComp}
                   />
@@ -717,72 +962,397 @@ export default function EditarPieza() {
                   <label className="block text-sm font-medium mb-2">Nombre atribuido</label>
                   <input
                     type="text"
-                    name="nombre_atribuido"
-                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={compForm.nombre_atribuido}
+                    name="nombre_especifico"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.nombre_especifico}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Autor</label>
+                  <input
+                    type="text"
+                    name="autor"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.autor}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Filiación cultural</label>
+                  <input
+                    type="text"
+                    name="filiacion_cultural"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.filiacion_cultural}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">País</label>
+                  <input
+                    type="text"
+                    name="pais"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.pais}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Localidad</label>
+                  <input
+                    type="text"
+                    name="localidad"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.localidad}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Fecha de creación</label>
+                  <input
+                    type="text"
+                    name="fecha_creacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.fecha_creacion}
                     onChange={handleChangeComp}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Descripción</label>
+                  <label className="block text-sm font-medium mb-2">Descripción catálogo</label>
                   <textarea
-                    name="descripcion"
+                    name="descripcion_col"
                     rows={2}
-                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={compForm.descripcion}
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.descripcion_col}
                     onChange={handleChangeComp}
                   />
                 </div>
-
-                {/* Resto campos del modal con el mismo estilo */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Función</label>
-                  <input type="text" name="funcion" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.funcion} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Forma</label>
-                  <input type="text" name="forma" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.forma} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Peso (kg)</label>
-                  <input type="number" step="any" name="peso_kg" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.peso_kg} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Alto (cm)</label>
-                  <input type="number" step="any" name="alto_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.alto_cm} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Ancho (cm)</label>
-                  <input type="number" step="any" name="ancho_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.ancho_cm} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Profundidad (cm)</label>
-                  <input type="number" step="any" name="profundidad_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.profundidad_cm} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Diámetro (cm)</label>
-                  <input type="number" step="any" name="diametro_cm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.diametro_cm} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Espesor (mm)</label>
-                  <input type="number" step="any" name="espesor_mm" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.espesor_mm} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Estado de conservación</label>
-                  <input type="text" name="estado_conservacion" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.estado_conservacion} onChange={handleChangeComp}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Materialidad</label>
-                  <input type="text" name="materialidad" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.materialidad} onChange={handleChangeComp}/>
-                  <small className="text-gray-500">* Separe múltiples materiales con coma</small>
+                  <label className="block text-sm font-medium mb-2">Marcas o inscripciones</label>
+                  <input
+                    type="text"
+                    name="marcas_inscripciones"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.marcas_inscripciones}
+                    onChange={handleChangeComp}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Técnica</label>
-                  <input type="text" name="tecnica" className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" value={compForm.tecnica} onChange={handleChangeComp}/>
+                  <input
+                    type="text"
+                    name="tecnica"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.tecnica}
+                    onChange={handleChangeComp}
+                  />
                   <small className="text-gray-500">* Separe múltiples técnicas con coma</small>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Materialidad</label>
+                  <input
+                    type="text"
+                    name="materialidad"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.materialidad}
+                    onChange={handleChangeComp}
+                  />
+                  <small className="text-gray-500">* Separe múltiples materiales con coma</small>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Descripción conservación</label>
+                  <input
+                    type="text"
+                    name="descripcion_cr"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.descripcion_cr}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Alto (cm)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="alto_cm"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.alto_cm}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Ancho (cm)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="ancho_cm"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.ancho_cm}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Profundidad (cm)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="profundidad_cm"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.profundidad_cm}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Diámetro (cm)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="diametro_cm"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.diametro_cm}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Espesor (mm)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="espesor_mm"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.espesor_mm}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Peso (gr)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="peso_gr"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.peso_gr}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Función</label>
+                  <input
+                    type="text"
+                    name="funcion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.funcion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Contexto histórico</label>
+                  <input
+                    type="text"
+                    name="contexto_historico"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.contexto_historico}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Bibliografía</label>
+                  <input
+                    type="text"
+                    name="bibliografia"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.bibliografia}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Iconografía</label>
+                  <input
+                    type="text"
+                    name="iconografia"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.iconografia}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Notas de investigación</label>
+                  <input
+                    type="text"
+                    name="notas_investigacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.notas_investigacion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Estado de conservación</label>
+                  <input
+                    type="text"
+                    name="estado_conservacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.estado_conservacion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Responsable conservación</label>
+                  <input
+                    type="text"
+                    name="responsable_conservacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.responsable_conservacion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Fecha actualización conservación</label>
+                  <input
+                    type="text"
+                    name="fecha_actualizacion_conservacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.fecha_actualizacion_conservacion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Comentarios conservación</label>
+                  <input
+                    type="text"
+                    name="comentarios_conservacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.comentarios_conservacion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Exposiciones</label>
+                  <input
+                    type="text"
+                    name="exposiciones"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.exposiciones}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Avaluo</label>
+                  <input
+                    type="text"
+                    name="avaluo"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.avaluo}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Procedencia</label>
+                  <input
+                    type="text"
+                    name="procedencia"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.procedencia}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Donante</label>
+                  <input
+                    type="text"
+                    name="donante"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.donante}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Fecha ingreso</label>
+                  <input
+                    type="text"
+                    name="fecha_ingreso"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.fecha_ingreso}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Responsable colección</label>
+                  <input
+                    type="text"
+                    name="responsable_coleccion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.responsable_coleccion}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Fecha última modificación</label>
+                  <input
+                    type="text"
+                    name="fecha_ultima_modificacion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.fecha_ultima_modificacion}
+                    onChange={handleChangeComp}
+                    disabled
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Imágenes del componente</label>
+                  <div className="space-y-2">
+                    {compForm.imagenes && compForm.imagenes.length > 0 ? (
+                      compForm.imagenes.map((img, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <img src={img.imagen} alt={`Imagen ${idx + 1}`} className="h-16 w-16 object-cover rounded border" />
+                          <input
+                            type="text"
+                            className="w-full rounded border px-2 py-1"
+                            placeholder="Descripción"
+                            value={img.descripcion ?? ""}
+                            onChange={e => {
+                              const newImgs = [...(compForm.imagenes ?? [])];
+                              newImgs[idx] = { ...newImgs[idx], descripcion: e.target.value };
+                              setCompForm(prev => ({ ...prev, imagenes: newImgs }));
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              const newImgs = [...(compForm.imagenes ?? [])];
+                              newImgs.splice(idx, 1);
+                              setCompForm(prev => ({ ...prev, imagenes: newImgs }));
+                            }}
+                          >
+                            Quitar
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No hay imágenes asociadas.</p>
+                    )}
+                    <input
+                      type="file"
+                      accept=".jpg"
+                      multiple
+                      onChange={e => {
+                        const files = Array.from(e.target.files ?? []);
+                        const newImgs = files.map(f => ({
+                          imagen: URL.createObjectURL(f),
+                          descripcion: "",
+                          file: f,
+                        }));
+                        setCompForm(prev => ({
+                          ...prev,
+                          imagenes: [...(prev.imagenes ?? []), ...newImgs],
+                        }));
+                      }}
+                    />
+                    <small className="text-gray-500">Puedes subir varias imágenes (.jpg) para cada componente. Los nombres deben seguir el formato indicado por el museo.</small>
+                  </div>
+                </div>
               </div>
-
               <div className="mt-6 flex justify-end gap-2">
                 <Button type="button" variant="default" onClick={handleSaveComponent}>
                   Guardar
