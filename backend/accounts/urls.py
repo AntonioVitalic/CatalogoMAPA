@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import RegisterView, LoginView, MeView, UsersListView, UserUpdateView, RegistroCambiosView
+from .views import RegisterView, LoginView, MeView, UsersListView, UserUpdateView, RegistroCambiosView, borrar_historial_cambios
 
 urlpatterns = [
     path('register/', RegisterView.as_view()),
@@ -10,4 +10,5 @@ urlpatterns = [
     path('users/',    UsersListView.as_view()),
     path('user/<int:pk>/', UserUpdateView.as_view()),
     path('registro-cambios-catalogo/', RegistroCambiosView.as_view()),
+    path('borrar-historial-cambios/', borrar_historial_cambios),
 ]

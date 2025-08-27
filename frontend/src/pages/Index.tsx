@@ -299,6 +299,13 @@ export default function Index() {
                   selectedItems={selectedItems}
                   user={user ? { ...user, id: String(user.id), name: user.name ?? `${user.first_name} ${user.last_name}` } : null}
                 />
+                <Button
+                  variant="default"
+                  onClick={() => navigate("/importacion-masiva")}
+                  disabled={user?.role !== "admin"}
+                >
+                  Importación masiva
+                </Button>
                 {user && (user.role === "admin" || user.role === "editor") && (
                   <>
                     <Button variant="default" onClick={() => navigate("/crear-pieza")}>
@@ -306,19 +313,20 @@ export default function Index() {
                     </Button>
                     <Button
                       variant="destructive"
-                      onClick={() => {
-                        // Eliminar piezas seleccionadas
+                      onClick={async () => {
                         if (selectedItems.length === 0) return;
                         if (!window.confirm(`¿Seguro que deseas eliminar ${selectedItems.length} pieza(s)?`)) return;
-                        selectedItems.forEach(async (item) => {
+                        for (const item of selectedItems) {
                           try {
                             await api.delete(`/api/piezas/${item.inventoryNumber}/`);
                           } catch (err) {
                             console.error("Error eliminando pieza", item.inventoryNumber, err);
                           }
-                        });
+                        }
                         setSelectedItems([]);
-                        fetchPiezas(pagination.page, searchFilters);
+                        setTimeout(() => {
+                          fetchPiezas(pagination.page, searchFilters);
+                        }, 500); // espera 0.5 segundos antes de recargar
                       }}
                       disabled={selectedItems.length === 0}
                     >

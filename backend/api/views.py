@@ -3,12 +3,16 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from django.conf import settings
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import BasePermission
 from neomodel import db
+import subprocess
+import time
 import json
 
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
-    Localidad, Material, Coleccion
+    Localidad, Material, Tecnica, Coleccion, Cultura, Exposicion
 )
 
 from .serializers import (
@@ -152,6 +156,15 @@ class PiezaViewSet(viewsets.ViewSet):
 
         ser = PiezaExportSerializer(piezas, many=True, context={'request': request})
         return Response(ser.data)
+    
+    @action(detail=False, methods=['get'], url_path='next-numero')
+    def next_numero(self, request):
+        # Calcula el siguiente número como: max(numero_inventario_int) + 1
+        q = "MATCH (p:Pieza) RETURN coalesce(max(p.numero_inventario_int), 0) AS maxn"
+        rows, _ = db.cypher_query(q)
+        maxn = int(rows[0][0]) if rows and rows[0] and rows[0][0] is not None else 0
+        return Response({"next": maxn + 1})
+
 
     def retrieve(self, request, pk=None):
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
@@ -270,7 +283,7 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_actualizacion_conservacion=comp.get('fecha_actualizacion_conservacion', ''),
                     comentarios_conservacion=comp.get('comentarios_conservacion', ''),
 
-                    exposiciones=comp.get('exposiciones', ''),
+                    # exposiciones=comp.get('exposiciones', ''),
                     avaluo=comp.get('avaluo', ''),
                     procedencia=comp.get('procedencia', ''),
                     donante=comp.get('donante', ''),
@@ -279,6 +292,8 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 pieza.componentes.connect(c)
+
+        _set_many_names(c, 'exposiciones', Exposicion, _split_list(comp.get('exposiciones', '')))
 
         # 5) Imagen de pieza (opcional)
         imagen = request.FILES.get('imagen')
@@ -431,7 +446,7 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_actualizacion_conservacion=comp.get('fecha_actualizacion_conservacion', ''),
                     comentarios_conservacion=comp.get('comentarios_conservacion', ''),
 
-                    exposiciones=comp.get('exposiciones', ''),
+                    # exposiciones=comp.get('exposiciones', ''),
                     avaluo=comp.get('avaluo', ''),
                     procedencia=comp.get('procedencia', ''),
                     donante=comp.get('donante', ''),
@@ -440,6 +455,8 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 pieza.componentes.connect(c)
+
+        _set_many_names(c, 'exposiciones', Exposicion, _split_list(comp.get('exposiciones', '')))
 
         # 5) Imagen de pieza (opcional)
         imagen = request.FILES.get('imagen')
@@ -469,8 +486,8 @@ class PiezaViewSet(viewsets.ViewSet):
         before_obj = {
             "numero_inventario": pieza.numero_inventario,
             "nombre_especifico": pieza.nombre_especifico,
-            "descripcion": pieza.descripcion,
-            "coleccion": pieza.coleccion,
+            "descripcion_col": pieza.descripcion_col,
+            "coleccion": None,
         }
         RegistroCambioPieza.objects.create(
             usuario=request.user,
@@ -594,3 +611,46 @@ class ExposicionViewSet(viewsets.ViewSet):
             df = pd.read_csv(csv_path)
             expos = [{"id": i + 1, "nombre": str(n)} for i, n in enumerate(df["nombre"].dropna().unique())]
         return Response(expos)
+    
+class IsAdminRole(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and getattr(request.user, "role", None) == "admin")
+
+@api_view(['POST'])
+@permission_classes([IsAdminRole])
+def importacion_masiva(request):
+    excel_file = request.FILES.get('excel')
+    images_zip = request.FILES.get('images_zip')
+    if not excel_file or not images_zip:
+        return Response({"detail": "Faltan archivos"}, status=400)
+
+    # Guardar archivos en la ruta esperada
+    excel_path = "/app/inventario.xlsx"
+    images_dir = "/imagenes"
+    with open(excel_path, "wb") as f:
+        for chunk in excel_file.chunks():
+            f.write(chunk)
+    # Descomprimir ZIP de imágenes
+    import zipfile
+    import os
+    with zipfile.ZipFile(images_zip) as zf:
+        zf.extractall(images_dir)
+
+    # Ejecutar el comando de importación
+    t0 = time.monotonic()
+    proc = subprocess.run(
+        ["python", "manage.py", "import_mapa", "--excel", excel_path, "--images_dir", images_dir],
+        cwd="/app",
+        capture_output=True,
+        text=True,
+    )
+    elapsed = time.monotonic() - t0
+    if proc.returncode != 0:
+        return Response({"detail": "Error en importación", "output": proc.stderr}, status=500)
+    # Buscar resumen en la salida
+    resumen = ""
+    for line in proc.stdout.splitlines():
+        if "Import finalizado" in line:
+            resumen = line
+            break
+    return Response({"mensaje": resumen or "Importación finalizada", "tiempo": elapsed})

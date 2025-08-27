@@ -23,7 +23,8 @@ from rest_framework.routers import DefaultRouter
 from api.views import (
     PiezaViewSet, ComponenteViewSet, ImagenViewSet, 
     AutorViewSet, PaisViewSet, LocalidadViewSet, 
-    TipologiaViewSet, ColeccionViewSet, ExposicionViewSet
+    TipologiaViewSet, ColeccionViewSet, ExposicionViewSet,
+    importacion_masiva
 )
 
 router = DefaultRouter()
@@ -41,6 +42,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)), # los endpoints de Neo4j
     path('accounts/', include('accounts.urls')), # los endpoints de auth + usuarios + registro cambios
+     path('api/importacion-masiva/', importacion_masiva), # endpoint para ejecutar importacion masiva
 ]
 
 

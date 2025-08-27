@@ -9,6 +9,7 @@ import AdminUsers from "./pages/AdminUsers";
 import CrearPieza from "./pages/CrearPieza";
 import EditarPieza from "./pages/EditarPieza";
 import HistorialCambios from "./pages/HistorialCambios";
+import ImportacionMasiva from "./pages/ImportacionMasiva";
 
 export default function AppRoutes() {
   const { isAuthenticated, loading, user } = useContext(AuthContext);
@@ -54,6 +55,12 @@ export default function AppRoutes() {
         path="/historial-cambios"
         element={
           isAuthenticated ? (canEdit ? <HistorialCambios /> : <Navigate to="/" replace />) : <Navigate to="/auth" replace />
+        }
+      />
+      <Route
+        path="/importacion-masiva"
+        element={
+          isAuthenticated ? (canAdmin ? <ImportacionMasiva /> : <Navigate to="/" replace />) : <Navigate to="/auth" replace />
         }
       />
       <Route path="*" element={<NotFound />} />
