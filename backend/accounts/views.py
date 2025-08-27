@@ -4,7 +4,8 @@ from rest_framework import permissions, status
 from django.db import transaction
 from .models import Usuario, RegistroCambioPieza
 from .serializers import UsuarioPublicSerializer, RegistroCambioPiezaSerializer
-
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -96,3 +97,11 @@ class RegistroCambiosView(APIView):
             return Response({'detail':'Forbidden'}, status=403)
         regs = RegistroCambioPieza.objects.select_related('usuario').all()
         return Response(RegistroCambioPiezaSerializer(regs, many=True).data)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def borrar_historial_cambios(request):
+    if request.user.role != 'admin':
+        return Response({'detail': 'Forbidden'}, status=403)
+    RegistroCambioPieza.objects.all().delete()
+    return Response({'detail': 'Historial borrado'}, status=204)

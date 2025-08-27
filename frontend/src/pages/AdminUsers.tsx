@@ -171,6 +171,22 @@ export default function AdminUsers() {
               />
             </TabsContent>
             <TabsContent value="historial">
+              <div className="flex justify-end mb-2">
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!window.confirm("¿Seguro que deseas borrar todo el historial de cambios?")) return;
+                    try {
+                      await api.delete("/accounts/borrar-historial-cambios/", { baseURL: API_URL });
+                      setLogs([]);
+                    } catch (err) {
+                      alert("Error al borrar el historial");
+                    }
+                  }}
+                >
+                  Borrar historial de cambios
+                </Button>
+              </div>
               <ChangeLogTable logs={logs} />
             </TabsContent>
           </Tabs>
