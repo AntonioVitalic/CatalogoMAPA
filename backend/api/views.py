@@ -9,6 +9,7 @@ from neomodel import db
 import subprocess
 import time
 import json
+import copy
 
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
@@ -307,8 +308,10 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 pieza.componentes.connect(c)
-
-        _set_many_names(c, 'exposiciones', Exposicion, _split_list(comp.get('exposiciones', '')))
+                exposiciones_raw = comp.get('exposiciones', '')
+                exposiciones_list = _split_list(exposiciones_raw)
+                if exposiciones_list and any(e.strip() for e in exposiciones_list):
+                    _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
 
         # 5) Imagen de pieza (opcional)
         imagen = request.FILES.get('imagen')
@@ -337,12 +340,19 @@ class PiezaViewSet(viewsets.ViewSet):
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
 
         # ===== BEFORE para auditoría =====
-        before_obj = {
-            "numero_inventario": pieza.numero_inventario,
-            "nombre_especifico": pieza.nombre_especifico,
-            "descripcion_col": pieza.descripcion_col,
-            "coleccion": None,  # la relación se resuelve aparte
-        }
+        before_obj = pieza.__dict__.copy()
+        before_obj.pop('_id', None)
+        before_obj.pop('_labels', None)
+        before_obj.pop('_properties', None)
+
+        # Guardar snapshot de componentes antes
+        before_components = []
+        for c in pieza.componentes.all():
+            comp_dict = c.__dict__.copy()
+            comp_dict.pop('_id', None)
+            comp_dict.pop('_labels', None)
+            comp_dict.pop('_properties', None)
+            before_components.append(comp_dict)
 
         # 1) Actualizar PROPIEDADES planas (sin tocar relaciones)
         fields_scalar = {
@@ -365,7 +375,6 @@ class PiezaViewSet(viewsets.ViewSet):
             'bibliografia': _get('bibliografia', data),
             'iconografia': _get('iconografia', data),
             'notas_investigacion': _get('notas_investigacion', data),
-
             'descripcion_cr': _get('descripcion_cr', data, 'descripcion_conservacion'),
             'alto_cm': float(_get('alto_cm', data) or 0) or None,
             'ancho_cm': float(_get('ancho_cm', data) or 0) or None,
@@ -373,13 +382,11 @@ class PiezaViewSet(viewsets.ViewSet):
             'diametro_cm': float(_get('diametro_cm', data) or 0) or None,
             'espesor_mm': float(_get('espesor_mm', data) or 0) or None,
             'peso_gr': float(_get('peso_gr', data) or 0) or None,
-
             'funcion': _get('funcion', data),
             'estado_conservacion': _get('estado_conservacion', data),
             'responsable_conservacion': _get('responsable_conservacion', data),
             'fecha_actualizacion_conservacion': _get('fecha_actualizacion_conservacion', data),
             'comentarios_conservacion': _get('comentarios_conservacion', data),
-
             'avaluo': _get('avaluo', data),
             'procedencia': _get('procedencia', data),
             'donante': _get('donante', data),
@@ -403,8 +410,9 @@ class PiezaViewSet(viewsets.ViewSet):
         _set_many_names(pieza, 'tecnica', Tecnica, _split_list(_get('tecnica', data)))
         _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(_get('exposiciones', data)))
 
-        # 4) Componentes (modo “reemplazar” como ya hacías)
+        # 4) Componentes (modo “reemplazar”)
         componentes = data.get('componentes')
+        after_components = []
         if componentes is not None:
             comps = json.loads(componentes) if isinstance(componentes, str) else componentes
             # eliminar actuales
@@ -417,15 +425,12 @@ class PiezaViewSet(viewsets.ViewSet):
                     pieza_numero_inventario=pieza.numero_inventario,
                     letra=(comp.get('letra') or '').strip().lower(),
                     revision=comp.get('revision', ''),
-
                     numero_registro_anterior=comp.get('numero_registro_anterior', ''),
                     codigo_surdoc=comp.get('codigo_surdoc', ''),
-
                     ubicacion=comp.get('ubicacion', ''),
                     deposito=comp.get('deposito', ''),
                     estante=comp.get('estante', ''),
                     caja_actual=comp.get('caja_actual', ''),
-
                     tipologia=comp.get('tipologia', ''),
                     coleccion=comp.get('coleccion', ''),
                     clasificacion=comp.get('clasificacion', ''),
@@ -438,7 +443,6 @@ class PiezaViewSet(viewsets.ViewSet):
                     localidad=comp.get('localidad', ''),
                     fecha_creacion=comp.get('fecha_creacion', ''),
                     descripcion_col=comp.get('descripcion_col', ''),
-
                     marcas_inscripciones=comp.get('marcas_inscripciones', ''),
                     tecnica=comp.get('tecnica', ''),
                     materialidad=comp.get('materialidad', ''),
@@ -449,19 +453,16 @@ class PiezaViewSet(viewsets.ViewSet):
                     diametro_cm=float(comp.get('diametro_cm') or 0) or None,
                     espesor_mm=float(comp.get('espesor_mm') or 0) or None,
                     peso_gr=float(comp.get('peso_gr') or 0) or None,
-
                     funcion=comp.get('funcion', ''),
                     contexto_historico=comp.get('contexto_historico', ''),
                     bibliografia=comp.get('bibliografia', ''),
                     iconografia=comp.get('iconografia', ''),
                     notas_investigacion=comp.get('notas_investigacion', ''),
-
                     estado_conservacion=comp.get('estado_conservacion', ''),
                     responsable_conservacion=comp.get('responsable_conservacion', ''),
                     fecha_actualizacion_conservacion=comp.get('fecha_actualizacion_conservacion', ''),
                     comentarios_conservacion=comp.get('comentarios_conservacion', ''),
-
-                    # exposiciones=comp.get('exposiciones', ''),
+                    exposiciones=comp.get('exposiciones', ''),
                     avaluo=comp.get('avaluo', ''),
                     procedencia=comp.get('procedencia', ''),
                     donante=comp.get('donante', ''),
@@ -470,27 +471,77 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 pieza.componentes.connect(c)
+                exposiciones_raw = comp.get('exposiciones', '')
+                exposiciones_list = _split_list(exposiciones_raw)
+                if exposiciones_list and any(e.strip() for e in exposiciones_list):
+                    _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
+                # snapshot after
+                comp_dict = c.__dict__.copy()
+                comp_dict.pop('_id', None)
+                comp_dict.pop('_labels', None)
+                comp_dict.pop('_properties', None)
+                after_components.append(comp_dict)
 
-        _set_many_names(c, 'exposiciones', Exposicion, _split_list(comp.get('exposiciones', '')))
+        # ===== AFTER para auditoría =====
+        after_obj = pieza.__dict__.copy()
+        after_obj.pop('_id', None)
+        after_obj.pop('_labels', None)
+        after_obj.pop('_properties', None)
 
-        # 5) Imagen de pieza (opcional)
-        imagen = request.FILES.get('imagen')
-        if imagen:
-            img = Imagen(file_name=imagen.name, descripcion="").save()
-            pieza.imagenes.connect(img)
+        # ========== COMPARACIÓN DE CAMBIOS ==========
+        def compare_dicts(before, after, prefix=""):
+            changes = []
+            for k in after:
+                if k.startswith("_"): continue
+                v_before = before.get(k, None)
+                v_after = after.get(k, None)
+                if v_before != v_after:
+                    changes.append({
+                        "campo": f"{prefix}{k}",
+                        "antes": v_before,
+                        "despues": v_after
+                    })
+            return changes
 
-        # 6) Auditoría
-        after_obj = {
-            "numero_inventario": pieza.numero_inventario,
-            "nombre_especifico": pieza.nombre_especifico,
-            "descripcion_col": pieza.descripcion_col,
-            "coleccion": _get('coleccion', data),
-        }
+        # Cambios en pieza principal
+        cambios_pieza = compare_dicts(before_obj, after_obj)
+
+        # Cambios en componentes
+        cambios_componentes = []
+        # Si hay componentes antes y después, compara por letra
+        letras_antes = {c.get("letra", ""): c for c in before_components}
+        letras_despues = {c.get("letra", ""): c for c in after_components}
+        for letra, comp_after in letras_despues.items():
+            comp_before = letras_antes.get(letra, {})
+            cambios = compare_dicts(comp_before, comp_after, prefix=f"Componente {letra}: ")
+            if cambios:
+                cambios_componentes.extend(cambios)
+        # Componentes eliminados
+        for letra, comp_before in letras_antes.items():
+            if letra not in letras_despues:
+                cambios_componentes.append({
+                    "campo": f"Componente {letra}",
+                    "antes": comp_before,
+                    "despues": None
+                })
+        # Componentes agregados
+        for letra, comp_after in letras_despues.items():
+            if letra not in letras_antes:
+                cambios_componentes.append({
+                    "campo": f"Componente {letra}",
+                    "antes": None,
+                    "despues": comp_after
+                })
+
+        # Auditoría: guardar cambios detallados
         RegistroCambioPieza.objects.create(
             usuario=request.user,
             pieza_id=pieza.numero_inventario,
             accion="EDITAR",
-            detalle=json.dumps({"before": before_obj, "after": after_obj})
+            detalle=json.dumps({
+                "cambios_pieza": cambios_pieza,
+                "cambios_componentes": cambios_componentes,
+            }, ensure_ascii=False, indent=2)
         )
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data)

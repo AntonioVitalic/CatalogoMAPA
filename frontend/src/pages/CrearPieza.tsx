@@ -273,7 +273,7 @@ export default function CrearPieza() {
       const response = await api.post("/api/piezas/", formData);
       const newPiece = response.data;
       alert("Pieza creada correctamente");
-      navigate(`/`);
+      navigate(`/detail/${newPiece.numero_inventario}`);
     } catch (err: any) {
       console.error("Error creando pieza:", err);
       const msg = err.response?.data?.detail || err.message;

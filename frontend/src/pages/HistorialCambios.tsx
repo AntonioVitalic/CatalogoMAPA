@@ -99,24 +99,35 @@ export default function HistorialCambios() {
               </thead>
               <tbody>
                 {!loading && logs.map(log => {
-                  let before: any = "";
-                  let after: any = "";
+                  let cambios: any[] = [];
                   try {
-                    const parsed = JSON.parse(log.detalle);
-                    before = parsed?.before ?? "";
-                    after = parsed?.after ?? "";
+                    const detalle = JSON.parse(log.detalle);
+                    if (detalle.cambios_pieza) cambios = cambios.concat(detalle.cambios_pieza);
+                    if (detalle.cambios_componentes) cambios = cambios.concat(detalle.cambios_componentes);
                   } catch {
-                    // si no es JSON, mostrar todo en "Después"
-                    after = log.detalle ?? "";
+                    cambios = [{ campo: "detalle", antes: "", despues: log.detalle }];
                   }
-                  const fmt = (v: any) => (v === null || v === undefined ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v)));
                   return (
                     <tr key={log.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-2 border">{log.pieza_id}</td>
                       <td className="p-2 border">{log.accion}</td>
                       <td className="p-2 border">{new Date(log.fecha).toLocaleString()}</td>
-                      <td className="p-2 border"><pre className="whitespace-pre-wrap text-sm">{fmt(before)}</pre></td>
-                      <td className="p-2 border"><pre className="whitespace-pre-wrap text-sm">{fmt(after)}</pre></td>
+                      <td className="p-2 border" colSpan={2}>
+                        {cambios.length === 0 ? (
+                          <span className="text-muted-foreground text-sm">Sin cambios</span>
+                        ) : (
+                          <ul className="text-xs">
+                            {cambios.map((c, i) => (
+                              <li key={i}>
+                                <b>{c.campo}:</b>{" "}
+                                <span className="text-red-700">{c.antes === null ? "—" : JSON.stringify(c.antes)}</span>{" "}
+                                <span className="mx-1">→</span>
+                                <span className="text-green-700">{c.despues === null ? "—" : JSON.stringify(c.despues)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
