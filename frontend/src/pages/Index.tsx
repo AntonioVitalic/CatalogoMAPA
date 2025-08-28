@@ -46,6 +46,7 @@ export default function Index() {
   });
 
   const [showLogin, setShowLogin] = useState(false);
+  const [showNeo4j, setShowNeo4j] = useState(false);
 
   // Carga inicial y cuando cambian página o filtros
   useEffect(() => {
@@ -300,12 +301,20 @@ export default function Index() {
                   user={user ? { ...user, id: String(user.id), name: user.name ?? `${user.first_name} ${user.last_name}` } : null}
                 />
                 {user?.role === "admin" && (
+                  <>
                   <Button
                     variant="default"
                     onClick={() => navigate("/importacion-masiva")}
                   >
                     Importación masiva
                   </Button>
+                  <Button
+                    variant="default"
+                    onClick={() => window.open("http://localhost:7475/browser/", "_blank")}
+                  >
+                    Ver en Neo4j
+                  </Button>
+                  </>
                 )}
                 {user && (user.role === "admin" || user.role === "editor") && (
                   <>
@@ -354,6 +363,24 @@ export default function Index() {
           </div>
         </div>
       </main>
+
+      {/* Modal Neo4j */}
+      <Dialog open={showNeo4j} onOpenChange={setShowNeo4j}>
+        <DialogContent className="max-w-5xl w-full bg-white p-0 overflow-hidden" style={{ height: "80vh" }}>
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-semibold">Neo4j Browser</h2>
+              <Button variant="outline" onClick={() => setShowNeo4j(false)}>Cerrar</Button>
+            </div>
+            <iframe
+              src="http://localhost:7475/browser/"
+              title="Neo4j Browser"
+              className="flex-1 w-full"
+              style={{ border: "none", minHeight: "60vh" }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Diálogo de login (demo) */}
       {showLogin && (
