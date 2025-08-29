@@ -41,7 +41,15 @@ export default function Auth() {
       await refreshProfile();
       navigate("/");
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "Error al iniciar sesión");
+      // Detecta el error de usuario inactivo
+      if (
+        err?.response?.data?.detail === "No active account found with the given credentials" ||
+        err?.message === "No refresh token"
+      ) {
+        setError("Espera a que la administración acepte tu solicitud.");
+      } else {
+        setError(err?.response?.data?.error || err?.message || "Error al iniciar sesión");
+      }
     } finally {
       setLoading(false);
     }
@@ -59,6 +67,11 @@ export default function Auth() {
         last_name: lastName,
         role: selectedRole,
       });
+      if (selectedRole === "visitor") {
+        setError("Solicitud enviada, espera aprobación del administrador.");
+        setLoading(false);
+        return;
+      }
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
       await refreshProfile();

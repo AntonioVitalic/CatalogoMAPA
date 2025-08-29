@@ -33,10 +33,15 @@ class RegisterView(APIView):
         if Usuario.objects.filter(email=email).exists():
             return Response({'error':'Email ya registrado'}, status=400)
 
+        # Si es visitante, crear inactivo
+        is_active = False if role == 'visitor' else True
+
         user = Usuario.objects.create_user(email=email, password=password,
                                            first_name=first_name, last_name=last_name,
-                                           is_active=True, role=role)
-        # emitir tokens
+                                           is_active=is_active, role=role)
+        if role == 'visitor':
+            return Response({'detail': 'Solicitud enviada, espera aprobación del administrador.'}, status=201)
+        # emitir tokens solo si es activo
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UsuarioPublicSerializer(user).data,

@@ -34,7 +34,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [me, setMe] = useState<User | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"activos" | "inactivos" | "historial">("activos");
+  const [tab, setTab] = useState<"activos" | "inactivos" | "pendientes" | "historial">("activos");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -74,10 +74,16 @@ export default function AdminUsers() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  const fetchUsers = async (tab: "activos" | "inactivos") => {
+  const fetchUsers = async (tab: "activos" | "inactivos" | "pendientes") => {
     try {
       const usersRes = await api.get<User[]>("/accounts/users/", { baseURL: API_URL });
-      setUsers(usersRes.data.filter(u => tab === "activos" ? u.is_active : !u.is_active));
+      if (tab === "activos") {
+        setUsers(usersRes.data.filter(u => u.is_active));
+      } else if (tab === "inactivos") {
+        setUsers(usersRes.data.filter(u => !u.is_active && u.role !== "visitor"));
+      } else if (tab === "pendientes") {
+        setUsers(usersRes.data.filter(u => !u.is_active && u.role === "visitor"));
+      }
     } catch (err: any) {
       setError("Error al cargar usuarios");
     }
@@ -152,6 +158,7 @@ export default function AdminUsers() {
             <TabsList className="mb-4">
               <TabsTrigger value="activos">Activos</TabsTrigger>
               <TabsTrigger value="inactivos">Inactivos</TabsTrigger>
+              <TabsTrigger value="pendientes">Solicitudes visitantes</TabsTrigger>
               <TabsTrigger value="historial">Historial de cambios</TabsTrigger>
             </TabsList>
             <TabsContent value="activos">
@@ -168,6 +175,15 @@ export default function AdminUsers() {
                 onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
                 onActivate={handleActivate}
                 type="inactivos"
+              />
+            </TabsContent>
+            <TabsContent value="pendientes">
+              <UserTable
+                users={users}
+                onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+                onActivate={handleActivate}
+                onDeactivate={handleDeactivate}
+                type="pendientes"
               />
             </TabsContent>
             <TabsContent value="historial">
@@ -303,6 +319,24 @@ function UserTable({
                     >
                       <UserCheck size={16} className="mr-1" /> Activar
                     </Button>
+                  )}
+                  {type === "pendientes" && (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => onActivate && onActivate(u)}
+                      >
+                        <UserCheck size={16} className="mr-1" /> Aceptar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => onDeactivate && onDeactivate(u)}
+                      >
+                        <UserX size={16} className="mr-1" /> Rechazar
+                      </Button>
+                    </>
                   )}
                 </div>
               </td>
