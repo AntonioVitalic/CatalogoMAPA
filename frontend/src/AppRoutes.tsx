@@ -21,46 +21,46 @@ export default function AppRoutes() {
 
    return (
     <Routes>
-      <Route path="/auth" element={<Auth />} />
+      <Route path="/login" element={<Auth />} />
       <Route
         path="/"
-        element={isAuthenticated ? <Index /> : <Navigate to="/auth" replace />}
+        element={isAuthenticated ? <Index /> : <Navigate to="/login" replace />}
       />
       <Route
         path="/:page"
-        element={isAuthenticated ? <Index /> : <Navigate to="/auth" replace />}
+        element={isAuthenticated ? <Index /> : <Navigate to="/login" replace />}
       />
       <Route
         path="/detail/:id"
-        element={isAuthenticated ? <Detail /> : <Navigate to="/auth" replace />}
+        element={isAuthenticated ? <Detail /> : <Navigate to="/login" replace />}
       />
       {/* Rutas protegidas por rol */}
       <Route
-        path="/admin/users"
-        element={isAuthenticated ? (canAdmin ? <AdminUsers /> : <Navigate to="/" replace />) : <Navigate to="/auth" replace />}
+        path="/admin"
+        element={isAuthenticated ? (canAdmin ? <AdminUsers /> : <Navigate to="/" replace />) : <Navigate to="/login" replace />}
       />
       <Route
         path="/crear-pieza"
         element={
-          isAuthenticated ? (canEdit ? <CrearPieza /> : <Navigate to="/" replace />) : <Navigate to="/auth" replace />
+          isAuthenticated ? (canEdit ? <CrearPieza /> : <Navigate to="/" replace />) : <Navigate to="/login" replace />
         }
       />
       <Route
         path="/editar-pieza/:id"
         element={
-          isAuthenticated ? (canEdit ? <EditarPieza /> : <Navigate to="/" replace />) : <Navigate to="/auth" replace />
+          isAuthenticated ? (canEdit ? <EditarPieza /> : <Navigate to="/" replace />) : <Navigate to="/login" replace />
         }
       />
       <Route
         path="/historial-cambios"
         element={
-          isAuthenticated ? (canEdit ? <HistorialCambios /> : <Navigate to="/" replace />) : <Navigate to="/auth" replace />
+          isAuthenticated ? (canEdit ? <HistorialCambios /> : <Navigate to="/" replace />) : <Navigate to="/login" replace />
         }
       />
       <Route
         path="/importacion-masiva"
         element={
-          isAuthenticated ? (canAdmin ? <ImportacionMasiva /> : <Navigate to="/" replace />) : <Navigate to="/auth" replace />
+          isAuthenticated ? (canAdmin ? <ImportacionMasiva /> : <Navigate to="/" replace />) : <Navigate to="/login" replace />
         }
       />
       <Route path="*" element={<NotFound />} />

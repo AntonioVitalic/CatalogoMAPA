@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("refresh");
     localStorage.removeItem("user");
     setUser(null);
-    window.location.href = "/auth"; // <-- recarga en /auth al cerrar sesión
+    window.location.href = "/login"; // <-- recarga en /login al cerrar sesión
   };
 
   return (

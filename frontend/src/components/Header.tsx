@@ -66,7 +66,7 @@ const Header = ({ onLoginClick }: HeaderProps) => {
                 {user.role === "admin" && (
                    <DropdownMenuItem
                       className="flex items-center gap-2 cursor-pointer"
-                      onClick={() => navigate("/admin/users")}
+                      onClick={() => navigate("/admin")}
                     >
                     <User size={16} />
                     <span>Gestión de usuarios</span>
