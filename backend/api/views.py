@@ -10,6 +10,7 @@ import subprocess
 import time
 import json
 import copy
+import re
 
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
@@ -83,6 +84,49 @@ def _set_many_names(node, rel_attr: str, label_cls, names: list[str]):
                 inst = label_cls(nombre=nn).save()
         rel.connect(inst)
 
+def extract_year(fecha: str) -> int | None:
+    """
+    Extrae el año numérico desde fecha_creacion.
+    Soporta formatos: 'ca. 1950', '1950', '1950-1970', 'Siglo XX', 'Primera mitad del siglo XX', etc.
+    """
+    if not fecha or not isinstance(fecha, str):
+        return None
+    fecha = fecha.lower().strip()
+    # año simple
+    m = re.search(r'(\d{4})', fecha)
+    if m:
+        return int(m.group(1))
+    # rango de años
+    m = re.search(r'(\d{4})\s*-\s*(\d{4})', fecha)
+    if m:
+        return int(m.group(1))
+    # siglo XX, XXI, XIX
+    m = re.search(r'siglo\s*(x{1,3}|ix|xxi|xx|xix|xx)', fecha)
+    if m:
+        siglo = m.group(1)
+        # Traducir a año aproximado
+        siglos = {'xix': 1800, 'xx': 1900, 'xxi': 2000, 'ix': 800, 'x': 900}
+        return siglos.get(siglo, None)
+    # Primera mitad del siglo XX
+    if "primera mitad del siglo xx" in fecha:
+        return 1900
+    if "segunda mitad del siglo xx" in fecha:
+        return 1950
+    if "primera mitad del siglo xix" in fecha:
+        return 1800
+    if "segunda mitad del siglo xix" in fecha:
+        return 1850
+    # Finales del siglo XX
+    if "finales del siglo xx" in fecha:
+        return 1980
+    # Mediados del siglo XX
+    if "mediados del siglo xx" in fecha:
+        return 1950
+    # Principios del siglo XX
+    if "principios del siglo xx" in fecha:
+        return 1900
+    return None
+
 class PiezaViewSet(viewsets.ViewSet):
     def _parse_filters(self, request):
         colecciones = request.query_params.getlist('coleccion__nombre')
@@ -90,6 +134,9 @@ class PiezaViewSet(viewsets.ViewSet):
         autores     = request.query_params.getlist('autor__nombre')
         localidades = request.query_params.getlist('localidad__nombre')
         tipologias  = request.query_params.getlist('tipologia')
+        fecha_from  = request.query_params.get('fecha_creacion_after', '').strip()
+        fecha_to    = request.query_params.get('fecha_creacion_before', '').strip()
+
 
         def _norm_list(xs):
             return [x.strip().lower() for x in xs if str(x).strip() != ""]
@@ -100,6 +147,8 @@ class PiezaViewSet(viewsets.ViewSet):
             "autores":     _norm_list(autores),
             "localidades": _norm_list(localidades),
             "tipologias":  _norm_list(tipologias),
+            "fecha_from":  fecha_from,
+            "fecha_to":    fecha_to,
         }
 
     def _cypher_base(self):
@@ -155,6 +204,22 @@ class PiezaViewSet(viewsets.ViewSet):
         else:
             rows, _ = db.cypher_query(q, params)
             piezas = [Pieza.inflate(r[0]) for r in rows]
+        
+        # FILTRO DE FECHA DE CREACIÓN
+        fecha_from = params.get("fecha_from")
+        fecha_to = params.get("fecha_to")
+        if fecha_from or fecha_to:
+            def year_ok(p):
+                y = extract_year(getattr(p, "fecha_creacion", ""))
+                if fecha_from and y is not None and y < int(fecha_from):
+                    return False
+                if fecha_to and y is not None and y > int(fecha_to):
+                    return False
+                # Si no se pudo extraer año, lo excluye del filtro
+                if (fecha_from or fecha_to) and y is None:
+                    return False
+                return True
+            piezas = [p for p in piezas if year_ok(p)]
 
         paginator = PageNumberPagination()
         paginator.page_size = settings.REST_FRAMEWORK['PAGE_SIZE']
