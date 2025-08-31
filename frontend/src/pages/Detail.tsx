@@ -10,6 +10,56 @@ import { Button } from "@/components/ui/button";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 
+const FIELD_LABELS: Record<string, string> = {
+  pieza_numero_inventario: "N° de inventario",
+  letra: "Letra",
+  revision: "Revisión",
+  numero_registro_anterior: "N° de registro anterior",
+  codigo_surdoc: "SURDOC",
+  ubicacion: "Ubicación",
+  deposito: "Depósito",
+  estante: "Estante",
+  caja_actual: "Caja actual",
+  tipologia: "Tipología",
+  coleccion: "Colección",
+  clasificacion: "Clasificación",
+  conjunto: "Conjunto",
+  nombre_comun: "Nombre común",
+  nombre_especifico: "Nombre atribuido",
+  autor: "Autor",
+  filiacion_cultural: "Filiación cultural",
+  pais: "País",
+  localidad: "Localidad",
+  fecha_creacion: "Fecha de creación",
+  descripcion_col: "Descripción catálogo",
+  marcas_inscripciones: "Marcas o inscripciones",
+  tecnica: "Técnica",
+  materialidad: "Materialidad",
+  descripcion_cr: "Descripción conservación",
+  alto_cm: "Alto (cm)",
+  ancho_cm: "Ancho (cm)",
+  profundidad_cm: "Profundidad (cm)",
+  diametro_cm: "Diámetro (cm)",
+  espesor_mm: "Espesor (mm)",
+  peso_gr: "Peso (gr)",
+  funcion: "Función",
+  contexto_historico: "Contexto histórico",
+  bibliografia: "Bibliografía",
+  iconografia: "Iconografía",
+  notas_investigacion: "Notas de investigación",
+  estado_conservacion: "Estado de conservación",
+  responsable_conservacion: "Responsable conservación",
+  fecha_actualizacion_conservacion: "Fecha actualización conservación",
+  comentarios_conservacion: "Comentarios conservación",
+  exposiciones: "Exposiciones",
+  avaluo: "Avaluo",
+  procedencia: "Procedencia",
+  donante: "Donante",
+  fecha_ingreso: "Fecha ingreso",
+  responsable_coleccion: "Responsable colección",
+  fecha_ultima_modificacion: "Fecha última modificación",
+};
+
 const Detail = () => {
   const { id } = useParams<{ id: string }>();
   console.log("Detail cargado, id =", id);
@@ -140,27 +190,29 @@ const Detail = () => {
       <div className="flex-1">
         <ItemDetail item={item} />
         {item.componentes && item.componentes.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-8 ml-12"> {/* <-- margen izquierdo para toda la sección */}
           <h2 className="text-xl font-bold mb-4">Componentes</h2>
           {item.componentes.map((comp, idx) => (
-            <div key={idx} className="mb-6 border rounded-lg p-4 bg-muted/10">
+            <div key={idx} className="mb-6 border rounded-lg p-6 bg-muted/10 ml-8"> {/* <-- margen izquierdo para cada componente */}
               <h3 className="font-semibold mb-2">
                 Componente {comp.letra ? comp.letra.toUpperCase() : idx + 1}
               </h3>
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border bg-white rounded shadow">
                 <tbody>
                   {Object.entries(comp).map(([key, value]) => (
                     key !== "imagenes" && (
                       <tr key={key}>
-                        <td className="font-medium pr-2">{key}</td>
-                        <td>{String(value)}</td>
+                        <td className="font-medium pr-4 py-2 align-top text-right w-1/3 text-muted-foreground">
+                          {FIELD_LABELS[key] || key}
+                        </td>
+                        <td className="pl-4 py-2 align-top">{String(value)}</td>
                       </tr>
                     )
                   ))}
                   {comp.imagenes && comp.imagenes.length > 0 && (
                     <tr>
-                      <td className="font-medium pr-2">Imágenes</td>
-                      <td>
+                      <td className="font-medium pr-4 py-2 align-top text-right text-muted-foreground">Imágenes</td>
+                      <td className="pl-4 py-2 align-top">
                         {comp.imagenes.map((img: any, i: number) => (
                           <img key={i} src={img.imagen} alt={img.descripcion || ""} className="inline-block h-16 mr-2" />
                         ))}
