@@ -8,13 +8,22 @@ interface ActiveFiltersProps {
 const ActiveFilters = ({ filters }: ActiveFiltersProps) => {
   const active: string[] = [];
 
-  if (filters.country?.length)     active.push(`país (${filters.country.length})`);
-  if (filters.collection?.length)  active.push(`colección (${filters.collection.length})`);
-  if (filters.author?.length)      active.push(`autor (${filters.author.length})`);
-  if (filters.locality?.length)    active.push(`localidad (${filters.locality.length})`);
-  if (filters.tipologias?.length)  active.push(`tipología (${filters.tipologias.length})`);
-  if (filters.exhibitions?.length) active.push(`exhibiciones (${filters.exhibitions.length})`);
-  if (filters.dateFrom || filters.dateTo) active.push("fecha de creación");
+  if (filters.country?.length)
+    active.push(`país: ${filters.country.join(", ")}`);
+  if (filters.collection?.length)
+    active.push(`colección: ${filters.collection.join(", ")}`);
+  if (filters.author?.length)
+    active.push(`autor: ${filters.author.join(", ")}`);
+  if (filters.locality?.length)
+    active.push(`localidad: ${filters.locality.join(", ")}`);
+  if (filters.tipologias?.length)
+    active.push(`tipología: ${filters.tipologias.join(", ")}`);
+  if (filters.exhibitions?.length)
+    active.push(`exhibiciones: ${filters.exhibitions.join(", ")}`);
+  if (filters.dateFrom || filters.dateTo)
+    active.push(
+      `fecha de creación: ${filters.dateFrom || "?"} - ${filters.dateTo || "?"}`
+    );
 
   if (active.length === 0) return null;
 
