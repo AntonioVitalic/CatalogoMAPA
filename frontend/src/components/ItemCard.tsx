@@ -100,7 +100,7 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
           </p>
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+      <CardFooter className="p-4 pt-0 flex flex-col space-y-2 items-stretch">
         <Button 
           variant="outline" 
           size="sm"
@@ -110,10 +110,10 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
           {isSelected ? "Deseleccionar" : "Seleccionar"}
         </Button>
         <Button 
-          variant="ghost" 
+          variant="outline" 
           size="sm"
+          className="w-full"
           onClick={viewDetails}
-          className="ml-2"
         >
           <Eye size={16} className="mr-1" />
           Ver detalle
