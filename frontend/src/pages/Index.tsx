@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import Search from "@/components/Search";
 import FilterPanel from "@/components/FilterPanel";
@@ -55,6 +55,18 @@ export default function Index() {
     fetchPiezas(currentPage, searchFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageParam, searchFilters]);
+
+  useEffect(() => {
+    // Lee los filtros y la página desde los query params si existen
+    const params = new URLSearchParams(location.search);
+    const page = params.get("page") ? Number(params.get("page")) : initialPage;
+    const filters: SearchFilters = { ...searchFilters };
+    // Rellena filters con los valores de los params
+    // ...parsea cada filtro según tu estructura...
+    setPagination((prev) => ({ ...prev, page }));
+    setSearchFilters(filters);
+    fetchPiezas(page, filters);
+  }, [location.search]);
 
   const mapResultToItem = (p: any): CollectionItem => {
     const imgPath = p.imagenes?.[0]?.imagen;
@@ -166,7 +178,7 @@ export default function Index() {
     setSearchFilters(advanced);
     setPagination((prev) => ({ ...prev, page: 1 }));
     navigate(`/1`);
-    setShowFilters(false);
+    // setShowFilters(false);
   };
 
   const handleResetFilters = () =>
@@ -359,6 +371,7 @@ export default function Index() {
               onSelectAllVisible={handleSelectAllVisible}
               onSelectAllFiltered={handleSelectAllFiltered}
               totalFilteredItems={pagination.totalItems}
+              searchFilters={searchFilters} 
             />
           </div>
         </div>

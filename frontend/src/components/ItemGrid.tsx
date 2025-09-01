@@ -1,4 +1,4 @@
-import { CollectionItem, PaginationState, ViewMode } from "@/types";
+import { CollectionItem, PaginationState, ViewMode, SearchFilters } from "@/types";
 import ItemCard from "./ItemCard";
 import {
   Pagination,
@@ -23,6 +23,7 @@ interface ItemGridProps {
   onSelectAllVisible: () => void;
   onSelectAllFiltered: () => void;
   totalFilteredItems: number;
+  searchFilters: SearchFilters;
 }
 
 const ItemGrid = ({
@@ -36,6 +37,7 @@ const ItemGrid = ({
   onSelectAllVisible,
   onSelectAllFiltered,
   totalFilteredItems,
+  searchFilters,
 }: ItemGridProps) => {
   const isSelected = (item: CollectionItem) =>
     selectedItems.some((i) => i.id === item.id);
@@ -57,7 +59,7 @@ const ItemGrid = ({
   }
 
   const renderGridView = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-6">
       {items.map((item) => (
         <ItemCard
           key={item.id}
@@ -127,20 +129,31 @@ const ItemGrid = ({
                 )}
               </div>
             </div>
-              <div className="flex flex-col space-y-1 ml-2">
+              <div className="flex flex-col space-y-2 ml-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs px-2 py-1 h-auto"
+                  className="text-xs px-2 py-1 h-auto border border-primary"
                   onClick={() => onSelectItem(item)}
                 >
                   {isSelected(item) ? "Deseleccionar" : "Seleccionar"}
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-xs px-2 py-1 h-auto"
-                  onClick={() => (window.location.href = `/detail/${item.id}`)}
+                  className="text-xs px-2 py-1 h-auto min-w-[80px] whitespace-nowrap border border-primary"
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    params.append("page", String(pagination.page));
+                    Object.entries(searchFilters).forEach(([key, value]) => {
+                      if (Array.isArray(value)) {
+                        value.forEach(v => params.append(key, v as string));
+                      } else if (typeof value === "string" && value) {
+                        params.append(key, value);
+                      }
+                    });
+                    window.location.href = `/detail/${item.id}?${params.toString()}`;
+                  }}
                 >
                   Ver detalle
                 </Button>
