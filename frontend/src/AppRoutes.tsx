@@ -24,6 +24,10 @@ export default function AppRoutes() {
       <Route path="/login" element={<Auth />} />
       <Route
         path="/"
+        element={<Navigate to="/home?page=1" replace />}
+      />
+      <Route
+        path="/home"
         element={isAuthenticated ? <Index /> : <Navigate to="/login" replace />}
       />
       <Route

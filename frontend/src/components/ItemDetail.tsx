@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { saveAs } from "file-saver";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 
 interface ItemDetailProps {
@@ -20,9 +20,18 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   const isEditorOrAdmin = role === "editor" || role === "admin";
   const [showFullInfo, setShowFullInfo] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleEdit = () => {
     navigate(`/editar-pieza/${item.inventoryNumber}`); // ¿podria ser item.id?
+  };
+
+  const handleBack = () => {
+    // Extrae los query params de la URL actual
+     const params = new URLSearchParams(location.search);
+    const page = params.get("page") || "1";
+    // Navega a la página anterior con los mismos filtros
+    navigate(`/${page}${params}`);
   };
 
   const FIELD_LABELS: Record<string, string> = {
@@ -131,7 +140,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     <div className="container mx-auto py-8">
       <div className="mb-6 flex items-center gap-4">
         <Link to="/">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver al catálogo
           </Button>
