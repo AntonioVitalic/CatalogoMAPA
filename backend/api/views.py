@@ -187,25 +187,22 @@ class PiezaViewSet(viewsets.ViewSet):
         params = self._parse_filters(request)
         q = self._cypher_base()
 
-        # --- Búsqueda simple ---
         search = request.query_params.get("search", "").strip()
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", settings.REST_FRAMEWORK['PAGE_SIZE']))
+        skip = (page - 1) * page_size
+
+        # PAGINACIÓN EN CYPHER
+        q_page = q.replace("ORDER BY p.numero_inventario_int", f"ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}")
+
+        # Consulta principal
         if search:
-            # Filtra por número de inventario, nombre común y nombre atribuido
-            q = f"""
-            MATCH (p:Pieza)
-            WHERE toString(p.numero_inventario) CONTAINS '{search}'
-            OR toLower(coalesce(p.nombre_comun, '')) CONTAINS '{search.lower()}'
-            OR toLower(coalesce(p.nombre_especifico, '')) CONTAINS '{search.lower()}'
-            RETURN p
-            ORDER BY p.numero_inventario_int
-            """
-            rows, _ = db.cypher_query(q)
-            piezas = [Pieza.inflate(r[0]) for r in rows]
+            rows, _ = db.cypher_query(q_page)
         else:
-            rows, _ = db.cypher_query(q, params)
-            piezas = [Pieza.inflate(r[0]) for r in rows]
-        
-        # FILTRO DE FECHA DE CREACIÓN
+            rows, _ = db.cypher_query(q_page, params)
+        piezas = [Pieza.inflate(r[0]) for r in rows]
+
+        # FILTRO DE FECHA DE CREACIÓN (si lo necesitas)
         fecha_from = params.get("fecha_from")
         fecha_to = params.get("fecha_to")
         if fecha_from or fecha_to:
@@ -215,17 +212,38 @@ class PiezaViewSet(viewsets.ViewSet):
                     return False
                 if fecha_to and y is not None and y > int(fecha_to):
                     return False
-                # Si no se pudo extraer año, lo excluye del filtro
                 if (fecha_from or fecha_to) and y is None:
                     return False
                 return True
             piezas = [p for p in piezas if year_ok(p)]
 
-        paginator = PageNumberPagination()
-        paginator.page_size = settings.REST_FRAMEWORK['PAGE_SIZE']
-        page = paginator.paginate_queryset(list(piezas), request)
-        ser = PiezaOutSerializer(page, many=True, context={'request': request})
-        return paginator.get_paginated_response(ser.data)
+        # Consulta para el total (count)
+        if search:
+            q_count = q.replace("ORDER BY p.numero_inventario_int", "")
+            count_rows, _ = db.cypher_query(q_count)
+            total_count = len(count_rows)
+        else:
+            q_count = q.replace("ORDER BY p.numero_inventario_int", "")
+            count_rows, _ = db.cypher_query(q_count, params)
+            total_count = len(count_rows)
+
+        ser = PiezaOutSerializer(piezas, many=True, context={'request': request})
+
+        # Construir next/previous
+        base_url = request.build_absolute_uri(request.path)
+        next_url = None
+        previous_url = None
+        if skip + page_size < total_count:
+            next_url = f"{base_url}?page={page+1}&page_size={page_size}"
+        if page > 1:
+            previous_url = f"{base_url}?page={page-1}&page_size={page_size}"
+
+        return Response({
+            "count": total_count,
+            "next": next_url,
+            "previous": previous_url,
+            "results": ser.data
+        })
 
     @action(detail=False, methods=['get'], url_path='export')
     def export_all(self, request):
