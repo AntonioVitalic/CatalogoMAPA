@@ -134,6 +134,7 @@ class PiezaViewSet(viewsets.ViewSet):
         autores     = request.query_params.getlist('autor__nombre')
         localidades = request.query_params.getlist('localidad__nombre')
         tipologias  = request.query_params.getlist('tipologia')
+        exposiciones = request.query_params.getlist('exposiciones__titulo')
         fecha_from  = request.query_params.get('fecha_creacion_after', '').strip()
         fecha_to    = request.query_params.get('fecha_creacion_before', '').strip()
 
@@ -147,6 +148,7 @@ class PiezaViewSet(viewsets.ViewSet):
             "autores":     _norm_list(autores),
             "localidades": _norm_list(localidades),
             "tipologias":  _norm_list(tipologias),
+            "exposiciones": _norm_list(exposiciones),
             "fecha_from":  fecha_from,
             "fecha_to":    fecha_to,
         }
@@ -162,6 +164,8 @@ class PiezaViewSet(viewsets.ViewSet):
         WITH p, cols, pais_list, collect(DISTINCT toLower(trim(a.nombre))) AS aut_list
         OPTIONAL MATCH (p)-[:LOCALIZADO_EN]->(l:Localidad)
         WITH p, cols, pais_list, aut_list, collect(DISTINCT toLower(trim(l.nombre))) AS loc_list
+        OPTIONAL MATCH (p)-[:EXHIBIDO_EN]->(e:Exposicion)
+        WITH p, cols, pais_list, aut_list, loc_list, collect(DISTINCT toLower(trim(e.titulo))) AS expo_list
 
         WHERE (
             size($colecciones) = 0 OR any(x IN $colecciones WHERE x IN cols)
@@ -177,6 +181,9 @@ class PiezaViewSet(viewsets.ViewSet):
         )
         AND (
             size($tipologias) = 0 OR toLower(trim(coalesce(p.tipologia, ''))) IN $tipologias
+        )
+        AND (
+            size($exposiciones) = 0 OR any(x IN $exposiciones WHERE x IN expo_list)
         )
 
         RETURN p
@@ -207,13 +214,18 @@ class PiezaViewSet(viewsets.ViewSet):
         fecha_to = params.get("fecha_to")
         if fecha_from or fecha_to:
             def year_ok(p):
-                y = extract_year(getattr(p, "fecha_creacion", ""))
+                fecha_val = getattr(p, "fecha_creacion", "")
+                if fecha_val is None:
+                    fecha_val = ""
+                y = extract_year(fecha_val)
                 if fecha_from and y is not None and y < int(fecha_from):
                     return False
                 if fecha_to and y is not None and y > int(fecha_to):
                     return False
-                if (fecha_from or fecha_to) and y is None:
-                    return False
+                # Si no se puede extraer el año, NO descartar la pieza
+                # Eliminar esta línea si se desea incluir piezas sin año:
+                # if (fecha_from or fecha_to) and y is None and str(fecha_val).strip():
+                #     return False
                 return True
             piezas = [p for p in piezas if year_ok(p)]
 

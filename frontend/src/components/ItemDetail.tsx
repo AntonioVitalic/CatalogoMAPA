@@ -27,11 +27,9 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   };
 
   const handleBack = () => {
-    // Extrae los query params de la URL actual
-     const params = new URLSearchParams(location.search);
-    const page = params.get("page") || "1";
-    // Navega a la página anterior con los mismos filtros
-    navigate(`/${page}${params}`);
+    const params = new URLSearchParams(location.search);
+    // Construye la URL de regreso a /home con los mismos parámetros
+    navigate(`/home?${params.toString()}`);
   };
 
   const FIELD_LABELS: Record<string, string> = {

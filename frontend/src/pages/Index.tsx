@@ -147,10 +147,13 @@ export default function Index() {
     filters.collection?.forEach((c) => params.append("coleccion__nombre", c));
     filters.author?.forEach((a) => params.append("autor__nombre", a));
     filters.locality?.forEach((l) => params.append("localidad__nombre", l));
-    // importante: coincide con views.py (getlist('tipologia'))
     filters.tipologias?.forEach((t) => params.append("tipologia", t));
-    // exposiciones si aplica
-    filters.exhibitions?.forEach((e) => params.append("exposiciones__titulo", e)); // en el excel sí hay columnas de exposiciones
+    // Normaliza exposiciones antes de agregarlas al URLSearchParams
+    filters.exhibitions?.forEach((e) => {
+      // Elimina comillas y espacios extra
+      const normalized = e.replace(/"/g, "").trim().toLowerCase();
+      params.append("exposiciones__titulo", normalized);
+    });
     if (filters.dateFrom) params.append("fecha_creacion_after", filters.dateFrom);
     if (filters.dateTo) params.append("fecha_creacion_before", filters.dateTo);
 
@@ -185,12 +188,13 @@ export default function Index() {
   const handleSearch = (simple: SearchFilters) =>
     setSearchFilters((prev) => ({ ...prev, query: simple.query }));
 
-  // Aplicar filtros avanzados
+  // Aplicar filtros avanzados y serializar la URL
   const handleApplyFilters = (advanced: SearchFilters) => {
     setSearchFilters(advanced);
     setPagination((prev) => ({ ...prev, page: 1 }));
-    navigate(`/home?page=1`);
-    // setShowFilters(false);
+
+    const params = buildParamsFromFilters(1, advanced);
+    navigate(`/home?${params.toString()}`);
   };
 
   const handleResetFilters = () =>
@@ -207,7 +211,22 @@ export default function Index() {
     });
 
   // Cambiar página (URL)
-  const handlePageChange = (newPage: number) => navigate(`/home?page=${newPage}`);
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams();
+    params.append("page", String(newPage));
+    if (searchFilters.query) params.append("search", searchFilters.query);
+    searchFilters.country?.forEach((c) => params.append("pais__nombre", c));
+    searchFilters.collection?.forEach((c) => params.append("coleccion__nombre", c));
+    searchFilters.author?.forEach((a) => params.append("autor__nombre", a));
+    searchFilters.locality?.forEach((l) => params.append("localidad__nombre", l));
+    searchFilters.tipologias?.forEach((t) => params.append("tipologia", t));
+    searchFilters.exhibitions?.forEach((e) => params.append("exposiciones__titulo", e));
+    if (searchFilters.dateFrom) params.append("fecha_creacion_after", searchFilters.dateFrom);
+    if (searchFilters.dateTo) params.append("fecha_creacion_before", searchFilters.dateTo);
+
+    navigate(`/home?${params.toString()}`);
+  };
+
   const handleViewModeChange = (mode: ViewMode) =>
     setPagination((p) => ({ ...p, viewMode: mode }));
 

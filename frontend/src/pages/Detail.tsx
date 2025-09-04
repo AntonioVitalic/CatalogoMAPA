@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { CollectionItem } from "@/types";
 import Header from "@/components/Header";
 import ItemDetail from "@/components/ItemDetail";
@@ -68,6 +68,8 @@ const Detail = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setLoading(true);
@@ -175,8 +177,15 @@ const Detail = () => {
             <p className="text-muted-foreground">
               La pieza que estás buscando no existe o ha sido eliminada.
             </p>
-            <Button className="mt-4" asChild>
-              <a href="/">Volver al catálogo</a>
+            <Button
+              className="mt-4"
+              onClick={() => {
+                // Recupera todos los parámetros del query string
+                const params = new URLSearchParams(location.search);
+                navigate(`/home?${params.toString()}`);
+              }}
+            >
+              Volver al catálogo
             </Button>
           </div>
         </div>
