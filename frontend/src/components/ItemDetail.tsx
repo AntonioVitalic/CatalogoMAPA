@@ -1,5 +1,5 @@
 // frontend/src/components/ItemDetail.tsx
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { CollectionItem } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -261,7 +261,10 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
       {/* Modal de información completa */}
       <Dialog open={showFullInfo} onOpenChange={setShowFullInfo}>
         <DialogContent className="max-w-4xl w-full bg-white p-8 overflow-y-auto" style={{ maxHeight: "90vh" }}>
-          <h2 className="text-2xl font-bold mb-4">Información completa de la pieza</h2>
+          <DialogTitle>Información completa de la pieza</DialogTitle>
+          <DialogDescription>
+            Detalle de todos los campos y componentes asociados a la pieza.
+          </DialogDescription>
           {renderFullInfo(item, "Pieza principal")}
           {item.componentes && item.componentes.length > 0 && (
             <div>
