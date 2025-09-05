@@ -104,7 +104,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Filtros</h3>
         <Button size="sm" variant="ghost" onClick={handleReset} className="h-8 px-2 text-muted-foreground">
-          <X className="h-4 w-4 mr-1" /> Resetear
+          <X className="h-4 w-4 mr-1" /> Resetear todos los filtros
         </Button>
       </div>
 
@@ -118,6 +118,17 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             placeholder="Selec. países"
             label="País"
           />
+           {filters.country && filters.country.length > 0 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="ml-2"
+              onClick={() => setFilters(prev => ({ ...prev, country: [] }))}
+              title="Limpiar país"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -129,6 +140,17 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             placeholder="Selec. colecciones"
             label="Colección"
           />
+          {filters.collection && filters.collection.length > 0 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="ml-2"
+              onClick={() => setFilters(prev => ({ ...prev, collection: [] }))}
+              title="Limpiar colección"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -140,6 +162,17 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             placeholder="Selec. autores"
             label="Autor"
           />
+          {filters.author && filters.author.length > 0 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="ml-2"
+              onClick={() => setFilters(prev => ({ ...prev, author: [] }))}
+              title="Limpiar autor"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -151,6 +184,17 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             placeholder="Selec. localidades"
             label="Localidad"
           />
+          {filters.locality && filters.locality.length > 0 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="ml-2"
+              onClick={() => setFilters(prev => ({ ...prev, locality: [] }))}
+              title="Limpiar localidad"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -162,6 +206,17 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             placeholder="Selec. tipologías"
             label="Tipología"
           />
+          {filters.tipologias && filters.tipologias.length > 0 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="ml-2"
+              onClick={() => setFilters(prev => ({ ...prev, tipologias: [] }))}
+              title="Limpiar tipologías"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -173,6 +228,17 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
             placeholder="Selec. exposiciones"
             label="Exposiciones"
           />
+          {filters.exhibitions && filters.exhibitions.length > 0 && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="ml-2"
+              onClick={() => setFilters(prev => ({ ...prev, exhibitions: [] }))}
+              title="Limpiar exposiciones"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="space-y-2">
