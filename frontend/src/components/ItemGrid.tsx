@@ -106,6 +106,17 @@ const ItemGrid = ({
               <h3 className="font-medium text-sm truncate">
                 {item.nombre_comun}
               </h3>
+              {item.nombre_especifico && (
+                <p className="text-sm text-muted-foreground line-clamp-1">
+                  {item.nombre_especifico}
+                </p>
+              )}
+               {item.autor && (
+                <div>
+                  <p className="text-xs font-medium">Autor</p>
+                  <p className="text-sm line-clamp-1">{item.autor}</p>
+                </div>
+              )}
               {item.componentes && item.componentes.length > 0 && (
                 <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded inline-block my-1">
                   Posee componente(s)
@@ -119,7 +130,7 @@ const ItemGrid = ({
                 )}
                 {item.estado_conservacion && (
                   <span className="text-xs">
-                    <span className="font-medium">Estado:</span> {item.estado_conservacion}
+                    <span className="font-medium">Estado de conservación:</span> {item.estado_conservacion}
                   </span>
                 )}
                 {(item.pais || item.localidad) && (
