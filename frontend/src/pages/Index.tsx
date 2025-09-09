@@ -137,11 +137,12 @@ export default function Index() {
     };
   };
 
-  const buildParamsFromFilters = (page: number, filters: SearchFilters) => {
+  const buildParamsFromFilters = (page: number, filters: SearchFilters, includePageSize = false) => {
     const params = new URLSearchParams();
     params.append("page", page.toString());
-    params.append("page_size", ITEMS_PER_PAGE.toString());
-
+    if (includePageSize) {
+      params.append("page_size", ITEMS_PER_PAGE.toString());
+    }
     if (filters.query) params.append("search", filters.query);
     filters.country?.forEach((c) => params.append("pais__nombre", c));
     filters.collection?.forEach((c) => params.append("coleccion__nombre", c));
@@ -163,7 +164,7 @@ export default function Index() {
   const fetchPiezas = async (page: number, filters: SearchFilters) => {
     setLoading(true);
     try {
-      const params = buildParamsFromFilters(page, filters);
+      const params = buildParamsFromFilters(page, filters, true);
       const res = await fetch(`${API_URL}/api/piezas/?${params.toString()}`);
       if (!res.ok) throw new Error("Error al cargar piezas");
       const data = await res.json();
@@ -193,7 +194,7 @@ export default function Index() {
     setSearchFilters(advanced);
     setPagination((prev) => ({ ...prev, page: 1 }));
 
-    const params = buildParamsFromFilters(1, advanced);
+    const params = buildParamsFromFilters(1, advanced, false);
     navigate(`/home?${params.toString()}`);
   };
 
@@ -212,18 +213,7 @@ export default function Index() {
 
   // Cambiar página (URL)
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams();
-    params.append("page", String(newPage));
-    if (searchFilters.query) params.append("search", searchFilters.query);
-    searchFilters.country?.forEach((c) => params.append("pais__nombre", c));
-    searchFilters.collection?.forEach((c) => params.append("coleccion__nombre", c));
-    searchFilters.author?.forEach((a) => params.append("autor__nombre", a));
-    searchFilters.locality?.forEach((l) => params.append("localidad__nombre", l));
-    searchFilters.tipologias?.forEach((t) => params.append("tipologia", t));
-    searchFilters.exhibitions?.forEach((e) => params.append("exposiciones__titulo", e));
-    if (searchFilters.dateFrom) params.append("fecha_creacion_after", searchFilters.dateFrom);
-    if (searchFilters.dateTo) params.append("fecha_creacion_before", searchFilters.dateTo);
-
+    const params = buildParamsFromFilters(newPage, searchFilters, false);
     navigate(`/home?${params.toString()}`);
   };
 
@@ -250,7 +240,7 @@ export default function Index() {
   const handleSelectAllFiltered = async () => {
     setLoading(true);
     try {
-      const params = buildParamsFromFilters(1, searchFilters); // page no importa, backend ignora paginación
+      const params = buildParamsFromFilters(1, searchFilters, true); // page no importa, backend ignora paginación
       // remueve parámetros de paginación si quedaron
       params.delete("page");
       params.delete("page_size");
