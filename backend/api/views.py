@@ -140,7 +140,8 @@ class PiezaViewSet(viewsets.ViewSet):
 
 
         def _norm_list(xs):
-            return [x.strip().lower() for x in xs if str(x).strip() != ""]
+            # Elimina espacios, convierte a minúsculas y elimina comillas dobles
+            return [x.strip().lower().replace('"', '') for x in xs if str(x).strip() != ""]
 
         return {
             "colecciones": _norm_list(colecciones),
@@ -165,8 +166,7 @@ class PiezaViewSet(viewsets.ViewSet):
         OPTIONAL MATCH (p)-[:LOCALIZADO_EN]->(l:Localidad)
         WITH p, cols, pais_list, aut_list, collect(DISTINCT toLower(trim(l.nombre))) AS loc_list
         OPTIONAL MATCH (p)-[:EXHIBIDO_EN]->(e:Exposicion)
-        WITH p, cols, pais_list, aut_list, loc_list, collect(DISTINCT toLower(trim(e.titulo))) AS expo_list
-
+        WITH p, cols, pais_list, aut_list, loc_list, collect(DISTINCT toLower(replace(trim(e.titulo), '"', ''))) AS expo_list
         WHERE (
             size($colecciones) = 0 OR any(x IN $colecciones WHERE x IN cols)
         )
@@ -199,42 +199,24 @@ class PiezaViewSet(viewsets.ViewSet):
         page_size = int(request.query_params.get("page_size", settings.REST_FRAMEWORK['PAGE_SIZE']))
         skip = (page - 1) * page_size
 
-        # PAGINACIÓN EN CYPHER
-        q_page = q.replace("ORDER BY p.numero_inventario_int", f"ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}")
-
-        # Consulta principal
         if search:
-            rows, _ = db.cypher_query(q_page)
+            # Consulta simple, ignora filtros avanzados
+            q_simple = f"""
+            MATCH (p:Pieza)
+            WHERE toString(p.numero_inventario) CONTAINS '{search}'
+            OR toLower(coalesce(p.nombre_comun, '')) CONTAINS '{search.lower()}'
+            OR toLower(coalesce(p.nombre_especifico, '')) CONTAINS '{search.lower()}'
+            OR toLower(coalesce(p.descripcion_col, '')) CONTAINS '{search.lower()}'
+            RETURN p
+            ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}
+            """
+            rows, _ = db.cypher_query(q_simple)
+            piezas = [Pieza.inflate(r[0]) for r in rows]
+            total_count = len(piezas)
         else:
+            q_page = q.replace("ORDER BY p.numero_inventario_int", f"ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}")
             rows, _ = db.cypher_query(q_page, params)
-        piezas = [Pieza.inflate(r[0]) for r in rows]
-
-        # FILTRO DE FECHA DE CREACIÓN (si lo necesitas)
-        fecha_from = params.get("fecha_from")
-        fecha_to = params.get("fecha_to")
-        if fecha_from or fecha_to:
-            def year_ok(p):
-                fecha_val = getattr(p, "fecha_creacion", "")
-                if fecha_val is None:
-                    fecha_val = ""
-                y = extract_year(fecha_val)
-                if fecha_from and y is not None and y < int(fecha_from):
-                    return False
-                if fecha_to and y is not None and y > int(fecha_to):
-                    return False
-                # Si no se puede extraer el año, NO descartar la pieza
-                # Eliminar esta línea si se desea incluir piezas sin año:
-                # if (fecha_from or fecha_to) and y is None and str(fecha_val).strip():
-                #     return False
-                return True
-            piezas = [p for p in piezas if year_ok(p)]
-
-        # Consulta para el total (count)
-        if search:
-            q_count = q.replace("ORDER BY p.numero_inventario_int", "")
-            count_rows, _ = db.cypher_query(q_count)
-            total_count = len(count_rows)
-        else:
+            piezas = [Pieza.inflate(r[0]) for r in rows]
             q_count = q.replace("ORDER BY p.numero_inventario_int", "")
             count_rows, _ = db.cypher_query(q_count, params)
             total_count = len(count_rows)

@@ -19,6 +19,12 @@ const Search = ({ onSearch, showAdvanced, toggleAdvanced }: SearchProps) => {
     onSearch({ query });
   };
 
+  const handleReset = () => {
+    setQuery("");
+    onSearch({ query: "" });
+    window.location.href = "/home";
+  };
+
   return (
     <div className="w-full">
       <form onSubmit={handleSearch} className="flex flex-col space-y-4">
@@ -27,13 +33,16 @@ const Search = ({ onSearch, showAdvanced, toggleAdvanced }: SearchProps) => {
             <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Buscar por nombre, número de inventario, descripción..."
+              placeholder="Buscar por nombre o número de inventario"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-10"
             />
           </div>
           <Button type="submit">Buscar</Button>
+          <Button type="button" variant="outline" onClick={handleReset}>
+            Resetear búsqueda
+          </Button>
           <Button
             type="button"
             variant="outline"
