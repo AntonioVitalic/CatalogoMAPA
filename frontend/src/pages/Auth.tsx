@@ -23,6 +23,7 @@ export default function Auth() {
   // Signup form state
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [selectedRole, setSelectedRole] = useState<"visitor" | "editor" | "admin">("visitor");
@@ -67,6 +68,11 @@ export default function Auth() {
         last_name: lastName,
         role: selectedRole,
       });
+      if (signupPassword !== signupConfirmPassword) {
+        setError("Las contraseñas no coinciden.");
+        setLoading(false);
+        return;
+      }
       if (selectedRole === "visitor") {
         setError("Solicitud enviada, espera aprobación del administrador.");
         setLoading(false);
@@ -177,6 +183,18 @@ export default function Auth() {
                     placeholder="Mínimo 6 caracteres"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm-password">Confirmar contraseña</Label>
+                  <Input
+                    id="signup-confirm-password"
+                    type="password"
+                    placeholder="Repite la contraseña"
+                    value={signupConfirmPassword}
+                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
                     required
                     minLength={6}
                   />
