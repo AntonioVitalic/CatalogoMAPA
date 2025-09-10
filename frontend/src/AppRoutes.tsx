@@ -10,6 +10,7 @@ import CrearPieza from "./pages/CrearPieza";
 import EditarPieza from "./pages/EditarPieza";
 import HistorialCambios from "./pages/HistorialCambios";
 import ImportacionMasiva from "./pages/ImportacionMasiva";
+import MiCuenta from "./pages/MiCuenta";
 
 export default function AppRoutes() {
   const { isAuthenticated, loading, user } = useContext(AuthContext);
@@ -37,6 +38,10 @@ export default function AppRoutes() {
       <Route
         path="/detail/:id"
         element={isAuthenticated ? <Detail /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/mi-cuenta"
+        element={isAuthenticated ? <MiCuenta /> : <Navigate to="/login" replace />}
       />
       {/* Rutas protegidas por rol */}
       <Route

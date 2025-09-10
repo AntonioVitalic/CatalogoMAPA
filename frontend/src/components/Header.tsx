@@ -61,7 +61,13 @@ const Header = ({ onLoginClick }: HeaderProps) => {
                 </Button>
               </DropdownMenuTrigger>
                <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
+                <DropdownMenuItem
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => navigate("/mi-cuenta")}
+                >
+                  <User size={16} />
+                  <span>Mi cuenta</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {user.role === "admin" && (
                    <DropdownMenuItem
