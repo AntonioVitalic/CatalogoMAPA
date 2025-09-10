@@ -99,6 +99,16 @@ export default function AdminUsers() {
     setShowModal(true);
   };
 
+  const handleDelete = async (user: User) => {
+    if (!window.confirm(`¿Seguro que deseas eliminar al usuario ${user.first_name} ${user.last_name}?`)) return;
+    try {
+      await api.delete(`/accounts/user/${user.id}/`, { baseURL: API_URL });
+      await fetchUsers(tab === "historial" ? "activos" : tab);
+    } catch (err) {
+      setError("Error al eliminar usuario");
+    }
+  };
+
   const confirmAction = async () => {
     if (!selectedUser) return;
     try {
@@ -146,67 +156,70 @@ export default function AdminUsers() {
             Gestión de Usuarios
           </CardTitle>
 
-          {/* Right: Crear Usuario */}
+          {/* Right: Crear Usuario
           <div className="flex items-center">
             <Button variant="default" onClick={() => alert("Funcionalidad de crear usuario no implementada")}>
               <Plus className="mr-2" /> Crear Usuario
             </Button>
-          </div>
+          </div> */}
         </CardHeader>
         <CardContent>
-          <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>
-            <TabsList className="mb-4">
+        <Tabs value={tab} onValueChange={value => setTab(value as typeof tab)}>
+          <div className="flex items-center mb-4">
+            <TabsList>
               <TabsTrigger value="activos">Activos</TabsTrigger>
               <TabsTrigger value="inactivos">Inactivos</TabsTrigger>
               <TabsTrigger value="pendientes">Solicitudes visitantes</TabsTrigger>
               <TabsTrigger value="historial">Historial de cambios</TabsTrigger>
             </TabsList>
-            <TabsContent value="activos">
-              <UserTable
-                users={users}
-                onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
-                onDeactivate={handleDeactivate}
-                type="activos"
-              />
-            </TabsContent>
-            <TabsContent value="inactivos">
-              <UserTable
-                users={users}
-                onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
-                onActivate={handleActivate}
-                type="inactivos"
-              />
-            </TabsContent>
-            <TabsContent value="pendientes">
-              <UserTable
-                users={users}
-                onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
-                onActivate={handleActivate}
-                onDeactivate={handleDeactivate}
-                type="pendientes"
-              />
-            </TabsContent>
-            <TabsContent value="historial">
-              <div className="flex justify-end mb-2">
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    if (!window.confirm("¿Seguro que deseas borrar todo el historial de cambios?")) return;
-                    try {
-                      await api.delete("/accounts/borrar-historial-cambios/", { baseURL: API_URL });
-                      setLogs([]);
-                    } catch (err) {
-                      alert("Error al borrar el historial");
-                    }
-                  }}
-                >
-                  Borrar historial de cambios
-                </Button>
-              </div>
-              <ChangeLogTable logs={logs} />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
+            {tab === "historial" && (
+              <Button
+                variant="destructive"
+                className="ml-auto"
+                onClick={async () => {
+                  if (!window.confirm("¿Seguro que deseas borrar todo el historial de cambios?")) return;
+                  try {
+                    await api.delete("/accounts/borrar-historial-cambios/", { baseURL: API_URL });
+                    setLogs([]);
+                  } catch (err) {
+                    alert("Error al borrar el historial");
+                  }
+                }}
+              >
+                Borrar historial de cambios
+              </Button>
+            )}
+          </div>
+          <TabsContent value="activos">
+            <UserTable
+              users={users}
+              onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+              onDeactivate={handleDeactivate}
+              type="activos"
+            />
+          </TabsContent>
+          <TabsContent value="inactivos">
+            <UserTable
+              users={users}
+              onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+              onActivate={handleActivate}
+              type="inactivos"
+            />
+          </TabsContent>
+          <TabsContent value="pendientes">
+            <UserTable
+              users={users}
+              onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+              onActivate={handleActivate}
+              onDelete={handleDelete} 
+              type="pendientes"
+            />
+          </TabsContent>
+          <TabsContent value="historial">
+            <ChangeLogTable logs={logs} />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
       </Card>
       {showModal && selectedUser && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -264,13 +277,15 @@ function UserTable({
   onEdit,
   onDeactivate,
   onActivate,
+  onDelete,
   type,
 }: {
   users: User[];
   onEdit: (user: User) => void;
   onDeactivate?: (user: User) => void;
   onActivate?: (user: User) => void;
-  type: "activos" | "inactivos";
+  onDelete?: (user: User) => void;
+  type: "activos" | "inactivos" | "pendientes";
 }) {
   return (
     <div className="overflow-x-auto">
@@ -327,14 +342,18 @@ function UserTable({
                         size="sm"
                         onClick={() => onActivate && onActivate(u)}
                       >
-                        <UserCheck size={16} className="mr-1" /> Aceptar
+                        <UserCheck size={16} className="mr-1" /> Activar
                       </Button>
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => onDeactivate && onDeactivate(u)}
+                        onClick={() => {
+                          if (window.confirm(`¿Seguro que deseas borrar al usuario ${u.first_name} ${u.last_name}?`)) {
+                            onDelete && onDelete(u);
+                          }
+                        }}
                       >
-                        <UserX size={16} className="mr-1" /> Rechazar
+                        <UserX size={16} className="mr-1" /> Borrar
                       </Button>
                     </>
                   )}

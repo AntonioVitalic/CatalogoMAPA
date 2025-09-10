@@ -49,14 +49,19 @@ export default function ImportacionMasiva() {
                 <label className="block font-medium mb-1">Imágenes (archivo ZIP)</label>
                 <input type="file" accept=".zip" onChange={e => setImagesZip(e.target.files?.[0] || null)} />
                 </div>
-                <div className="flex items-center">
-                <Button onClick={handleImport} disabled={loading || !excelFile || !imagesZip} className="mr-4">
-                  {loading ? "Importando..." : "Confirmar importación"}
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/")}>
-                  Volver al inicio
-                </Button>
-              </div>
+               <div className="flex items-center">
+                  <Button onClick={handleImport} disabled={loading || !excelFile || !imagesZip} className="mr-4">
+                    {loading ? "Importando..." : "Confirmar importación"}
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/")}>
+                    Volver al inicio
+                  </Button>
+                </div>
+                {result && (
+                  <div className="mt-6 text-center text-lg font-semibold text-green-700">
+                    {result}
+                  </div>
+                )}
             </div>
             </div>
         </main>
