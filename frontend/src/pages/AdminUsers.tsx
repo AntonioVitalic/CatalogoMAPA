@@ -39,6 +39,9 @@ export default function AdminUsers() {
   const [showModal, setShowModal] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogin, setShowLogin] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", email: "", role: "visitor" });
+  const [editError, setEditError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,6 +89,37 @@ export default function AdminUsers() {
       }
     } catch (err: any) {
       setError("Error al cargar usuarios");
+    }
+  };
+
+  const handleEdit = (user: User) => {
+    setEditUser(user);
+    setEditForm({
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      role: user.role,
+    });
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditError("");
+    try {
+      await api.patch(`/accounts/user/${editUser?.id}/`, {
+        first_name: editForm.first_name,
+        last_name: editForm.last_name,
+        email: editForm.email,
+        role: editForm.role,
+      });
+      setEditUser(null);
+      await fetchUsers(tab === "historial" ? "activos" : tab);
+    } catch {
+      setEditError("Error al actualizar usuario");
     }
   };
 
@@ -193,7 +227,7 @@ export default function AdminUsers() {
           <TabsContent value="activos">
             <UserTable
               users={users}
-              onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
               type="activos"
             />
@@ -201,7 +235,7 @@ export default function AdminUsers() {
           <TabsContent value="inactivos">
             <UserTable
               users={users}
-              onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+               onEdit={handleEdit}
               onActivate={handleActivate}
               type="inactivos"
             />
@@ -209,7 +243,7 @@ export default function AdminUsers() {
           <TabsContent value="pendientes">
             <UserTable
               users={users}
-              onEdit={user => alert("Funcionalidad de editar usuario no implementada")}
+              onEdit={handleEdit}
               onActivate={handleActivate}
               onDelete={handleDelete} 
               type="pendientes"
@@ -247,6 +281,39 @@ export default function AdminUsers() {
             </div>
           </div>
         </div>
+      )}
+      {editUser && (
+        <Dialog open onOpenChange={() => setEditUser(null)}>
+          <DialogContent>
+            <h2 className="text-lg font-semibold mb-4">Editar usuario</h2>
+            <form className="space-y-4" onSubmit={handleEditSave}>
+              <div>
+                <label className="block text-sm font-medium mb-1">Cambiar nombre:</label>
+                <input name="first_name" value={editForm.first_name} onChange={handleEditChange} placeholder="Nombre" className="w-full input" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Cambiar apellido:</label>
+                <input name="last_name" value={editForm.last_name} onChange={handleEditChange} placeholder="Apellido" className="w-full input" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Cambiar e-mail:</label>
+                <input name="email" value={editForm.email} onChange={handleEditChange} placeholder="Email" className="w-full input" required type="email" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Cambiar rol:</label>
+                <select name="role" value={editForm.role} onChange={handleEditChange} className="w-full input">
+                  <option value="editor">Editor</option>
+                  <option value="visitor">Visitante</option>
+                </select>
+              </div>
+              {editError && <div className="text-red-600 text-sm">{editError}</div>}
+              <div className="flex gap-2">
+                <Button type="submit">Guardar</Button>
+                <Button type="button" variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
      {/* Dialog de login sencillo (igual que Index) */}
