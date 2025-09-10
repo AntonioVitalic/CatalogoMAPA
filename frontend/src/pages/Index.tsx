@@ -151,7 +151,6 @@ export default function Index() {
     filters.tipologias?.forEach((t) => params.append("tipologia", t));
     // Normaliza exposiciones antes de agregarlas al URLSearchParams
     filters.exhibitions?.forEach((e) => {
-      // Elimina comillas y espacios extra
       const normalized = e.replace(/"/g, "").trim().toLowerCase();
       params.append("exposiciones__titulo", normalized);
     });
