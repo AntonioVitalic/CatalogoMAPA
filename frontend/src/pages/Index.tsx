@@ -328,10 +328,12 @@ export default function Index() {
                 Mostrando {pagination.totalItems ? start : 0}-{end} de {pagination.totalItems} piezas
               </p>
               <div className="flex items-center gap-2">
-                <ExportButton
-                  selectedItems={selectedItems}
-                  user={user ? { ...user, id: String(user.id), name: user.name ?? `${user.first_name} ${user.last_name}` } : null}
-                />
+                {(user?.role === "admin" || user?.role === "editor") && (
+                  <ExportButton
+                    selectedItems={selectedItems}
+                    user={user ? { ...user, id: String(user.id), name: user.name ?? `${user.first_name} ${user.last_name}` } : null}
+                  />
+                )}
                 {user?.role === "admin" && (
                   <>
                   <Button
