@@ -346,7 +346,7 @@ export default function Index() {
                     variant="default"
                     onClick={() => window.open("http://localhost:7475/browser/", "_blank")}
                   >
-                    Ver en Neo4j
+                    Browser de Neo4j
                   </Button>
                   </>
                 )}

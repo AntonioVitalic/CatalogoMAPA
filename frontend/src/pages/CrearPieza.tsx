@@ -1437,7 +1437,7 @@ export default function CrearPieza() {
                         }}
                       />
                       <small className="text-gray-500">
-                        Los nombres deben seguir el formato del museo (regex de import). Se subirán al guardar la pieza si implementas backend para archivos por componente.
+                        Los nombres deben seguir el formato del museo (regex de import). Se subirán al guardar la pieza si se implementa el backend para archivos por componente.
                       </small>
                     </div>
                   </div>

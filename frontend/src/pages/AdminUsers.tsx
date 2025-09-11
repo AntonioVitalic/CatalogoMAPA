@@ -372,7 +372,13 @@ function UserTable({
             <tr key={u.id} className="hover:bg-muted/30 transition-colors">
               <td className="p-2 border">{u.first_name} {u.last_name}</td>
               <td className="p-2 border">{u.email}</td>
-              <td className="p-2 border">{u.role}</td>
+              <td className="p-2 border">
+                {u.role === "admin"
+                  ? "Administrador"
+                  : u.role === "editor"
+                    ? "Editor"
+                    : "Visitante"}
+              </td>
               <td className="p-2 border">{u.is_active ? "Sí" : "No"}</td>
               <td className="p-2 border">{new Date(u.date_joined).toLocaleString()}</td>
               <td className="p-2 border">

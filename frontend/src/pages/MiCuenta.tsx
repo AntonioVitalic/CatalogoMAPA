@@ -59,7 +59,12 @@ export default function MiCuenta() {
               <div className="space-y-4">
                 <div><b>Nombre:</b> {user?.first_name} {user?.last_name}</div>
                 <div><b>Email:</b> {user?.email}</div>
-                <div><b>Rol:</b> {user?.role}</div>
+                <div><b>Rol:</b> {user?.role === "admin"
+                  ? "Administrador"
+                  : user?.role === "editor"
+                    ? "Editor"
+                    : "Visitante"
+                }</div>
                 <Button onClick={() => setEditing(true)} className="mt-4">Editar información</Button>
               </div>
             ) : (
