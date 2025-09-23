@@ -51,6 +51,16 @@ const Header = ({ onLoginClick }: HeaderProps) => {
         <div className="flex items-center gap-4">
           {/* <ThemeToggle /> Pendiente: mejorar tema oscuro en los formularios y tablas */}
 
+          {(role === "admin" || role === "editor") && (
+            <Button
+              variant="outline"
+              className="mr-2"
+              onClick={() => window.open("/Manual_de_Usuario___Catalogo_MAPA.pdf", "_blank")}
+            >
+              Manual de Usuario
+            </Button>
+          )}
+          
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
