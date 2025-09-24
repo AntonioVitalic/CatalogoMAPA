@@ -149,6 +149,11 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             Posee componente(s)
           </span>
         )}
+        {item.etiqueta_eliminado && (
+          <span className="text-xs font-bold text-red-600 bg-red-100 border border-red-400 px-2 py-1 rounded ml-2">
+            Eliminado
+          </span>
+        )}
 
         {isEditorOrAdmin && (
           <Button onClick={handleEdit} variant="secondary" size="sm">

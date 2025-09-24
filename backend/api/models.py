@@ -157,6 +157,8 @@ class Pieza(StructuredNode):
     fecha_ingreso = StringProperty()    
     responsable_coleccion = StringProperty()
     fecha_ultima_modificacion = StringProperty()
+
+    etiqueta_eliminado = BooleanProperty(default=False)
     
     componentes = RelationshipTo(Componente, 'TIENE_COMPONENTE')
     imagenes    = RelationshipTo(Imagen, 'TIENE_IMAGEN')

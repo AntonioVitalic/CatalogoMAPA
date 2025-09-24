@@ -6,6 +6,7 @@ from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from neomodel import db
+from datetime import datetime, timedelta
 import subprocess
 import time
 import json
@@ -625,20 +626,34 @@ class PiezaViewSet(viewsets.ViewSet):
 
 
     def destroy(self, request, pk=None):
+        # Solo admin
+        if not (request.user and getattr(request.user, "role", None) == "admin"):
+            return Response({"detail": "Solo administradores pueden eliminar piezas."}, status=status.HTTP_403_FORBIDDEN)
+
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
-        before_obj = {
-            "numero_inventario": pieza.numero_inventario,
-            "nombre_especifico": pieza.nombre_especifico,
-            "descripcion_col": pieza.descripcion_col,
-            "coleccion": None,
-        }
+
+        # Verifica fecha_ingreso
+        fecha_ingreso = pieza.fecha_ingreso
+        if fecha_ingreso:
+            try:
+                # Asume formato YYYY-MM-DD, ajusta si es necesario
+                fecha_dt = datetime.strptime(fecha_ingreso[:10], "%Y-%m-%d")
+                if (datetime.now() - fecha_dt).days > 365:
+                    return Response({"detail": "No se puede eliminar piezas con fecha de ingreso mayor a 1 año."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception:
+                pass  # Si no se puede parsear, permite eliminar
+
+        # Marca como eliminada (agrega propiedad o relación)
+        pieza.etiqueta_eliminado = True
+        pieza.save()
+
+        # Auditoría
         RegistroCambioPieza.objects.create(
             usuario=request.user,
             pieza_id=pieza.numero_inventario,
-            accion="ELIMINAR",
-            detalle=json.dumps({"before": before_obj, "after": None})
+            accion="EDITAR",
+            detalle=json.dumps({"eliminado": True})
         )
-        pieza.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ------- COMPONENTES -------

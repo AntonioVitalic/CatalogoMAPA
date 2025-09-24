@@ -122,6 +122,11 @@ const ItemGrid = ({
                   Posee componente(s)
                 </span>
               )}
+              {item.etiqueta_eliminado && (
+                <span className="text-xs font-bold text-red-600 bg-red-100 border border-red-400 px-2 py-1 rounded ml-2">
+                  Eliminado
+                </span>
+              )}
               <div className="flex flex-wrap gap-4 items-center mt-1">
                 {item.coleccion && (
                   <span className="text-xs">

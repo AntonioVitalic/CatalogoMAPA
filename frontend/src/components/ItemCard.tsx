@@ -81,6 +81,11 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
               </span>
             </div>
           )}
+          {item.etiqueta_eliminado && (
+            <span className="text-xs font-bold text-red-600 bg-red-100 border border-red-400 px-2 py-1 rounded ml-2">
+              Eliminado
+            </span>
+          )}
           {item.materialidad && item.materialidad.length > 0 && (
             <div>
               <p className="text-xs font-medium">Materialidad</p>

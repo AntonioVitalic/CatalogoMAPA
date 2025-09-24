@@ -351,32 +351,32 @@ export default function Index() {
                   </>
                 )}
                 {user && (user.role === "admin" || user.role === "editor") && (
-                  <>
-                    <Button variant="default" onClick={() => navigate("/crear-pieza")}>
-                      Crear pieza
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={async () => {
-                        if (selectedItems.length === 0) return;
-                        if (!window.confirm(`¿Seguro que deseas eliminar ${selectedItems.length} pieza(s)?`)) return;
-                        for (const item of selectedItems) {
-                          try {
-                            await api.delete(`/api/piezas/${item.inventoryNumber}/`);
-                          } catch (err) {
-                            console.error("Error eliminando pieza", item.inventoryNumber, err);
-                          }
+                  <Button variant="default" onClick={() => navigate("/crear-pieza")}>
+                    Crear pieza
+                  </Button>
+                )}
+                {user?.role === "admin" && (
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      if (selectedItems.length === 0) return;
+                      if (!window.confirm(`¿Seguro que deseas eliminar ${selectedItems.length} pieza(s)?`)) return;
+                      for (const item of selectedItems) {
+                        try {
+                          await api.delete(`/api/piezas/${item.inventoryNumber}/`);
+                        } catch (err) {
+                          console.error("Error eliminando pieza", item.inventoryNumber, err);
                         }
-                        setSelectedItems([]);
-                        setTimeout(() => {
-                          fetchPiezas(pagination.page, searchFilters);
-                        }, 500); // espera 0.5 segundos antes de recargar
-                      }}
-                      disabled={selectedItems.length === 0}
-                    >
-                      Eliminar pieza
-                    </Button>
-                  </>
+                      }
+                      setSelectedItems([]);
+                      setTimeout(() => {
+                        fetchPiezas(pagination.page, searchFilters);
+                      }, 500); // espera 0.5 segundos antes de recargar
+                    }}
+                    disabled={selectedItems.length === 0}
+                  >
+                    Eliminar pieza
+                  </Button>
                 )}
               </div>
             </div>
