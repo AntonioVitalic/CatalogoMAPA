@@ -26,8 +26,9 @@ class RegisterView(APIView):
         password   = request.data.get('password','')
         role       = request.data.get('role','visitor')
 
-        if role == 'admin' and _admin_activo_existe():
-            return Response({'error':'Ya existe un administrador activo.'}, status=400)
+        # Ahora la app permite tener más de 1 usuario admin
+        # if role == 'admin' and _admin_activo_existe():
+        #     return Response({'error':'Ya existe un administrador activo.'}, status=400)
         if not all([first_name, last_name, email, password]):
             return Response({'error':'Faltan campos obligatorios'}, status=400)
         if Usuario.objects.filter(email=email).exists():
@@ -85,8 +86,9 @@ class UserUpdateView(APIView):
         first_name = request.data.get('first_name')
         last_name = request.data.get('last_name')
 
-        if role == 'admin' and _admin_activo_existe(exclude_id=u.id):
-            return Response({'error':'Ya existe un administrador activo.'}, status=400)
+        # Ahora la app permite tener más de 1 usuario admin
+        # if role == 'admin' and _admin_activo_existe(exclude_id=u.id):
+        #     return Response({'error':'Ya existe un administrador activo.'}, status=400)
 
         if first_name is not None: u.first_name = first_name
         if last_name is not None:  u.last_name = last_name
