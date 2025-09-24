@@ -316,26 +316,15 @@ class PiezaOutSerializer(serializers.Serializer):
 class PiezaExportSerializer(serializers.Serializer):
     # Sólo los campos necesarios para CSV/Excel en el front
     numero_inventario = serializers.CharField()
+    nombre_comun = serializers.CharField(allow_blank=True, required=False)
     nombre_especifico = serializers.CharField(allow_blank=True, required=False)
-    autor = serializers.SerializerMethodField()
-    coleccion = serializers.SerializerMethodField()
     pais = serializers.SerializerMethodField()
     localidad = serializers.SerializerMethodField()
     fecha_creacion = serializers.CharField(allow_blank=True, required=False)
-    materiales = serializers.ListField(child=serializers.CharField(), read_only=True)
-    estado_conservacion = serializers.CharField(allow_blank=True, required=False)
+    materialidad = serializers.CharField(allow_blank=True, required=False)
     descripcion_col = serializers.CharField(source='descripcion', allow_blank=True, required=False)
-    numero_registro_anterior = serializers.CharField(allow_blank=True, required=False)
-    codigo_surdoc = serializers.CharField(allow_blank=True, required=False)
-    ubicacion = serializers.CharField(allow_blank=True, required=False)
-    deposito = serializers.CharField(allow_blank=True, required=False)
-    estante = serializers.CharField(allow_blank=True, required=False)
-
-    def get_autor(self, p: Pieza):
-        return _first_name(p.autor.all())
-
-    def get_coleccion(self, p: Pieza):
-        return _first_name(p.coleccion.all())
+    estado_conservacion = serializers.CharField(allow_blank=True, required=False)
+    imagen = serializers.SerializerMethodField()
 
     def get_pais(self, p: Pieza):
         return _first_name(p.pais.all())
@@ -343,10 +332,13 @@ class PiezaExportSerializer(serializers.Serializer):
     def get_localidad(self, p: Pieza):
         return _first_name(p.localidad.all())
 
-    def to_representation(self, p: Pieza):
-        data = super().to_representation(p)
-        data['materiales'] = [m.nombre for m in p.materiales.all()]
-        return data
+    def get_imagen(self, p: Pieza):
+        imgs = list(p.imagenes.all())
+        if not imgs:
+            return ""
+        request = self.context.get('request')
+        rel = f"{settings.MEDIA_URL}{imgs[0].file_name}"
+        return request.build_absolute_uri(rel) if request else rel
 
 class ImagenListSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()

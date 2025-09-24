@@ -1,10 +1,10 @@
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, IsAuthenticated
+from django.http import HttpResponse
 from neomodel import db
 from datetime import datetime, timedelta
 import subprocess
@@ -12,6 +12,12 @@ import time
 import json
 import copy
 import re
+import openpyxl
+from openpyxl.drawing.image import Image as XLImage
+import tempfile
+import requests
+from io import BytesIO
+from .models import Pieza
 
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
