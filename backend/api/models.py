@@ -1,7 +1,7 @@
 # api/models.py (Neo4j / neomodel)
 from neomodel import (
     StructuredNode, StringProperty, IntegerProperty, FloatProperty,
-    UniqueIdProperty, RelationshipTo
+    UniqueIdProperty, RelationshipTo, BooleanProperty
 )
 
 class Pais(StructuredNode):
