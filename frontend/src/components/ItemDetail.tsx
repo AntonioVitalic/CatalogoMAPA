@@ -225,6 +225,22 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
               label="Estado de conservación"
               value={item.estado_conservacion ? item.estado_conservacion : "Sin dato"}
             />
+            {/* Enlace a SURDOC */}
+            {item.surdoc && (
+              <DetailItem
+                label="Enlace a SURDOC"
+                value={
+                  <a
+                    href={`https://www.surdoc.cl/registro/${item.surdoc}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    {`https://www.surdoc.cl/registro/${item.surdoc}`}
+                  </a>
+                }
+              />
+            )}
           </div>
 
           <Separator />
@@ -287,7 +303,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   );
 };
 
-const DetailItem = ({ label, value }: { label: string; value: string }) => (
+const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
     <p className="text-sm font-medium">{label}</p>
     <p>{value}</p>
