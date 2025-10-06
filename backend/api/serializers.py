@@ -331,6 +331,13 @@ class PiezaExportSerializer(serializers.Serializer):
 
     def get_localidad(self, p: Pieza):
         return _first_name(p.localidad.all())
+    
+    def get_materialidad(self, p: Pieza):
+        # Si tienes relación materiales, usarla; si no, usa el atributo plano
+        mats = [m.nombre for m in getattr(p, "materiales", []).all()] if hasattr(p, "materiales") else []
+        if mats:
+            return ", ".join(mats)
+        return getattr(p, "materialidad", "")
 
     def get_imagen(self, p: Pieza):
         imgs = list(p.imagenes.all())

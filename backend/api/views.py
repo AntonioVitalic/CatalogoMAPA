@@ -5,6 +5,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from django.conf import settings
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from neomodel import db
 from datetime import datetime, timedelta
 import subprocess
@@ -16,6 +17,7 @@ import openpyxl
 from openpyxl.drawing.image import Image as XLImage
 import tempfile
 import requests
+import os
 from io import BytesIO
 from .models import Pieza
 
@@ -818,3 +820,82 @@ def importacion_masiva(request):
             resumen = line
             break
     return Response({"mensaje": resumen or "Importación finalizada", "tiempo": elapsed})
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def exportar_excel_con_imagenes(request):
+    ids = request.data.get("ids", [])
+    if not ids or not isinstance(ids, list):
+        return Response({"detail": "Debes enviar una lista de IDs"}, status=400)
+    
+    piezas = [Pieza.nodes.get(numero_inventario=str(int(id_))) for id_ in ids]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Piezas"
+
+    headers = [
+        "N° de inventario", "Nombre común", "Nombre atribuido", "País", "Localidad",
+        "Fecha de creación", "Materialidad", "Descripción de colecciones", "Estado de conservación", "Imagen"
+    ]
+    ws.append(headers)
+
+    # Usa PiezaOutSerializer para obtener datos completos
+    ser = PiezaOutSerializer(piezas, many=True, context={'request': request})
+
+    for idx, pieza_data in enumerate(ser.data, start=2):
+        # Extrae materialidad desde tecnica o materiales
+        materialidad = ""
+        if isinstance(pieza_data.get("tecnica"), list):
+            materialidad = ", ".join(pieza_data["tecnica"])
+        elif pieza_data.get("materialidad"):
+            materialidad = pieza_data["materialidad"]
+
+        row = [
+            pieza_data.get("numero_inventario", ""),
+            pieza_data.get("nombre_comun", ""),
+            pieza_data.get("nombre_especifico", ""),
+            pieza_data.get("pais", ""),
+            pieza_data.get("localidad", ""),
+            pieza_data.get("fecha_creacion", ""),
+            materialidad,
+            pieza_data.get("descripcion_col", ""),
+            pieza_data.get("estado_conservacion", ""),
+            "",  # Aquí irá la imagen embebida
+        ]
+        ws.append(row)
+
+        # Imagen embebida (leer desde /imagenes)
+        imagenes = pieza_data.get("imagenes", [])
+        if imagenes and len(imagenes) > 0:
+            img_url = imagenes[0].get("imagen")
+            if img_url:
+                # Extraer nombre de archivo desde la URL
+                # Ejemplo: http://localhost:8002/imagenes/04600.00.jpg -> 04600.00.jpg
+                file_name = img_url.split("/imagenes/")[-1]
+                img_path = os.path.join("/imagenes", file_name)
+                
+                if os.path.exists(img_path):
+                    try:
+                        img = XLImage(img_path)
+                        img.width = 80
+                        img.height = 80
+                        cell = f"J{idx}"  # Columna J es la 10ma (Imagen)
+                        ws.add_image(img, cell)
+                    except Exception as e:
+                        print(f"Error al insertar imagen {file_name}: {e}")
+                else:
+                    print(f"Imagen no encontrada: {img_path}")
+
+    ws.column_dimensions["J"].width = 20
+
+    with BytesIO() as output:
+        wb.save(output)
+        output.seek(0)
+        response = HttpResponse(
+            output.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = 'attachment; filename="piezas_con_imagenes.xlsx"'
+        return response

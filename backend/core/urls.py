@@ -24,7 +24,7 @@ from api.views import (
     PiezaViewSet, ComponenteViewSet, ImagenViewSet, 
     AutorViewSet, PaisViewSet, LocalidadViewSet, 
     TipologiaViewSet, ColeccionViewSet, ExposicionViewSet,
-    importacion_masiva
+    importacion_masiva, exportar_excel_con_imagenes
 )
 
 router = DefaultRouter()
@@ -42,7 +42,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)), # los endpoints de Neo4j
     path('accounts/', include('accounts.urls')), # los endpoints de auth + usuarios + registro cambios
-     path('api/importacion-masiva/', importacion_masiva), # endpoint para ejecutar importacion masiva
+    path('api/importacion-masiva/', importacion_masiva), # endpoint para ejecutar importacion masiva
+    path('api/exportar-excel-con-imagenes/', exportar_excel_con_imagenes), # endpoint para exportar a Excel
 ]
 
 
