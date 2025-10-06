@@ -291,7 +291,7 @@ export default function Index() {
       <main className="flex-1 p-6 space-y-6">
         {/* Título y subtítulo */}
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold">Catálogo MAPA</h1>
+          <h1 className="text-3xl font-bold">Inventario MAPA</h1>
           <p className="text-muted-foreground">
             Explora la colección del Museo de Arte Popular Americano Tomás Lago
           </p>
@@ -393,7 +393,8 @@ export default function Index() {
               onSelectAllVisible={handleSelectAllVisible}
               onSelectAllFiltered={handleSelectAllFiltered}
               totalFilteredItems={pagination.totalItems}
-              searchFilters={searchFilters} 
+              searchFilters={searchFilters}
+              userRole={user?.role}
             />
           </div>
         </div>

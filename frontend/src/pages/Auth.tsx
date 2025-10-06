@@ -93,9 +93,9 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Catálogo MAPA</CardTitle>
+          <CardTitle className="text-2xl font-bold">Inventario MAPA</CardTitle>
           <CardDescription>
-            Accede a tu cuenta para gestionar el catálogo
+            Accede a tu cuenta para gestionar el inventario
           </CardDescription>
         </CardHeader>
         <CardContent>

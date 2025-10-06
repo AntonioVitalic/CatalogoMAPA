@@ -24,6 +24,7 @@ interface ItemGridProps {
   onSelectAllFiltered: () => void;
   totalFilteredItems: number;
   searchFilters: SearchFilters;
+  userRole?: "admin" | "editor" | "visitor";
 }
 
 const ItemGrid = ({
@@ -38,6 +39,7 @@ const ItemGrid = ({
   onSelectAllFiltered,
   totalFilteredItems,
   searchFilters,
+  userRole
 }: ItemGridProps) => {
   const isSelected = (item: CollectionItem) =>
     selectedItems.some((i) => i.id === item.id);
@@ -184,6 +186,7 @@ const ItemGrid = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between mb-4">
+        {(userRole === "admin" || userRole === "editor") && (
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -204,7 +207,8 @@ const ItemGrid = ({
             Solo visible en página actual ({items.length})
           </Button>
         </div>
-        <div className="bg-background border rounded-md p-1 flex">
+        )}
+        <div className={`bg-background border rounded-md p-1 flex ${userRole === "visitor" ? "ml-auto" : ""}`}>
           <Button
             variant={pagination.viewMode === "grid" ? "default" : "ghost"}
             size="sm"
