@@ -55,7 +55,7 @@ const Header = ({ onLoginClick }: HeaderProps) => {
             <Button
               variant="outline"
               className="mr-2"
-              onClick={() => window.open("/Manual_de_Usuario___Catalogo_MAPA.pdf", "_blank")}
+              onClick={() => window.open("/Manual_de_Usuario___Inventario_MAPA.pdf", "_blank")}
             >
               Manual de Usuario
             </Button>
