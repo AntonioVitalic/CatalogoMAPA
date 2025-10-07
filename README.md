@@ -1,8 +1,8 @@
-# CatalogoMAPA
+# InventarioMAPA
 
 ## Puertos localhost disponibles  
   
-El proyecto CatalogoMAPA utiliza los siguientes puertos en el entorno de desarrollo:  
+El proyecto InventarioMAPA utiliza los siguientes puertos en el entorno de desarrollo:  
   
 | Servicio | Puerto | Descripción |  
 |----------|--------|-------------|  
