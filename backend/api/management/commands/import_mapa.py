@@ -115,6 +115,15 @@ class Command(BaseCommand):
         piezas_df.rename(columns={v: k for k, v in inventario_cols.items() if v in df.columns}, inplace=True)
         piezas_df['numero_inventario'] = piezas_df['numero_inventario'].astype(int).astype(str)
         piezas_df['numero_inventario_int'] = piezas_df['numero_inventario'].astype(int)
+        # NORMALIZAR exposiciones en piezas: quitar comillas y convertir saltos de línea a ';'
+        if 'exposiciones' in piezas_df.columns:
+            piezas_df['exposiciones'] = (
+                piezas_df['exposiciones'].astype(str)
+                .str.replace('"', '', regex=False)
+                .str.replace('\r\n', ';', regex=False)
+                .str.replace('\r', ';', regex=False)
+                .str.replace('\n', ';', regex=False)
+            )
         piezas_csv = os.path.join(import_dir, 'piezas.csv')
         piezas_df.to_csv(piezas_csv, index=False)
 
@@ -128,6 +137,15 @@ class Command(BaseCommand):
             letra=comp_df['letra'].astype(str).str.strip().str.lower()
         )
         comp_df.rename(columns={v: k for k, v in inventario_cols.items() if v in df.columns}, inplace=True)
+        # NORMALIZAR exposiciones en componentes: quitar comillas y convertir saltos de línea a ';'
+        if 'exposiciones' in comp_df.columns:
+            comp_df['exposiciones'] = (
+                comp_df['exposiciones'].astype(str)
+                .str.replace('"', '', regex=False)
+                .str.replace('\r\n', ';', regex=False)
+                .str.replace('\r', ';', regex=False)
+                .str.replace('\n', ';', regex=False)
+            )
         comp_csv = os.path.join(import_dir, 'componentes.csv')
         comp_df.to_csv(comp_csv, index=False)
 
@@ -209,7 +227,10 @@ class Command(BaseCommand):
             responsable_conservacion: row.responsable_conservacion,
             fecha_actualizacion_conservacion: row.fecha_actualizacion_conservacion,
             comentarios_conservacion: row.comentarios_conservacion,
-            exposiciones: row.exposiciones,
+            exposiciones: CASE
+              WHEN row.exposiciones IS NULL OR trim(row.exposiciones) = '' THEN []
+              ELSE [x IN split(row.exposiciones, ';') WHERE trim(x) <> '' | trim(x)]
+            END,
             avaluo: row.avaluo,
             procedencia: row.procedencia,
             donante: row.donante,
@@ -318,7 +339,10 @@ class Command(BaseCommand):
             responsable_conservacion: row.responsable_conservacion,
             fecha_actualizacion_conservacion: row.fecha_actualizacion_conservacion,
             comentarios_conservacion: row.comentarios_conservacion,
-            exposiciones: row.exposiciones,
+            exposiciones: CASE
+              WHEN row.exposiciones IS NULL OR trim(row.exposiciones) = '' THEN []
+              ELSE [x IN split(row.exposiciones, ';') WHERE trim(x) <> '' | trim(x)]
+            END,
             avaluo: row.avaluo,
             procedencia: row.procedencia,
             donante: row.donante,

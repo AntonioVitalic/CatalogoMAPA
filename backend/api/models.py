@@ -1,7 +1,7 @@
 # api/models.py (Neo4j / neomodel)
 from neomodel import (
     StructuredNode, StringProperty, IntegerProperty, FloatProperty,
-    UniqueIdProperty, RelationshipTo, BooleanProperty
+    UniqueIdProperty, RelationshipTo, BooleanProperty, ArrayProperty
 )
 
 class Pais(StructuredNode):
@@ -85,7 +85,8 @@ class Componente(StructuredNode):
     fecha_actualizacion_conservacion = StringProperty()
     comentarios_conservacion = StringProperty()
 
-    exposiciones = StringProperty()
+    # exposiciones = StringProperty()
+    exposiciones = ArrayProperty(StringProperty(), default=[])
     avaluo = StringProperty()
     procedencia = StringProperty()
     donante = StringProperty()
@@ -150,7 +151,9 @@ class Pieza(StructuredNode):
     fecha_actualizacion_conservacion = StringProperty()
     comentarios_conservacion = StringProperty()
     
-    exposiciones = RelationshipTo(Exposicion, 'EXHIBIDO_EN')
+    # exposiciones = RelationshipTo(Exposicion, 'EXHIBIDO_EN')
+    exposiciones = ArrayProperty(StringProperty(), default=[])
+
     avaluo = StringProperty()
     procedencia = StringProperty()
     donante = StringProperty()

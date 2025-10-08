@@ -151,7 +151,7 @@ class ComponenteOutSerializer(serializers.Serializer):
     responsable_conservacion = serializers.CharField(allow_blank=True, required=False)
     fecha_actualizacion_conservacion = serializers.CharField(allow_blank=True, required=False)
     comentarios_conservacion = serializers.CharField(allow_blank=True, required=False)
-    exposiciones = serializers.CharField(allow_blank=True, required=False)
+    exposiciones = serializers.SerializerMethodField()
     avaluo = serializers.CharField(allow_blank=True, required=False)
     procedencia = serializers.CharField(allow_blank=True, required=False)
     donante = serializers.CharField(allow_blank=True, required=False)
@@ -163,6 +163,10 @@ class ComponenteOutSerializer(serializers.Serializer):
     def get_id(self, c):
         # Ejemplo: "27-b"
         return f"{c.pieza_numero_inventario}-{c.letra}"
+    
+    def get_exposiciones(self, c):
+        vals = list(getattr(c, 'exposiciones', []) or [])
+        return "; ".join([v for v in vals if v])
 
     def to_representation(self, c):
         base = super().to_representation(c)
@@ -270,8 +274,8 @@ class PiezaOutSerializer(serializers.Serializer):
         return _fmt_fecha_con_hora_or_nat(getattr(p, 'fecha_actualizacion_conservacion', None))
 
     def get_exposiciones(self, p: Pieza):
-        # Devuelve lista de títulos de exposiciones conectadas
-        return [e.titulo for e in p.exposiciones.all()]
+        vals = list(getattr(p, 'exposiciones', []) or [])
+        return "; ".join([v for v in vals if v])
     
     def to_representation(self, p: Pieza):
         comp_counter = [0]

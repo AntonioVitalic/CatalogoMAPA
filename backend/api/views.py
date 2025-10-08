@@ -143,7 +143,8 @@ class PiezaViewSet(viewsets.ViewSet):
         autores     = request.query_params.getlist('autor__nombre')
         localidades = request.query_params.getlist('localidad__nombre')
         tipologias  = request.query_params.getlist('tipologia')
-        exposiciones = request.query_params.getlist('exposiciones__titulo')
+        expos_a     = request.query_params.getlist('exposiciones')
+        expos_b     = request.query_params.getlist('exposiciones__titulo')
         fecha_from  = request.query_params.get('fecha_creacion_after', '').strip()
         fecha_to    = request.query_params.get('fecha_creacion_before', '').strip()
 
@@ -158,7 +159,7 @@ class PiezaViewSet(viewsets.ViewSet):
             "autores":     _norm_list(autores),
             "localidades": _norm_list(localidades),
             "tipologias":  _norm_list(tipologias),
-            "exposiciones": _norm_list(exposiciones),
+            "exposiciones": _norm_list(expos_a + expos_b),
             "fecha_from":  fecha_from,
             "fecha_to":    fecha_to,
         }
@@ -174,8 +175,8 @@ class PiezaViewSet(viewsets.ViewSet):
         WITH p, cols, pais_list, collect(DISTINCT toLower(trim(a.nombre))) AS aut_list
         OPTIONAL MATCH (p)-[:LOCALIZADO_EN]->(l:Localidad)
         WITH p, cols, pais_list, aut_list, collect(DISTINCT toLower(trim(l.nombre))) AS loc_list
-        OPTIONAL MATCH (p)-[:EXHIBIDO_EN]->(e:Exposicion)
-        WITH p, cols, pais_list, aut_list, loc_list, collect(DISTINCT toLower(replace(trim(e.titulo), '"', ''))) AS expo_list
+        WITH p, cols, pais_list, aut_list, loc_list,
+             [e IN coalesce(p.exposiciones, []) | toLower(trim(replace(e, '"', '')))] AS expo_list
         WHERE (
             size($colecciones) = 0 OR any(x IN $colecciones WHERE x IN cols)
         )
@@ -192,9 +193,8 @@ class PiezaViewSet(viewsets.ViewSet):
             size($tipologias) = 0 OR toLower(trim(coalesce(p.tipologia, ''))) IN $tipologias
         )
         AND (
-            size($exposiciones) = 0 OR any(x IN $exposiciones WHERE x IN expo_list)
+            size($exposiciones) = 0 OR any(x IN $exposiciones WHERE any(e IN expo_list WHERE e CONTAINS x))
         )
-
         RETURN p
         ORDER BY p.numero_inventario_int
         """
@@ -330,7 +330,11 @@ class PiezaViewSet(viewsets.ViewSet):
         # 3) Relaciones N–N (listas desde string con ; o ,)
         _set_many_names(pieza, 'materiales', Material, _split_list(_get('materialidad', data)))
         _set_many_names(pieza, 'tecnica', Tecnica, _split_list(_get('tecnica', data)))
-        _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(_get('exposiciones', data)))
+        # _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(_get('exposiciones', data)))
+
+        # NUEVO: guardar exposiciones como lista
+        pieza.exposiciones = _split_list(_get('exposiciones', data))
+        pieza.save()
 
         # 4) Componentes (lista JSON serializada o nativa)
         componentes = data.get('componentes')
@@ -393,11 +397,14 @@ class PiezaViewSet(viewsets.ViewSet):
                     responsable_coleccion=comp.get('responsable_coleccion', ''),
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
+                 # NUEVO: exposiciones de componente (string -> lista)
+                c.exposiciones = _split_list(comp.get('exposiciones', ''))
+                c.save()
                 pieza.componentes.connect(c)
-                exposiciones_raw = comp.get('exposiciones', '')
-                exposiciones_list = _split_list(exposiciones_raw)
-                if exposiciones_list and any(e.strip() for e in exposiciones_list):
-                    _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
+                # exposiciones_raw = comp.get('exposiciones', '')
+                # exposiciones_list = _split_list(exposiciones_raw)
+                # if exposiciones_list and any(e.strip() for e in exposiciones_list):
+                #     _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
 
         # 5) Imagen de pieza (opcional)
         imagen = request.FILES.get('imagen')
@@ -482,6 +489,8 @@ class PiezaViewSet(viewsets.ViewSet):
         }
         for k, v in fields_scalar.items():
             setattr(pieza, k, v)
+        # NUEVO: actualizar exposiciones de pieza (string -> lista)
+        pieza.exposiciones = _split_list(_get('exposiciones', data))
         pieza.save()
 
         # 2) Relaciones 1–1
@@ -556,11 +565,14 @@ class PiezaViewSet(viewsets.ViewSet):
                     responsable_coleccion=comp.get('responsable_coleccion', ''),
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
+                # NUEVO: exposiciones del componente (string -> lista)
+                c.exposiciones = _split_list(comp.get('exposiciones', ''))
+                c.save()
                 pieza.componentes.connect(c)
-                exposiciones_raw = comp.get('exposiciones', '')
-                exposiciones_list = _split_list(exposiciones_raw)
-                if exposiciones_list and any(e.strip() for e in exposiciones_list):
-                    _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
+                # exposiciones_raw = comp.get('exposiciones', '')
+                # exposiciones_list = _split_list(exposiciones_raw)
+                # if exposiciones_list and any(e.strip() for e in exposiciones_list):
+                #     _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
                 # snapshot after
                 comp_dict = c.__dict__.copy()
                 comp_dict.pop('_id', None)
@@ -769,14 +781,20 @@ class TipologiaViewSet(viewsets.ViewSet):
     
 class ExposicionViewSet(viewsets.ViewSet):
     def list(self, request):
-        import os
-        import pandas as pd
-        csv_path = os.path.join(os.getcwd(), "neo4j", "import", "exposiciones.csv")
-        expos = []
-        if os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-            expos = [{"id": i + 1, "nombre": str(n)} for i, n in enumerate(df["nombre"].dropna().unique())]
-        return Response(expos)
+        # Unir exposiciones desde Pieza y desde Componentes
+        q = (
+            "MATCH (p:Pieza) "
+            "OPTIONAL MATCH (p)-[:TIENE_COMPONENTE]->(c:Componente) "
+            "WITH coalesce(p.exposiciones, []) AS ep, collect(coalesce(c.exposiciones, [])) AS ec "
+            "WITH ep + reduce(acc=[], arr IN ec | acc + arr) AS all_expos "
+            "UNWIND all_expos AS e "
+            "WITH trim(replace(e, '\"', '')) AS e2 "
+            "WHERE e2 <> '' "
+            "RETURN DISTINCT e2 ORDER BY e2"
+        )
+        rows, _ = db.cypher_query(q)
+        data = [{"id": i + 1, "nombre": r[0]} for i, r in enumerate(rows)]
+        return Response(data)
     
 class IsAdminRole(BasePermission):
     def has_permission(self, request, view):
