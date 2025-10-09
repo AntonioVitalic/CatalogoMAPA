@@ -101,39 +101,64 @@ def extract_year(fecha: str) -> int | None:
     if not fecha or not isinstance(fecha, str):
         return None
     fecha = fecha.lower().strip()
+
     # año simple
     m = re.search(r'(\d{4})', fecha)
     if m:
         return int(m.group(1))
-    # rango de años
+
+    # rango de años (cuando no se detectó por el caso simple, ej: "1944-1956")
     m = re.search(r'(\d{4})\s*-\s*(\d{4})', fecha)
     if m:
         return int(m.group(1))
-    # siglo XX, XXI, XIX
-    m = re.search(r'siglo\s*(x{1,3}|ix|xxi|xx|xix|xx)', fecha)
+
+    # Casos textuales frecuentes (primera/segunda mitad, finales, etc.)
+    textual_map = {
+        "primera mitad del siglo xx": 1900,
+        "primera mitad de siglo xx": 1900,
+        "segunda mitad del siglo xx": 1950,
+        "segunda mitad de siglo xx": 1950,
+        "primera mitad del siglo xix": 1800,
+        "primera mitad de siglo xix": 1800,
+        "segunda mitad del siglo xix": 1850,
+        "segunda mitad de siglo xix": 1850,
+        "primera mitad del siglo xxi": 2000,
+        "primera mitad de siglo xxi": 2000,
+        "segunda mitad del siglo xxi": 2050,
+        "segunda mitad de siglo xxi": 2050,
+        "mediados del siglo xx": 1950,
+        "mediados de siglo xx": 1950,
+        "principios del siglo xx": 1900,
+        "principios de siglo xx": 1900,
+        "principios del siglo xxi": 2000,
+        "principios de siglo xxi": 2000,
+        "finales del siglo xx": 1980,
+        "finales de siglo xx": 1980,
+        "finales del siglo xix": 1890,
+        "finales de siglo xix": 1890,
+        "inicios del siglo xx": 1900,
+        "inicios de siglo xx": 1900,
+        "inicios del siglo xxi": 2000,
+        "inicios de siglo xxi": 2000,
+        "finales del siglo xix e inicios del xx": 1890,
+        "finales del siglo xix e inicios del siglo xx": 1890,
+        "segunda mitad del siglo xix a primera mitad del siglo xx": 1850,
+    }
+    for key, val in textual_map.items():
+        if key in fecha:
+            return val
+
+    # siglo con números romanos
+    m = re.search(r'siglo\s*([xiv]+)', fecha)
     if m:
         siglo = m.group(1)
-        # Traducir a año aproximado
-        siglos = {'xix': 1800, 'xx': 1900, 'xxi': 2000, 'ix': 800, 'x': 900}
-        return siglos.get(siglo, None)
-    # Primera mitad del siglo XX
-    if "primera mitad del siglo xx" in fecha:
-        return 1900
-    if "segunda mitad del siglo xx" in fecha:
-        return 1950
-    if "primera mitad del siglo xix" in fecha:
-        return 1800
-    if "segunda mitad del siglo xix" in fecha:
-        return 1850
-    # Finales del siglo XX
-    if "finales del siglo xx" in fecha:
-        return 1980
-    # Mediados del siglo XX
-    if "mediados del siglo xx" in fecha:
-        return 1950
-    # Principios del siglo XX
-    if "principios del siglo xx" in fecha:
-        return 1900
+        siglos = {
+            'ix': 800, 'x': 900, 'xi': 1000, 'xii': 1100, 'xiii': 1200,
+            'xiv': 1300, 'xv': 1400, 'xvi': 1500, 'xvii': 1600, 'xviii': 1700,
+            'xix': 1800, 'xx': 1900, 'xxi': 2000,
+        }
+        return siglos.get(siglo)
+
     return None
 
 class PiezaViewSet(viewsets.ViewSet):
@@ -163,6 +188,26 @@ class PiezaViewSet(viewsets.ViewSet):
             "fecha_from":  fecha_from,
             "fecha_to":    fecha_to,
         }
+    
+    def _filter_by_fecha(self, piezas, fecha_from: str, fecha_to: str):
+        """Filtra una lista de piezas aplicando los límites de fecha (inclusive)."""
+        year_from = extract_year(fecha_from) if fecha_from else None
+        year_to = extract_year(fecha_to) if fecha_to else None
+
+        if year_from is None and year_to is None:
+            return piezas
+
+        filtered = []
+        for pieza in piezas:
+            year = extract_year(getattr(pieza, 'fecha_creacion', '') or '')
+            if year is None:
+                continue
+            if year_from is not None and year < year_from:
+                continue
+            if year_to is not None and year > year_to:
+                continue
+            filtered.append(pieza)
+        return filtered
 
     def _cypher_base(self):
         return """
@@ -207,6 +252,9 @@ class PiezaViewSet(viewsets.ViewSet):
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", settings.REST_FRAMEWORK['PAGE_SIZE']))
         skip = (page - 1) * page_size
+        fecha_from = params.get("fecha_from")
+        fecha_to = params.get("fecha_to")
+        use_fecha_filter = bool(fecha_from or fecha_to)
 
         if search:
             # Consulta simple, ignora filtros avanzados
@@ -221,25 +269,41 @@ class PiezaViewSet(viewsets.ViewSet):
             """
             rows, _ = db.cypher_query(q_simple)
             piezas = [Pieza.inflate(r[0]) for r in rows]
+            if use_fecha_filter:
+                piezas = self._filter_by_fecha(piezas, fecha_from, fecha_to)
             total_count = len(piezas)
         else:
-            q_page = q.replace("ORDER BY p.numero_inventario_int", f"ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}")
-            rows, _ = db.cypher_query(q_page, params)
-            piezas = [Pieza.inflate(r[0]) for r in rows]
-            q_count = q.replace("ORDER BY p.numero_inventario_int", "")
-            count_rows, _ = db.cypher_query(q_count, params)
-            total_count = len(count_rows)
+            if use_fecha_filter:
+                rows, _ = db.cypher_query(q, params)
+                piezas_all = [Pieza.inflate(r[0]) for r in rows]
+                piezas = self._filter_by_fecha(piezas_all, fecha_from, fecha_to)
+                total_count = len(piezas)
+                piezas = piezas[skip:skip + page_size]
+            else:
+                q_page = q.replace("ORDER BY p.numero_inventario_int", f"ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}")
+                rows, _ = db.cypher_query(q_page, params)
+                piezas = [Pieza.inflate(r[0]) for r in rows]
+                q_count = q.replace("ORDER BY p.numero_inventario_int", "")
+                count_rows, _ = db.cypher_query(q_count, params)
+                total_count = len(count_rows)
 
         ser = PiezaOutSerializer(piezas, many=True, context={'request': request})
 
-        # Construir next/previous
+         # Construir next/previous preservando query params
         base_url = request.build_absolute_uri(request.path)
+        query_params = request.GET.copy()
+        query_params['page_size'] = str(page_size)
+
         next_url = None
         previous_url = None
         if skip + page_size < total_count:
-            next_url = f"{base_url}?page={page+1}&page_size={page_size}"
+            next_params = query_params.copy()
+            next_params['page'] = str(page + 1)
+            next_url = f"{base_url}?{next_params.urlencode()}"
         if page > 1:
-            previous_url = f"{base_url}?page={page-1}&page_size={page_size}"
+            prev_params = query_params.copy()
+            prev_params['page'] = str(page - 1)
+            previous_url = f"{base_url}?{prev_params.urlencode()}"
 
         return Response({
             "count": total_count,
