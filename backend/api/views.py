@@ -33,6 +33,8 @@ from .serializers import (
 
 from accounts.models import RegistroCambioPieza
 
+_UNSET = object() # esto es para distinguir None de no-seteado
+
 def _get(field, data, *aliases, default=""):
     """
     Obtiene un campo desde request.data con soporte de alias.
@@ -44,6 +46,23 @@ def _get(field, data, *aliases, default=""):
             return data.get(a)
     return default
 
+def _get_optional(field, data, *aliases):
+    """
+    Igual que ``_get`` pero devuelve ``_UNSET`` cuando la clave no viene
+    en ``data``. Permite diferenciar entre "no enviado" y "enviado vacío".
+    """
+    keys = (field,) + tuple(aliases)
+    for key in keys:
+        getter = getattr(data, "get", None)
+        if callable(getter):
+            value = getter(key, _UNSET)
+            if value is not _UNSET:
+                return value
+        # Para estructuras tipo dict
+        if isinstance(data, dict) and key in data:
+            return data[key]
+    return _UNSET
+
 def _split_list(value: str) -> list[str]:
     """
     Divide cadenas en elementos por ; o , y limpia espacios. Devuelve lista sin vacíos.
@@ -54,6 +73,16 @@ def _split_list(value: str) -> list[str]:
     # Acepta ; o , como separador
     parts = [p.strip() for p in raw.replace(",", ";").split(";")]
     return [p for p in parts if p]
+
+def _to_float_or_none(value):
+    """Convierte ``value`` a float. Si viene vacío o 0, retorna ``None``."""
+    if value in (None, "", "null", "Null", "NULL"):
+        return None
+    try:
+        fval = float(value)
+    except (TypeError, ValueError):
+        return None
+    return fval or None
 
 def _set_single_rel(node, rel_attr: str, label_cls, name: str | None):
     """
@@ -512,63 +541,105 @@ class PiezaViewSet(viewsets.ViewSet):
             before_components.append(comp_dict)
 
         # 1) Actualizar PROPIEDADES planas (sin tocar relaciones)
-        fields_scalar = {
-            'revision': _get('revision', data),
-            'numero_registro_anterior': _get('numero_registro_anterior', data),
-            'codigo_surdoc': _get('codigo_surdoc', data),
-            'ubicacion': _get('ubicacion', data),
-            'deposito': _get('deposito', data),
-            'estante': _get('estante', data),
-            'caja_actual': _get('caja_actual', data),
-            'tipologia': _get('tipologia', data),
-            'clasificacion': _get('clasificacion', data),
-            'conjunto': _get('conjunto', data),
-            'nombre_comun': _get('nombre_comun', data),
-            'nombre_especifico': _get('nombre_especifico', data),
-            'fecha_creacion': _get('fecha_creacion', data),
-            'descripcion_col': _get('descripcion_col', data, 'descripcion'),
-            'marcas_inscripciones': _get('marcas_inscripciones', data),
-            'contexto_historico': _get('contexto_historico', data),
-            'bibliografia': _get('bibliografia', data),
-            'iconografia': _get('iconografia', data),
-            'notas_investigacion': _get('notas_investigacion', data),
-            'descripcion_cr': _get('descripcion_cr', data, 'descripcion_conservacion'),
-            'alto_cm': float(_get('alto_cm', data) or 0) or None,
-            'ancho_cm': float(_get('ancho_cm', data) or 0) or None,
-            'profundidad_cm': float(_get('profundidad_cm', data) or 0) or None,
-            'diametro_cm': float(_get('diametro_cm', data) or 0) or None,
-            'espesor_mm': float(_get('espesor_mm', data) or 0) or None,
-            'peso_gr': float(_get('peso_gr', data) or 0) or None,
-            'funcion': _get('funcion', data),
-            'estado_conservacion': _get('estado_conservacion', data),
-            'responsable_conservacion': _get('responsable_conservacion', data),
-            'fecha_actualizacion_conservacion': _get('fecha_actualizacion_conservacion', data),
-            'comentarios_conservacion': _get('comentarios_conservacion', data),
-            'avaluo': _get('avaluo', data),
-            'procedencia': _get('procedencia', data),
-            'donante': _get('donante', data),
-            'fecha_ingreso': _get('fecha_ingreso', data),
-            'responsable_coleccion': _get('responsable_coleccion', data),
-            'fecha_ultima_modificacion': _get('fecha_ultima_modificacion', data),
+        scalar_field_map = {
+            'revision': ('revision',),
+            'numero_registro_anterior': ('numero_registro_anterior',),
+            'codigo_surdoc': ('codigo_surdoc',),
+            'ubicacion': ('ubicacion',),
+            'deposito': ('deposito',),
+            'estante': ('estante',),
+            'caja_actual': ('caja_actual',),
+            'tipologia': ('tipologia',),
+            'clasificacion': ('clasificacion',),
+            'conjunto': ('conjunto',),
+            'nombre_comun': ('nombre_comun',),
+            'nombre_especifico': ('nombre_especifico',),
+            'fecha_creacion': ('fecha_creacion',),
+            'descripcion_col': ('descripcion_col', 'descripcion'),
+            'marcas_inscripciones': ('marcas_inscripciones',),
+            'contexto_historico': ('contexto_historico',),
+            'bibliografia': ('bibliografia',),
+            'iconografia': ('iconografia',),
+            'notas_investigacion': ('notas_investigacion',),
+            'descripcion_cr': ('descripcion_cr', 'descripcion_conservacion'),
+            'alto_cm': ('alto_cm',),
+            'ancho_cm': ('ancho_cm',),
+            'profundidad_cm': ('profundidad_cm',),
+            'diametro_cm': ('diametro_cm',),
+            'espesor_mm': ('espesor_mm',),
+            'peso_gr': ('peso_gr',),
+            'funcion': ('funcion',),
+            'estado_conservacion': ('estado_conservacion',),
+            'responsable_conservacion': ('responsable_conservacion',),
+            'fecha_actualizacion_conservacion': ('fecha_actualizacion_conservacion',),
+            'comentarios_conservacion': ('comentarios_conservacion',),
+            'avaluo': ('avaluo',),
+            'procedencia': ('procedencia',),
+            'donante': ('donante',),
+            'fecha_ingreso': ('fecha_ingreso',),
+            'responsable_coleccion': ('responsable_coleccion',),
+            'fecha_ultima_modificacion': ('fecha_ultima_modificacion',),
         }
-        for k, v in fields_scalar.items():
-            setattr(pieza, k, v)
-        # NUEVO: actualizar exposiciones de pieza (string -> lista)
-        pieza.exposiciones = _split_list(_get('exposiciones', data))
-        pieza.save()
+        
+        float_fields = {
+            'alto_cm', 'ancho_cm', 'profundidad_cm',
+            'diametro_cm', 'espesor_mm', 'peso_gr'
+        }
+
+        updated_scalar = False
+        for attr, keys in scalar_field_map.items():
+            raw_value = _get_optional(keys[0], data, *keys[1:])
+            if raw_value is _UNSET:
+                continue
+            if attr in float_fields:
+                value = _to_float_or_none(raw_value)
+            else:
+                value = raw_value
+            setattr(pieza, attr, value)
+            updated_scalar = True
+
+        exposiciones_value = _get_optional('exposiciones', data)
+        if exposiciones_value is not _UNSET:
+            pieza.exposiciones = _split_list(exposiciones_value)
+            updated_scalar = True
+
+        if updated_scalar:
+            pieza.save()
 
         # 2) Relaciones 1–1
-        _set_single_rel(pieza, 'autor', Autor, _get('autor', data))
-        _set_single_rel(pieza, 'coleccion', Coleccion, _get('coleccion', data))
-        _set_single_rel(pieza, 'pais', Pais, _get('pais', data))
-        _set_single_rel(pieza, 'localidad', Localidad, _get('localidad', data))
-        _set_single_rel(pieza, 'filiacion_cultural', Cultura, _get('filiacion_cultural', data))
+        autor_val = _get_optional('autor', data)
+        if autor_val is not _UNSET:
+            _set_single_rel(pieza, 'autor', Autor, autor_val)
+
+        coleccion_val = _get_optional('coleccion', data)
+        if coleccion_val is not _UNSET:
+            _set_single_rel(pieza, 'coleccion', Coleccion, coleccion_val)
+
+        pais_val = _get_optional('pais', data)
+        if pais_val is not _UNSET:
+            _set_single_rel(pieza, 'pais', Pais, pais_val)
+
+        localidad_val = _get_optional('localidad', data)
+        if localidad_val is not _UNSET:
+            _set_single_rel(pieza, 'localidad', Localidad, localidad_val)
+
+        filiacion_val = _get_optional('filiacion_cultural', data)
+        if filiacion_val is not _UNSET:
+            _set_single_rel(pieza, 'filiacion_cultural', Cultura, filiacion_val)
 
         # 3) Relaciones N–N
-        _set_many_names(pieza, 'materiales', Material, _split_list(_get('materialidad', data)))
-        _set_many_names(pieza, 'tecnica', Tecnica, _split_list(_get('tecnica', data)))
-        _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(_get('exposiciones', data)))
+        materialidad_val = _get_optional('materialidad', data)
+        if materialidad_val is not _UNSET:
+            _set_many_names(pieza, 'materiales', Material, _split_list(materialidad_val))
 
+        tecnica_val = _get_optional('tecnica', data)
+        if tecnica_val is not _UNSET:
+            _set_many_names(pieza, 'tecnica', Tecnica, _split_list(tecnica_val))
+
+        # exposiciones_rel_val = _get_optional('exposiciones', data)
+        # if exposiciones_rel_val is not _UNSET:
+        #     _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(exposiciones_rel_val))
+        
         # 4) Componentes (modo “reemplazar”)
         componentes = data.get('componentes')
         after_components = []
