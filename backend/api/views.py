@@ -75,14 +75,15 @@ def _split_list(value: str) -> list[str]:
     return [p for p in parts if p]
 
 def _to_float_or_none(value):
-    """Convierte ``value`` a float. Si viene vacío o 0, retorna ``None``."""
+    """Convierte ``value`` a ``float``. Devuelve ``None`` solo cuando el valor
+    viene vacío o no es convertible. Acepta ``0`` como un número válido."""
     if value in (None, "", "null", "Null", "NULL"):
         return None
     try:
         fval = float(value)
     except (TypeError, ValueError):
         return None
-    return fval or None
+    return fval
 
 def _set_single_rel(node, rel_attr: str, label_cls, name: str | None):
     """
@@ -464,12 +465,12 @@ class PiezaViewSet(viewsets.ViewSet):
                     tecnica=comp.get('tecnica', ''),
                     materialidad=comp.get('materialidad', ''),
                     descripcion_cr=comp.get('descripcion_cr', ''),
-                    alto_cm=float(comp.get('alto_cm') or 0) or None,
-                    ancho_cm=float(comp.get('ancho_cm') or 0) or None,
-                    profundidad_cm=float(comp.get('profundidad_cm') or 0) or None,
-                    diametro_cm=float(comp.get('diametro_cm') or 0) or None,
-                    espesor_mm=float(comp.get('espesor_mm') or 0) or None,
-                    peso_gr=float(comp.get('peso_gr') or 0) or None,
+                    alto_cm=_to_float_or_none(comp.get('alto_cm')),
+                    ancho_cm=_to_float_or_none(comp.get('ancho_cm')),
+                    profundidad_cm=_to_float_or_none(comp.get('profundidad_cm')),
+                    diametro_cm=_to_float_or_none(comp.get('diametro_cm')),
+                    espesor_mm=_to_float_or_none(comp.get('espesor_mm')),
+                    peso_gr=_to_float_or_none(comp.get('peso_gr')),
 
                     funcion=comp.get('funcion', ''),
                     contexto_historico=comp.get('contexto_historico', ''),
@@ -692,7 +693,7 @@ class PiezaViewSet(viewsets.ViewSet):
                     responsable_conservacion=comp.get('responsable_conservacion', ''),
                     fecha_actualizacion_conservacion=comp.get('fecha_actualizacion_conservacion', ''),
                     comentarios_conservacion=comp.get('comentarios_conservacion', ''),
-                    exposiciones=comp.get('exposiciones', ''),
+                    exposiciones=_split_list(comp.get('exposiciones', '')),
                     avaluo=comp.get('avaluo', ''),
                     procedencia=comp.get('procedencia', ''),
                     donante=comp.get('donante', ''),
@@ -700,9 +701,9 @@ class PiezaViewSet(viewsets.ViewSet):
                     responsable_coleccion=comp.get('responsable_coleccion', ''),
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
-                # NUEVO: exposiciones del componente (string -> lista)
-                c.exposiciones = _split_list(comp.get('exposiciones', ''))
-                c.save()
+                # # NUEVO: exposiciones del componente (string -> lista)
+                # c.exposiciones = _split_list(comp.get('exposiciones', ''))
+                # c.save()
                 pieza.componentes.connect(c)
                 # exposiciones_raw = comp.get('exposiciones', '')
                 # exposiciones_list = _split_list(exposiciones_raw)

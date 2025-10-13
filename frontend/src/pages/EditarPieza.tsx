@@ -58,6 +58,57 @@ type ComponentForm = {
   imagenes?: { imagen: string; descripcion?: string }[];
 };
 
+type PieceForm = {
+  numero_inventario: string;
+  letra: string;
+  revision: string;
+  numero_registro_anterior: string;
+  codigo_surdoc: string;
+  ubicacion: string;
+  deposito: string;
+  estante: string;
+  caja_actual: string;
+  tipologia: string;
+  coleccion: string;
+  clasificacion: string;
+  conjunto: string;
+  nombre_comun: string;
+  nombre_especifico: string;
+  autor: string;
+  filiacion_cultural: string;
+  pais: string;
+  localidad: string;
+  fecha_creacion: string;
+  descripcion_col: string;
+  marcas_inscripciones: string;
+  tecnica: string;
+  materialidad: string;
+  descripcion_cr: string;
+  alto_cm: string;
+  ancho_cm: string;
+  profundidad_cm: string;
+  diametro_cm: string;
+  espesor_mm: string;
+  peso_gr: string;
+  funcion: string;
+  contexto_historico: string;
+  bibliografia: string;
+  iconografia: string;
+  notas_investigacion: string;
+  estado_conservacion: string;
+  responsable_conservacion: string;
+  fecha_actualizacion_conservacion: string;
+  comentarios_conservacion: string;
+  exposiciones: string;
+  avaluo: string;
+  procedencia: string;
+  donante: string;
+  fecha_ingreso: string;
+  responsable_coleccion: string;
+  fecha_ultima_modificacion: string;
+  imagenes: { imagen: string; descripcion?: string }[];
+};
+
 const initialComp: ComponentForm = {
   pieza_numero_inventario: "",
   letra: "",
@@ -108,65 +159,68 @@ const initialComp: ComponentForm = {
   fecha_ultima_modificacion: "",
   imagenes: []
 };
-  
+
+const initialPiece: PieceForm = {
+  numero_inventario: "",
+  letra: "",
+  revision: "",
+  numero_registro_anterior: "",
+  codigo_surdoc: "",
+  ubicacion: "",
+  deposito: "",
+  estante: "",
+  caja_actual: "",
+  tipologia: "",
+  coleccion: "",
+  clasificacion: "",
+  conjunto: "",
+  nombre_comun: "",
+  nombre_especifico: "",
+  autor: "",
+  filiacion_cultural: "",
+  pais: "",
+  localidad: "",
+  fecha_creacion: "",
+  descripcion_col: "",
+  marcas_inscripciones: "",
+  tecnica: "",
+  materialidad: "",
+  descripcion_cr: "",
+  alto_cm: "",
+  ancho_cm: "",
+  profundidad_cm: "",
+  diametro_cm: "",
+  espesor_mm: "",
+  peso_gr: "",
+  funcion: "",
+  contexto_historico: "",
+  bibliografia: "",
+  iconografia: "",
+  notas_investigacion: "",
+  estado_conservacion: "",
+  responsable_conservacion: "",
+  fecha_actualizacion_conservacion: "",
+  comentarios_conservacion: "",
+  exposiciones: "",
+  avaluo: "",
+  procedencia: "",
+  donante: "",
+  fecha_ingreso: "",
+  responsable_coleccion: "",
+  fecha_ultima_modificacion: "",
+  imagenes: [],
+};
+
 
 export default function EditarPieza() {
   const [showLogin, setShowLogin] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  const [pieceData, setPieceData] = useState({
-    id: "",
-    inventoryNumber: "",
-    letra: "",
-    revision: "",
-    previousRegistryNumber: "",
-    surdoc: "",
-    ubicacion: "",
-    deposito: "",
-    estante: "",
-    caja_actual: "",
-    tipologia: "",
-    coleccion: "",
-    clasificacion: "",
-    conjunto: "",
-    nombre_comun: "",
-    nombre_especifico: "",
-    autor: "",
-    filiacion_cultural: "",
-    pais: "",
-    localidad: "",
-    fecha_creacion: "",
-    descripcion_col: "",
-    marcas_inscripciones: "",
-    tecnica: "",
-    materialidad: "",
-    descripcion_cr: "",
-    alto_cm: "",
-    ancho_cm: "",
-    profundidad_cm: "",
-    diametro_cm: "",
-    espesor_mm: "",
-    peso_gr: "",
-    funcion: "",
-    contexto_historico: "",
-    bibliografia: "",
-    iconografia: "",
-    notas_investigacion: "",
-    estado_conservacion: "",
-    responsable_conservacion: "",
-    fecha_actualizacion_conservacion: "",
-    comentarios_conservacion: "",
-    exposiciones: "",
-    avaluo: "",
-    procedencia: "",
-    donante: "",
-    fecha_ingreso: "",
-    responsable_coleccion: "",
-    fecha_ultima_modificacion: "",
-    imagenes: [],
-  });
+  const [pieceData, setPieceData] = useState<PieceForm>(initialPiece);
+  const [initialPieceData, setInitialPieceData] = useState<PieceForm>(initialPiece);
   const [components, setComponents] = useState<ComponentForm[]>([]);
+  const [initialComponents, setInitialComponents] = useState<ComponentForm[]>([]);
   const [compForm, setCompForm] = useState<ComponentForm>(initialComp);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [showCompModal, setShowCompModal] = useState(false);
@@ -202,13 +256,12 @@ export default function EditarPieza() {
       try {
         const res = await api.get(`/api/piezas/${id}/`);
         const p = res.data;
-        setPieceData({
-          id: p.id || "",
-          inventoryNumber: p.numero_inventario || "",
+        const nextPiece: PieceForm = {
+          numero_inventario: p.numero_inventario || "",
           letra: p.letra || "",
           revision: p.revision || "",
-          previousRegistryNumber: p.numero_registro_anterior || "",
-          surdoc: p.codigo_surdoc || "",
+          numero_registro_anterior: p.numero_registro_anterior || "",
+          codigo_surdoc: p.codigo_surdoc || "",
           ubicacion: p.ubicacion || "",
           deposito: p.deposito || "",
           estante: p.estante || "",
@@ -229,12 +282,12 @@ export default function EditarPieza() {
           tecnica: Array.isArray(p.tecnica) ? p.tecnica.join(", ") : p.tecnica || "",
           materialidad: Array.isArray(p.materialidad) ? p.materialidad.join(", ") : p.materialidad || "",
           descripcion_cr: p.descripcion_cr || "",
-          alto_cm: p.alto_cm?.toString() || "",
-          ancho_cm: p.ancho_cm?.toString() || "",
-          profundidad_cm: p.profundidad_cm?.toString() || "",
-          diametro_cm: p.diametro_cm?.toString() || "",
-          espesor_mm: p.espesor_mm?.toString() || "",
-          peso_gr: p.peso_gr?.toString() || "",
+          alto_cm: p.alto_cm !== undefined && p.alto_cm !== null ? p.alto_cm.toString() : "",
+          ancho_cm: p.ancho_cm !== undefined && p.ancho_cm !== null ? p.ancho_cm.toString() : "",
+          profundidad_cm: p.profundidad_cm !== undefined && p.profundidad_cm !== null ? p.profundidad_cm.toString() : "",
+          diametro_cm: p.diametro_cm !== undefined && p.diametro_cm !== null ? p.diametro_cm.toString() : "",
+          espesor_mm: p.espesor_mm !== undefined && p.espesor_mm !== null ? p.espesor_mm.toString() : "",
+          peso_gr: p.peso_gr !== undefined && p.peso_gr !== null ? p.peso_gr.toString() : "",
           funcion: p.funcion || "",
           contexto_historico: p.contexto_historico || "",
           bibliografia: p.bibliografia || "",
@@ -244,7 +297,7 @@ export default function EditarPieza() {
           responsable_conservacion: p.responsable_conservacion || "",
           fecha_actualizacion_conservacion: p.fecha_actualizacion_conservacion || "",
           comentarios_conservacion: p.comentarios_conservacion || "",
-          exposiciones: p.exposiciones || "",
+          exposiciones: Array.isArray(p.exposiciones) ? p.exposiciones.join(", ") : p.exposiciones || "",
           avaluo: p.avaluo || "",
           procedencia: p.procedencia || "",
           donante: p.donante || "",
@@ -252,7 +305,9 @@ export default function EditarPieza() {
           responsable_coleccion: p.responsable_coleccion || "",
           fecha_ultima_modificacion: p.fecha_ultima_modificacion || "",
           imagenes: p.imagenes ?? [],
-        });
+        };
+        setPieceData(nextPiece);
+        setInitialPieceData(JSON.parse(JSON.stringify(nextPiece)) as PieceForm);
         if (p.componentes && Array.isArray(p.componentes)) {
           const compList: ComponentForm[] = p.componentes.map((c: any) => ({
             pieza_numero_inventario: c.pieza_numero_inventario || "",
@@ -295,7 +350,7 @@ export default function EditarPieza() {
             responsable_conservacion: c.responsable_conservacion || "",
             fecha_actualizacion_conservacion: c.fecha_actualizacion_conservacion || "",
             comentarios_conservacion: c.comentarios_conservacion || "",
-            exposiciones: c.exposiciones || "",
+            exposiciones: Array.isArray(c.exposiciones) ? c.exposiciones.join(", ") : c.exposiciones || "",
             avaluo: c.avaluo || "",
             procedencia: c.procedencia || "",
             donante: c.donante || "",
@@ -305,6 +360,10 @@ export default function EditarPieza() {
             imagenes: c.imagenes ?? [],
           }));
           setComponents(compList);
+           setInitialComponents(JSON.parse(JSON.stringify(compList)) as ComponentForm[]);
+        } else {
+          setComponents([]);
+          setInitialComponents([]);
         }
       } catch (err) {
         console.error("Error cargando pieza:", err);
@@ -319,7 +378,8 @@ export default function EditarPieza() {
 
   const handleChangePiece = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setPieceData(prev => ({ ...prev, [name]: value }));
+    const field = name as keyof PieceForm;
+    setPieceData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAddComponentModal = () => {
@@ -331,7 +391,7 @@ export default function EditarPieza() {
       }
     }
     setEditIndex(null);
-    setCompForm({ ...initialComp, letra: defaultLetter });
+    setCompForm({ ...initialComp, letra: defaultLetter, pieza_numero_inventario: pieceData.numero_inventario });
     setShowCompModal(true);
   };
 
@@ -367,19 +427,68 @@ export default function EditarPieza() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const formData = new FormData();
-      Object.entries(pieceData).forEach(([key, value]) => {
+      const changedFields: Record<string, unknown> = {};
+
+      const normalizeValue = (value: PieceForm[keyof PieceForm]) => {
         if (Array.isArray(value)) {
-          formData.append(key, JSON.stringify(value));
+          return JSON.stringify(value);
+        }
+        return value ?? "";
+      };
+      (Object.keys(pieceData) as (keyof PieceForm)[]).forEach((key) => {
+        if (key === "imagenes") {
+          return;
+        }
+
+        const currentValue = pieceData[key];
+        const initialValue = initialPieceData[key];
+
+        if (normalizeValue(currentValue) === normalizeValue(initialValue)) {
+          return;
+        }
+
+        const fieldKey = key as string;
+
+        if (Array.isArray(currentValue)) {
+          changedFields[fieldKey] = currentValue;
+        } else if (typeof currentValue === "object" && currentValue !== null) {
+          changedFields[fieldKey] = currentValue;
         } else {
-          formData.append(key, value ?? "");
+          changedFields[fieldKey] = currentValue ?? "";
         }
       });
-      formData.append("componentes", JSON.stringify(components));
-      if (file) {
-        formData.append("imagen", file);
+      if (JSON.stringify(components) !== JSON.stringify(initialComponents)) {
+        changedFields.componentes = components;
       }
-      await api.put(`/api/piezas/${id}/`, formData);
+
+      const hasFile = Boolean(file);
+      const hasChanges = hasFile || Object.keys(changedFields).length > 0;
+
+      if (!hasChanges) {
+        alert("No se detectaron cambios para guardar.");
+        return;
+      }
+
+      if (hasFile) {
+        const formData = new FormData();
+        Object.entries(changedFields).forEach(([key, value]) => {
+          if (value === undefined || value === null) {
+            formData.append(key, "");
+            return;
+          }
+
+          if (Array.isArray(value) || typeof value === "object") {
+            formData.append(key, JSON.stringify(value));
+          } else {
+            formData.append(key, String(value));
+          }
+        });
+
+        formData.append("imagen", file);
+        await api.put(`/api/piezas/${id}/`, formData);
+      } else {
+        await api.put(`/api/piezas/${id}/`, changedFields);
+      }
       alert("Pieza editada correctamente");
       navigate(`/detail/${id}`);
     } catch (err: any) {
@@ -418,7 +527,7 @@ export default function EditarPieza() {
                 type="text"
                 name="numero_inventario"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.inventoryNumber}
+                value={pieceData.numero_inventario}
                 disabled
               />
             </div>
@@ -451,7 +560,7 @@ export default function EditarPieza() {
                 type="text"
                 name="numero_registro_anterior"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.previousRegistryNumber}
+                value={pieceData.numero_registro_anterior}
                 onChange={handleChangePiece}
               />
             </div>
@@ -462,7 +571,7 @@ export default function EditarPieza() {
                 type="text"
                 name="codigo_surdoc"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.surdoc}
+                 value={pieceData.codigo_surdoc}
                 onChange={handleChangePiece}
               />
             </div>
@@ -900,7 +1009,7 @@ export default function EditarPieza() {
                 type="text"
                 name="exposiciones"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={Array.isArray(pieceData.exposiciones) ? pieceData.exposiciones.join(", ") : pieceData.exposiciones}
+                value={pieceData.exposiciones}
                 onChange={handleChangePiece}
                 list="exposiciones-list"
               />
