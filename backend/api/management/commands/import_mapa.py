@@ -94,7 +94,7 @@ class Command(BaseCommand):
             pais='pais',
             localidad='localidad',
             fecha_creacion='fecha_de_creacion',
-            descripcion='descripcion_col',
+            descripcion_col='descripcion_col',
 
             marcas_inscripciones='marcas_o_inscripciones',
             tecnica='tecnica',
@@ -231,7 +231,7 @@ class Command(BaseCommand):
             pais: row.pais,
             localidad: row.localidad,
             fecha_creacion: row.fecha_creacion,
-            descripcion: row.descripcion,
+            descripcion_col: row.descripcion_col,
             marcas_inscripciones: row.marcas_inscripciones,
             tecnica: row.tecnica,
             materialidad: row.materialidad,

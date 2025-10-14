@@ -221,7 +221,7 @@ class PiezaOutSerializer(serializers.Serializer):
     pais = serializers.SerializerMethodField()
     localidad = serializers.SerializerMethodField()
     fecha_creacion = serializers.CharField(allow_blank=True, required=False)
-    descripcion_col = serializers.CharField(source='descripcion', allow_blank=True, required=False)
+    descripcion_col = serializers.CharField(allow_blank=True, required=False)
     marcas_inscripciones = serializers.CharField(allow_blank=True, required=False)
     tecnica = serializers.ListField(child=serializers.CharField(), read_only=True)
     materialidad = serializers.CharField(allow_blank=True, required=False)
@@ -341,7 +341,7 @@ class PiezaExportSerializer(serializers.Serializer):
     localidad = serializers.SerializerMethodField()
     fecha_creacion = serializers.CharField(allow_blank=True, required=False)
     materialidad = serializers.CharField(allow_blank=True, required=False)
-    descripcion_col = serializers.CharField(source='descripcion', allow_blank=True, required=False)
+    descripcion_col = serializers.CharField(allow_blank=True, required=False)
     estado_conservacion = serializers.CharField(allow_blank=True, required=False)
     imagen = serializers.SerializerMethodField()
 
