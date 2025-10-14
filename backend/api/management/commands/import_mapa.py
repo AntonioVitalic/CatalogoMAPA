@@ -38,9 +38,30 @@ class Command(BaseCommand):
 
         # Rellenar NaN según tipo
         num_cols = df.select_dtypes(include=['int64','float64']).columns
+        num_cols = num_cols.difference(['deposito'])
         obj_cols = df.select_dtypes(include=['object']).columns
         df[num_cols] = df[num_cols].fillna(0)
         df[obj_cols] = df[obj_cols].fillna("")
+
+        def _normalize_deposito(raw) -> str:
+            if pd.isna(raw):
+                return ""
+            text = str(raw).strip()
+            if not text:
+                return ""
+            try:
+                fval = float(text)
+            except (TypeError, ValueError):
+                return ""
+            if not fval.is_integer():
+                return ""
+            ival = int(fval)
+            if ival == 0:
+                return ""
+            return str(ival)
+
+        if 'deposito' in df.columns:
+            df['deposito'] = df['deposito'].apply(_normalize_deposito)
 
         # Ordenar por número inventario (numérico)
         df['__num'] = pd.to_numeric(df['numero_de_inventario'], errors='coerce')
@@ -193,7 +214,10 @@ class Command(BaseCommand):
             numero_registro_anterior: row.numero_registro_anterior,
             codigo_surdoc: row.codigo_surdoc,
             ubicacion: row.ubicacion,
-            deposito: row.deposito,
+            deposito: CASE
+              WHEN row.deposito IS NULL OR trim(row.deposito) = '' THEN null
+              ELSE toInteger(row.deposito)
+            END,
             estante: row.estante,
             caja_actual: row.caja_actual,
             tipologia: row.tipologia,
@@ -305,7 +329,10 @@ class Command(BaseCommand):
             numero_registro_anterior: row.numero_registro_anterior,
             codigo_surdoc: row.codigo_surdoc,
             ubicacion: row.ubicacion,
-            deposito: row.deposito,
+            deposito: CASE
+              WHEN row.deposito IS NULL OR trim(row.deposito) = '' THEN null
+              ELSE toInteger(row.deposito)
+            END,
             estante: row.estante,
             caja_actual: row.caja_actual,
             tipologia: row.tipologia,

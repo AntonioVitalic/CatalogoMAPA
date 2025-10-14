@@ -117,7 +117,7 @@ class ComponenteOutSerializer(serializers.Serializer):
     numero_registro_anterior = serializers.CharField(allow_blank=True, required=False)
     codigo_surdoc = serializers.CharField(allow_blank=True, required=False)
     ubicacion = serializers.CharField(allow_blank=True, required=False)
-    deposito = serializers.CharField(allow_blank=True, required=False)
+    deposito = serializers.SerializerMethodField()
     estante = serializers.CharField(allow_blank=True, required=False)
     caja_actual = serializers.CharField(allow_blank=True, required=False)
     tipologia = serializers.CharField(allow_blank=True, required=False)
@@ -163,6 +163,15 @@ class ComponenteOutSerializer(serializers.Serializer):
     def get_id(self, c):
         # Ejemplo: "27-b"
         return f"{c.pieza_numero_inventario}-{c.letra}"
+    
+    def get_deposito(self, c):
+        val = getattr(c, 'deposito', None)
+        if val in (None, "", "0", "0.0"):
+            return None
+        try:
+            return str(int(val))
+        except (TypeError, ValueError):
+            return None
     
     def get_exposiciones(self, c):
         vals = list(getattr(c, 'exposiciones', []) or [])
@@ -262,7 +271,13 @@ class PiezaOutSerializer(serializers.Serializer):
         return _first_name(p.localidad.all())
 
     def get_deposito(self, p: Pieza):
-        return _none_if_zeroish(getattr(p, 'deposito', None))
+        val = getattr(p, 'deposito', None)
+        if val in (None, "", "0", "0.0"):
+            return None
+        try:
+            return str(int(val))
+        except (TypeError, ValueError):
+            return None
 
     def get_descripcion_conservacion(self, p: Pieza):
         return _none_if_zeroish(getattr(p, 'descripcion_conservacion', None))

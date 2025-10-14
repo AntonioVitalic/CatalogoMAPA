@@ -46,7 +46,7 @@ class Componente(StructuredNode):
     codigo_surdoc = StringProperty()
 
     ubicacion = StringProperty()
-    deposito = StringProperty()
+    deposito = IntegerProperty(required=False)
     estante = StringProperty()
     caja_actual = StringProperty()
 
@@ -112,7 +112,7 @@ class Pieza(StructuredNode):
     codigo_surdoc = StringProperty()
 
     ubicacion = StringProperty()
-    deposito = StringProperty()
+    deposito = IntegerProperty(required=False)
     estante = StringProperty()
     caja_actual = StringProperty()
 

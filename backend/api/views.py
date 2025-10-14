@@ -19,8 +19,6 @@ import tempfile
 import requests
 import os
 from io import BytesIO
-from .models import Pieza
-
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
     Localidad, Material, Tecnica, Coleccion, Cultura, Exposicion
@@ -34,6 +32,33 @@ from .serializers import (
 from accounts.models import RegistroCambioPieza
 
 _UNSET = object() # esto es para distinguir None de no-seteado
+
+def _clean_empty(value):
+    """Normaliza valores que representan "vacío"."""
+    if value is None:
+        return None
+    if value == "":
+        return ""
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if cleaned.lower() in {"nat", "nat 00:00:00"}:
+            return ""
+        return value
+    return value
+
+
+def _canonical(value):
+    """Normaliza valores para comparaciones en auditoría."""
+    if value in (None, ""):
+        return ""
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if cleaned.lower() in {"nat", "nat 00:00:00"}:
+            return "NaT"
+        return cleaned
+    if isinstance(value, (list, tuple)):
+        return [_canonical(v) for v in value]
+    return value
 
 def _get(field, data, *aliases, default=""):
     """
@@ -85,43 +110,100 @@ def _to_float_or_none(value):
         return None
     return fval
 
+
+def _to_int_or_none(value):
+    if value in (None, "", "null", "Null", "NULL"):
+        return None
+    try:
+        text = str(value).strip()
+        if not text:
+            return None
+        fval = float(text)
+    except (TypeError, ValueError):
+        return None
+    if not fval.is_integer():
+        return None
+    ival = int(fval)
+    if ival == 0:
+        return None
+    return ival
+
+def _rel_display_value(node):
+    if hasattr(node, 'nombre') and node.nombre:
+        return node.nombre
+    if hasattr(node, 'titulo') and node.titulo:
+        return node.titulo
+    return None
+
+
 def _set_single_rel(node, rel_attr: str, label_cls, name: str | None):
     """
     Setea una relación 1–1 opcional (ej: autor, coleccion, pais, localidad).
-    Limpia relaciones previas y conecta si 'name' viene no vacío.
+    Devuelve ``(changed, before, after)`` para auditoría.
     """
     rel = getattr(node, rel_attr)  # RelationshipTo
-    # limpiar vínculos actuales
-    for x in rel.all():
+    current_nodes = list(rel.all())
+    before_value = None
+    for x in current_nodes:
+        rel_val = _rel_display_value(x)
+        if rel_val is not None:
+            before_value = rel_val
+            break
+
+    target_name = (name or "").strip()
+    if not target_name:
+        target_name = None
+
+    if (before_value or None) == (target_name or None):
+        # No hay cambios reales
+        if target_name is None and current_nodes:
+            for x in current_nodes:
+                rel.disconnect(x)
+        return False, before_value, target_name
+
+    for x in current_nodes:
         rel.disconnect(x)
-    if name:
-        inst = label_cls.nodes.first_or_none(nombre=name.strip())
+    if target_name:
+        lookup_field = 'titulo' if label_cls.__name__ == "Exposicion" else 'nombre'
+        inst = label_cls.nodes.first_or_none(**{lookup_field: target_name})
         if not inst:
-            inst = label_cls(nombre=name.strip()).save()
+            inst = label_cls(**{lookup_field: target_name}).save()
         rel.connect(inst)
+    return True, before_value, target_name
 
 def _set_many_names(node, rel_attr: str, label_cls, names: list[str]):
     """
     Setea relaciones N–N desde lista de nombres (ej: materiales, tecnicas, exposiciones).
-    Sobrescribe: limpia y vuelve a conectar.
+    Devuelve ``(changed, before_list, after_list)``.
     """
     rel = getattr(node, rel_attr)  # RelationshipTo
-    for x in rel.all():
-        rel.disconnect(x)
+    current_nodes = list(rel.all())
+    before_names = [(_rel_display_value(x) or "").strip() for x in current_nodes if _rel_display_value(x)]
+
+    cleaned_new = []
     for n in names:
-        nn = n.strip()
-        if not nn:
-            continue
-        # Para Exposicion usamos 'titulo' en el modelo
-        if label_cls.__name__ == "Exposicion":
-            inst = label_cls.nodes.first_or_none(titulo=nn)
-            if not inst:
-                inst = label_cls(titulo=nn).save()
-        else:
-            inst = label_cls.nodes.first_or_none(nombre=nn)
-            if not inst:
-                inst = label_cls(nombre=nn).save()
+        nn = (n or "").strip()
+        if nn:
+            cleaned_new.append(nn)
+
+    before_norm = sorted([b.casefold() for b in before_names])
+    after_norm = sorted([c.casefold() for c in cleaned_new])
+    if before_norm == after_norm:
+        return False, before_names, cleaned_new
+
+    for x in current_nodes:
+        rel.disconnect(x)
+
+    connected_names = []
+    for nn in cleaned_new:
+        lookup_field = 'titulo' if label_cls.__name__ == "Exposicion" else 'nombre'
+        inst = label_cls.nodes.first_or_none(**{lookup_field: nn})
+        if not inst:
+            inst = label_cls(**{lookup_field: nn}).save()
         rel.connect(inst)
+        connected_names.append(getattr(inst, lookup_field))
+
+    return True, before_names, connected_names
 
 def extract_year(fecha: str) -> int | None:
     """
@@ -376,7 +458,7 @@ class PiezaViewSet(viewsets.ViewSet):
             numero_registro_anterior=_get('numero_registro_anterior', data),
             codigo_surdoc=_get('codigo_surdoc', data),
             ubicacion=_get('ubicacion', data),
-            deposito=_get('deposito', data),
+            deposito=_to_int_or_none(_get('deposito', data, default=None)),
             estante=_get('estante', data),
             caja_actual=_get('caja_actual', data),
             tipologia=_get('tipologia', data),
@@ -444,7 +526,7 @@ class PiezaViewSet(viewsets.ViewSet):
                     codigo_surdoc=comp.get('codigo_surdoc', ''),
 
                     ubicacion=comp.get('ubicacion', ''),
-                    deposito=comp.get('deposito', ''),
+                    deposito=_to_int_or_none(comp.get('deposito')),
                     estante=comp.get('estante', ''),
                     caja_actual=comp.get('caja_actual', ''),
 
@@ -526,11 +608,7 @@ class PiezaViewSet(viewsets.ViewSet):
         data = request.data
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
 
-        # ===== BEFORE para auditoría =====
-        before_obj = pieza.__dict__.copy()
-        before_obj.pop('_id', None)
-        before_obj.pop('_labels', None)
-        before_obj.pop('_properties', None)
+        cambios_pieza: list[dict] = []
 
         # Guardar snapshot de componentes antes
         before_components = []
@@ -587,6 +665,8 @@ class PiezaViewSet(viewsets.ViewSet):
             'diametro_cm', 'espesor_mm', 'peso_gr'
         }
 
+        int_fields = {'deposito'}
+
         updated_scalar = False
         for attr, keys in scalar_field_map.items():
             raw_value = _get_optional(keys[0], data, *keys[1:])
@@ -594,15 +674,35 @@ class PiezaViewSet(viewsets.ViewSet):
                 continue
             if attr in float_fields:
                 value = _to_float_or_none(raw_value)
+            elif attr in int_fields:
+                value = _to_int_or_none(raw_value)
             else:
-                value = raw_value
+                value = _clean_empty(raw_value)
+            before_value = getattr(pieza, attr, None)
+            if _canonical(before_value) == _canonical(value):
+                continue
             setattr(pieza, attr, value)
             updated_scalar = True
+            cambios_pieza.append({
+                "campo": attr,
+                "antes": before_value,
+                "despues": value,
+            })
+
 
         exposiciones_value = _get_optional('exposiciones', data)
         if exposiciones_value is not _UNSET:
-            pieza.exposiciones = _split_list(exposiciones_value)
-            updated_scalar = True
+            before_list = list(getattr(pieza, 'exposiciones', []) or [])
+            new_list = _split_list(exposiciones_value)
+            if sorted([v.strip().lower() for v in before_list if v]) != sorted([v.strip().lower() for v in new_list if v]):
+                pieza.exposiciones = new_list
+                updated_scalar = True
+                cambios_pieza.append({
+                    "campo": "exposiciones",
+                    "antes": before_list,
+                    "despues": new_list,
+                })
+
 
         if updated_scalar:
             pieza.save()
@@ -610,32 +710,75 @@ class PiezaViewSet(viewsets.ViewSet):
         # 2) Relaciones 1–1
         autor_val = _get_optional('autor', data)
         if autor_val is not _UNSET:
-            _set_single_rel(pieza, 'autor', Autor, autor_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'autor', Autor, autor_val)
+            if changed:
+                cambios_pieza.append({
+                    "campo": "autor",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
 
         coleccion_val = _get_optional('coleccion', data)
         if coleccion_val is not _UNSET:
-            _set_single_rel(pieza, 'coleccion', Coleccion, coleccion_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'coleccion', Coleccion, coleccion_val)
+            if changed:
+                cambios_pieza.append({
+                    "campo": "coleccion",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
 
         pais_val = _get_optional('pais', data)
         if pais_val is not _UNSET:
-            _set_single_rel(pieza, 'pais', Pais, pais_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'pais', Pais, pais_val)
+            if changed:
+                cambios_pieza.append({
+                    "campo": "pais",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
+
 
         localidad_val = _get_optional('localidad', data)
         if localidad_val is not _UNSET:
-            _set_single_rel(pieza, 'localidad', Localidad, localidad_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'localidad', Localidad, localidad_val)
+            if changed:
+                cambios_pieza.append({
+                    "campo": "localidad",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
 
         filiacion_val = _get_optional('filiacion_cultural', data)
         if filiacion_val is not _UNSET:
-            _set_single_rel(pieza, 'filiacion_cultural', Cultura, filiacion_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'localidad', Localidad, localidad_val)
+            if changed:
+                cambios_pieza.append({
+                    "campo": "localidad",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
 
         # 3) Relaciones N–N
         materialidad_val = _get_optional('materialidad', data)
         if materialidad_val is not _UNSET:
-            _set_many_names(pieza, 'materiales', Material, _split_list(materialidad_val))
+            changed, before_rel, after_rel = _set_many_names(pieza, 'materiales', Material, _split_list(materialidad_val))
+            if changed:
+                cambios_pieza.append({
+                    "campo": "materialidad",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
 
         tecnica_val = _get_optional('tecnica', data)
         if tecnica_val is not _UNSET:
-            _set_many_names(pieza, 'tecnica', Tecnica, _split_list(tecnica_val))
+            changed, before_rel, after_rel = _set_many_names(pieza, 'tecnica', Tecnica, _split_list(tecnica_val))
+            if changed:
+                cambios_pieza.append({
+                    "campo": "tecnica",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
 
         # exposiciones_rel_val = _get_optional('exposiciones', data)
         # if exposiciones_rel_val is not _UNSET:
@@ -659,7 +802,7 @@ class PiezaViewSet(viewsets.ViewSet):
                     numero_registro_anterior=comp.get('numero_registro_anterior', ''),
                     codigo_surdoc=comp.get('codigo_surdoc', ''),
                     ubicacion=comp.get('ubicacion', ''),
-                    deposito=comp.get('deposito', ''),
+                    deposito=_to_int_or_none(comp.get('deposito')),
                     estante=comp.get('estante', ''),
                     caja_actual=comp.get('caja_actual', ''),
                     tipologia=comp.get('tipologia', ''),
@@ -716,67 +859,48 @@ class PiezaViewSet(viewsets.ViewSet):
                 comp_dict.pop('_properties', None)
                 after_components.append(comp_dict)
 
-        # ===== AFTER para auditoría =====
-        after_obj = pieza.__dict__.copy()
-        after_obj.pop('_id', None)
-        after_obj.pop('_labels', None)
-        after_obj.pop('_properties', None)
-
-        # ========== COMPARACIÓN DE CAMBIOS ==========
-        def compare_dicts(before, after, prefix=""):
-            changes = []
-            for k in after:
-                if k.startswith("_"): continue
-                v_before = before.get(k, None)
-                v_after = after.get(k, None)
-                if v_before != v_after:
-                    changes.append({
-                        "campo": f"{prefix}{k}",
-                        "antes": v_before,
-                        "despues": v_after
-                    })
-            return changes
-
-        # Cambios en pieza principal
-        cambios_pieza = compare_dicts(before_obj, after_obj)
-
         # Cambios en componentes
         cambios_componentes = []
-        # Si hay componentes antes y después, compara por letra
-        letras_antes = {c.get("letra", ""): c for c in before_components}
-        letras_despues = {c.get("letra", ""): c for c in after_components}
-        for letra, comp_after in letras_despues.items():
-            comp_before = letras_antes.get(letra, {})
-            cambios = compare_dicts(comp_before, comp_after, prefix=f"Componente {letra}: ")
-            if cambios:
-                cambios_componentes.extend(cambios)
-        # Componentes eliminados
-        for letra, comp_before in letras_antes.items():
-            if letra not in letras_despues:
-                cambios_componentes.append({
-                    "campo": f"Componente {letra}",
-                    "antes": comp_before,
-                    "despues": None
-                })
-        # Componentes agregados
-        for letra, comp_after in letras_despues.items():
-            if letra not in letras_antes:
-                cambios_componentes.append({
-                    "campo": f"Componente {letra}",
-                    "antes": None,
-                    "despues": comp_after
-                })
+        if after_components or (componentes is not None and before_components):
+            letras_antes = {c.get("letra", ""): c for c in before_components}
+            letras_despues = {c.get("letra", ""): c for c in after_components}
+            for letra, comp_after in letras_despues.items():
+                comp_before = letras_antes.get(letra, {})
+                for campo, valor_after in comp_after.items():
+                    if campo.startswith("_"):
+                        continue
+                    valor_before = comp_before.get(campo, None)
+                    if _canonical(valor_before) != _canonical(valor_after):
+                        cambios_componentes.append({
+                            "campo": f"Componente {letra}: {campo}",
+                            "antes": valor_before,
+                            "despues": valor_after,
+                        })
+            for letra, comp_before in letras_antes.items():
+                if letra not in letras_despues:
+                    cambios_componentes.append({
+                        "campo": f"Componente {letra}",
+                        "antes": comp_before,
+                        "despues": None,
+                    })
+            for letra, comp_after in letras_despues.items():
+                if letra not in letras_antes:
+                    cambios_componentes.append({
+                        "campo": f"Componente {letra}",
+                        "antes": None,
+                        "despues": comp_after,
+                    })
 
-        # Auditoría: guardar cambios detallados
-        RegistroCambioPieza.objects.create(
-            usuario=request.user,
-            pieza_id=pieza.numero_inventario,
-            accion="EDITAR",
-            detalle=json.dumps({
-                "cambios_pieza": cambios_pieza,
-                "cambios_componentes": cambios_componentes,
-            }, ensure_ascii=False, indent=2)
-        )
+        if cambios_pieza or cambios_componentes:
+            RegistroCambioPieza.objects.create(
+                usuario=request.user,
+                pieza_id=pieza.numero_inventario,
+                accion="EDITAR",
+                detalle=json.dumps({
+                    "cambios_pieza": cambios_pieza,
+                    "cambios_componentes": cambios_componentes,
+                }, ensure_ascii=False, indent=2)
+            )
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
 
