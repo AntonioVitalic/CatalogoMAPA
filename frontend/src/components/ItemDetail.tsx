@@ -21,22 +21,20 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const navigationState = location.state as { from?: string } | null;
+
   const handleEdit = () => {
-    const state = location.state as { from?: string } | null;
-    if (state?.from) {
-      navigate(state.from);
-      return;
-    }
+    navigate(`/editar-pieza/${item.id}`, {
+      state: { from: navigationState?.from ?? `${location.pathname}` },
+    });
   };
 
   const handleBack = () => {
-    const params = new URLSearchParams(location.search);
-    const queryString = params.toString();
-    if (queryString) {
-      navigate(`/home?${queryString}`);
-    } else {
-      navigate("/home?page=1");
+    if (navigationState?.from) {
+      navigate(navigationState.from);
+      return;
     }
+    navigate("/home?page=1");
   };
 
   const FIELD_LABELS: Record<string, string> = {

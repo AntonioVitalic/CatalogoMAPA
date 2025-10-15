@@ -17,7 +17,7 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
   const { role } = useAuth();
 
   const viewDetails = () => {
-    navigate(`/detail/${item.id}${location.search}`, {
+    navigate(`/detail/${item.id}`, {
       state: { from: `${location.pathname}${location.search}` },
     });
   };

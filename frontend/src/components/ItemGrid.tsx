@@ -164,7 +164,7 @@ const ItemGrid = ({
                   size="sm"
                   className="text-xs px-2 py-1 h-auto min-w-[80px] whitespace-nowrap border border-primary"
                   onClick={() => {
-                    navigate(`/detail/${item.id}${location.search}`, {
+                    navigate(`/detail/${item.id}`, {
                       state: { from: `${location.pathname}${location.search}` },
                     });
                   }}

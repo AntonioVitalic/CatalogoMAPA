@@ -1006,54 +1006,153 @@ def _catalog_json(names_iterable):
     ordered = sorted(names, key=lambda s: s.casefold())
     return [{"id": i + 1, "nombre": n} for i, n in enumerate(ordered)]
 
+def _catalog_from_queries(*queries: str) -> list[dict]:
+    """Ejecuta una o varias consultas Cypher que retornan un único campo"""
+    collected: list[str] = []
+    for query in queries:
+        if not query:
+            continue
+        rows, _ = db.cypher_query(query)
+        for row in rows:
+            if not row:
+                continue
+            value = row[0]
+            if isinstance(value, str):
+                cleaned = value.strip()
+            else:
+                cleaned = value
+            if cleaned:
+                collected.append(str(cleaned))
+    return _catalog_json(collected)
+
 class PaisViewSet(viewsets.ViewSet):
     def list(self, request):
-        data = _catalog_json(p.nombre for p in Pais.nodes.all())
+        data = _catalog_from_queries(
+            """
+            MATCH (p:Pieza)-[:PROCEDENTE_DE]->(pa:Pais)
+            WITH DISTINCT trim(pa.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (c:Componente)
+            WITH DISTINCT trim(c.pais) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+        )
         return Response(data)
 
 class ColeccionViewSet(viewsets.ViewSet):
     def list(self, request):
-        data = _catalog_json(c.nombre for c in Coleccion.nodes.all())
+        data = _catalog_from_queries(
+            """
+            MATCH (p:Pieza)-[:PERTENECE_A]->(c:Coleccion)
+            WITH DISTINCT trim(c.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)
+            WITH DISTINCT trim(comp.coleccion) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+        )
         return Response(data)
 
 class AutorViewSet(viewsets.ViewSet):
     def list(self, request):
-        data = _catalog_json(a.nombre for a in Autor.nodes.all())
+        data = _catalog_from_queries(
+            """
+            MATCH (p:Pieza)-[:CREADO_POR]->(a:Autor)
+            WITH DISTINCT trim(a.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)
+            WITH DISTINCT trim(comp.autor) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+        )
         return Response(data)
 
 class LocalidadViewSet(viewsets.ViewSet):
     def list(self, request):
-        data = _catalog_json(l.nombre for l in Localidad.nodes.all())
+        data = _catalog_from_queries(
+            """
+            MATCH (p:Pieza)-[:LOCALIZADO_EN]->(l:Localidad)
+            WITH DISTINCT trim(l.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)
+            WITH DISTINCT trim(comp.localidad) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+        )
         return Response(data)
 
 class TipologiaViewSet(viewsets.ViewSet):
     def list(self, request):
-        q = """
-        MATCH (p:Pieza)
-        WITH trim(coalesce(p.tipologia,'')) AS nombre
-        WHERE nombre <> ''
-        RETURN DISTINCT nombre
-        """
-        rows, _ = db.cypher_query(q)
-        nombres = [r[0] for r in rows]
-        data = _catalog_json(nombres)
+        data = _catalog_from_queries(
+            """
+            MATCH (p:Pieza)
+            WITH DISTINCT trim(coalesce(p.tipologia, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)
+            WITH DISTINCT trim(coalesce(comp.tipologia, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+        )
         return Response(data)
     
 class ExposicionViewSet(viewsets.ViewSet):
     def list(self, request):
         # Unir exposiciones desde Pieza y desde Componentes
-        q = (
-            "MATCH (p:Pieza) "
-            "OPTIONAL MATCH (p)-[:TIENE_COMPONENTE]->(c:Componente) "
-            "WITH coalesce(p.exposiciones, []) AS ep, collect(coalesce(c.exposiciones, [])) AS ec "
-            "WITH ep + reduce(acc=[], arr IN ec | acc + arr) AS all_expos "
-            "UNWIND all_expos AS e "
-            "WITH trim(replace(e, '\"', '')) AS e2 "
-            "WHERE e2 <> '' "
-            "RETURN DISTINCT e2 ORDER BY e2"
+        data = _catalog_from_queries(
+            """
+            MATCH (p:Pieza)
+            UNWIND coalesce(p.exposiciones, []) AS expo
+            WITH DISTINCT trim(replace(expo, '"', '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)
+            UNWIND coalesce(comp.exposiciones, []) AS expo
+            WITH DISTINCT trim(replace(expo, '"', '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (e:Exposicion)
+            WITH DISTINCT trim(coalesce(e.titulo, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
         )
-        rows, _ = db.cypher_query(q)
-        data = [{"id": i + 1, "nombre": r[0]} for i, r in enumerate(rows)]
         return Response(data)
     
 class IsAdminRole(BasePermission):
