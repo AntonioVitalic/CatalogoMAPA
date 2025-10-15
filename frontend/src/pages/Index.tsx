@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import Search from "@/components/Search";
 import FilterPanel from "@/components/FilterPanel";
@@ -15,15 +15,43 @@ import api from "@/services/api";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 const ITEMS_PER_PAGE = 10;
 
+const DEFAULT_FILTERS: SearchFilters = {
+  query: "",
+  country: [],
+  collection: [],
+  author: [],
+  locality: [],
+  tipologias: [],
+  exhibitions: [],
+  dateFrom: "",
+  dateTo: "",
+};
+
+const parseFiltersFromParams = (params: URLSearchParams): SearchFilters => {
+  const filters: SearchFilters = { ...DEFAULT_FILTERS };
+
+  filters.query = params.get("search") ?? "";
+  filters.country = params.getAll("pais__nombre");
+  filters.collection = params.getAll("coleccion__nombre");
+  filters.author = params.getAll("autor__nombre");
+  filters.locality = params.getAll("localidad__nombre");
+  filters.tipologias = params.getAll("tipologia");
+  filters.exhibitions = params.getAll("exposiciones__titulo");
+  filters.dateFrom = params.get("fecha_creacion_after") ?? "";
+  filters.dateTo = params.get("fecha_creacion_before") ?? "";
+
+  return filters;
+};
+
 export default function Index() {
-  const { page: pageParam } = useParams<{ page?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
 
   // Lee el parámetro page del query string
-  const params = new URLSearchParams(location.search);
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const initialPage = params.get("page") && !isNaN(Number(params.get("page"))) ? Number(params.get("page")) : 1;
+  const initialFilters = useMemo(() => parseFiltersFromParams(params), [params]);
 
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,17 +64,7 @@ export default function Index() {
   });
 
   const [showFilters, setShowFilters] = useState(false);
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    query: "",
-    country: [],
-    collection: [],
-    author: [],
-    locality: [],
-    tipologias: [],
-    exhibitions: [],
-    dateFrom: "",
-    dateTo: "",
-  });
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>(initialFilters);
 
   const [showLogin, setShowLogin] = useState(false);
   const [showNeo4j, setShowNeo4j] = useState(false);
@@ -72,13 +90,15 @@ export default function Index() {
   // }, [location.search]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const page = params.get("page") && !isNaN(Number(params.get("page"))) ? Number(params.get("page")) : 1;
-    setPagination((prev) => ({ ...prev, page }));
+    const currentPage = params.get("page") && !isNaN(Number(params.get("page"))) ? Number(params.get("page")) : 1;
+    const parsedFilters = parseFiltersFromParams(params);
 
-    fetchPiezas(page, searchFilters);
+    setPagination((prev) => ({ ...prev, page: currentPage }));
+    setSearchFilters(parsedFilters);
+
+    fetchPiezas(currentPage, parsedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, searchFilters]);
+   }, [params]);
 
   const mapResultToItem = (p: any): CollectionItem => {
     const imgPath = p.imagenes?.[0]?.imagen;
@@ -185,30 +205,23 @@ export default function Index() {
   };
 
   // Buscar por texto (búsqueda simple)
-  const handleSearch = (simple: SearchFilters) =>
-    setSearchFilters((prev) => ({ ...prev, query: simple.query }));
+  const handleSearch = (simple: SearchFilters) => {
+    const updatedFilters: SearchFilters = {
+      ...searchFilters,
+      query: simple.query ?? "",
+    };
+    const params = buildParamsFromFilters(1, updatedFilters, false);
+    navigate(`/home?${params.toString()}`);
+  };
 
   // Aplicar filtros avanzados y serializar la URL
   const handleApplyFilters = (advanced: SearchFilters) => {
-    setSearchFilters(advanced);
-    setPagination((prev) => ({ ...prev, page: 1 }));
-
     const params = buildParamsFromFilters(1, advanced, false);
     navigate(`/home?${params.toString()}`);
   };
 
   const handleResetFilters = () =>
-    setSearchFilters({
-      query: "",
-      country: [],
-      collection: [],
-      author: [],
-      locality: [],
-      tipologias: [],
-      exhibitions: [],
-      dateFrom: "",
-      dateTo: "",
-    });
+    navigate("/home?page=1");
 
   // Cambiar página (URL)
   const handlePageChange = (newPage: number) => {
@@ -302,6 +315,7 @@ export default function Index() {
           onSearch={handleSearch}
           showAdvanced={showFilters}
           toggleAdvanced={() => setShowFilters((v) => !v)}
+          initialQuery={searchFilters.query}
         />
 
         {/* Filtros activos */}

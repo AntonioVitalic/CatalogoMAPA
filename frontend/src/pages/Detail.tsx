@@ -31,7 +31,7 @@ const FIELD_LABELS: Record<string, string> = {
   pais: "País",
   localidad: "Localidad",
   fecha_creacion: "Fecha de creación",
-  descripcion_col: "Descripción catálogo",
+  descripcion_col: "Descripción colección",
   marcas_inscripciones: "Marcas o inscripciones",
   tecnica: "Técnica",
   materialidad: "Materialidad",
@@ -70,6 +70,7 @@ const Detail = () => {
   const [password, setPassword] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
+  const fromState = (location.state as { from?: string } | null)?.from;
   const [expandedComps, setExpandedComps] = useState<{ [idx: number]: boolean }>({});
 
   useEffect(() => {
@@ -181,12 +182,20 @@ const Detail = () => {
             <Button
               className="mt-4"
               onClick={() => {
-                // Recupera todos los parámetros del query string
+                if (fromState) {
+                  navigate(fromState);
+                  return;
+                }
                 const params = new URLSearchParams(location.search);
-                navigate(`/home?${params.toString()}`);
+                const queryString = params.toString();
+                if (queryString) {
+                  navigate(`/home?${queryString}`);
+                } else {
+                  navigate("/home?page=1");
+                }
               }}
             >
-              Volver al catálogo
+              Volver al inventario
             </Button>
           </div>
         </div>

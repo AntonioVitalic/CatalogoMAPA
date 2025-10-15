@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchFilters } from "@/types";
@@ -9,10 +8,15 @@ interface SearchProps {
   onSearch: (filters: SearchFilters) => void;
   showAdvanced: boolean;
   toggleAdvanced: () => void;
+  initialQuery?: string;
 }
 
-const Search = ({ onSearch, showAdvanced, toggleAdvanced }: SearchProps) => {
-  const [query, setQuery] = useState("");
+const Search = ({ onSearch, showAdvanced, toggleAdvanced, initialQuery = "" }: SearchProps) => {
+  const [query, setQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +26,6 @@ const Search = ({ onSearch, showAdvanced, toggleAdvanced }: SearchProps) => {
   const handleReset = () => {
     setQuery("");
     onSearch({ query: "" });
-    window.location.href = "/home";
   };
 
   return (

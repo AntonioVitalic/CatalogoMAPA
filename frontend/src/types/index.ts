@@ -64,6 +64,7 @@ export interface CollectionItem {
   fecha_ingreso?: string;
   responsable_coleccion?: string;
   fecha_ultima_modificacion?: string;
+  etiqueta_eliminado?: boolean;
   componentes?: ComponenteItem[];
   imagenes?: { imagen: string; descripcion?: string }[];
 }

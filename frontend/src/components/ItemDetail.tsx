@@ -4,7 +4,6 @@ import { CollectionItem } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Edit, DownloadIcon } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { saveAs } from "file-saver";
@@ -23,13 +22,21 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   const location = useLocation();
 
   const handleEdit = () => {
-    navigate(`/editar-pieza/${item.inventoryNumber}`); // ¿podria ser item.id?
+    const state = location.state as { from?: string } | null;
+    if (state?.from) {
+      navigate(state.from);
+      return;
+    }
   };
 
   const handleBack = () => {
     const params = new URLSearchParams(location.search);
-    // Construye la URL de regreso a /home con los mismos parámetros
-    navigate(`/home?${params.toString()}`);
+    const queryString = params.toString();
+    if (queryString) {
+      navigate(`/home?${queryString}`);
+    } else {
+      navigate("/home?page=1");
+    }
   };
 
   const FIELD_LABELS: Record<string, string> = {
@@ -53,7 +60,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     pais: "País",
     localidad: "Localidad",
     fecha_creacion: "Fecha de creación",
-    descripcion_col: "Descripción catálogo",
+    descripcion_col: "Descripción colección",
     marcas_inscripciones: "Marcas o inscripciones",
     tecnica: "Técnica",
     materialidad: "Materialidad",
@@ -137,12 +144,10 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-6 flex items-center gap-4">
-        <Link to="/">
-          <Button variant="outline" size="sm" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al catálogo
-          </Button>
-        </Link>
+        <Button variant="outline" size="sm" onClick={handleBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Volver al inventario
+        </Button>
 
         {item.componentes && item.componentes.length > 0 && (
           <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded">

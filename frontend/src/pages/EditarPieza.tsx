@@ -248,7 +248,7 @@ export default function EditarPieza() {
         setTipologias(tipRes.data.map((t: any) => t.nombre));
         setExposiciones(expRes.data.map((e: any) => e.nombre));
       } catch (err) {
-        console.error("Error cargando catálogos:", err);
+        console.error("Error cargando inventarios:", err);
       }
     };
 
@@ -775,9 +775,9 @@ export default function EditarPieza() {
                 onChange={handleChangePiece}
               />
             </div>
-            {/* Descripción catálogo */}
+            {/* Descripción colección */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Descripción catálogo</label>
+              <label className="block text-sm font-medium mb-1">Descripción colección</label>
               <textarea
                 name="descripcion_col"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -1336,7 +1336,7 @@ export default function EditarPieza() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Descripción catálogo</label>
+                  <label className="block text-sm font-medium mb-2">Descripción colección</label>
                   <textarea
                     name="descripcion_col"
                     rows={2}

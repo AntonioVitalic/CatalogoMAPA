@@ -11,6 +11,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LayoutGrid, List, Check } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface ItemGridProps {
   items: CollectionItem[];
@@ -41,6 +42,8 @@ const ItemGrid = ({
   searchFilters,
   userRole
 }: ItemGridProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const isSelected = (item: CollectionItem) =>
     selectedItems.some((i) => i.id === item.id);
 
@@ -161,16 +164,9 @@ const ItemGrid = ({
                   size="sm"
                   className="text-xs px-2 py-1 h-auto min-w-[80px] whitespace-nowrap border border-primary"
                   onClick={() => {
-                    const params = new URLSearchParams();
-                    params.append("page", String(pagination.page));
-                    Object.entries(searchFilters).forEach(([key, value]) => {
-                      if (Array.isArray(value)) {
-                        value.forEach(v => params.append(key, v as string));
-                      } else if (typeof value === "string" && value) {
-                        params.append(key, value);
-                      }
+                    navigate(`/detail/${item.id}${location.search}`, {
+                      state: { from: `${location.pathname}${location.search}` },
                     });
-                    window.location.href = `/detail/${item.id}?${params.toString()}`;
                   }}
                 >
                   Ver detalle

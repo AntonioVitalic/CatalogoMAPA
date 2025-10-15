@@ -1,8 +1,7 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CollectionItem } from "@/types";
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye } from "lucide-react";
 
@@ -14,10 +13,13 @@ interface ItemCardProps {
 
 const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { role } = useAuth();
 
   const viewDetails = () => {
-    navigate(`/detail/${item.id}`);
+    navigate(`/detail/${item.id}${location.search}`, {
+      state: { from: `${location.pathname}${location.search}` },
+    });
   };
 
   return (
