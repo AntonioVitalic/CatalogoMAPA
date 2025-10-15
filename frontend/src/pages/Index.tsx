@@ -27,6 +27,18 @@ const DEFAULT_FILTERS: SearchFilters = {
   dateTo: "",
 };
 
+const hasAdvancedFilters = (filters: SearchFilters) =>
+  Boolean(
+    filters.country?.length ||
+      filters.collection?.length ||
+      filters.author?.length ||
+      filters.locality?.length ||
+      filters.tipologias?.length ||
+      filters.exhibitions?.length ||
+      filters.dateFrom ||
+      filters.dateTo
+  );
+
 const parseFiltersFromParams = (params: URLSearchParams): SearchFilters => {
   const filters: SearchFilters = { ...DEFAULT_FILTERS };
 
@@ -63,7 +75,7 @@ export default function Index() {
     viewMode: "grid",
   });
 
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(() => hasAdvancedFilters(initialFilters));
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(initialFilters);
 
   const [showLogin, setShowLogin] = useState(false);
@@ -95,6 +107,9 @@ export default function Index() {
 
     setPagination((prev) => ({ ...prev, page: currentPage }));
     setSearchFilters(parsedFilters);
+    if (hasAdvancedFilters(parsedFilters)) {
+      setShowFilters(true);
+    }
 
     fetchPiezas(currentPage, parsedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
