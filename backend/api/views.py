@@ -1217,6 +1217,25 @@ def exportar_excel_con_imagenes(request):
         "Fecha de creación", "Materialidad", "Descripción de colecciones", "Estado de conservación", "Imagen"
     ]
     ws.append(headers)
+    
+    # Ajustamos ancho de columnas para que el contenido se vea completo
+    column_widths = {
+        "A": 16,  # N° de inventario
+        "B": 22,  # Nombre común
+        "C": 22,  # Nombre atribuido
+        "D": 16,  # País
+        "E": 20,  # Localidad
+        "F": 18,  # Fecha de creación
+        "G": 22,  # Materialidad
+        "H": 32,  # Descripción de colecciones
+        "I": 22,  # Estado de conservación
+        "J": 24,  # Imagen
+    }
+    for column, width in column_widths.items():
+        ws.column_dimensions[column].width = width
+
+    # Ajustamos la altura de la fila de encabezados
+    ws.row_dimensions[1].height = 28
 
     # Usa PiezaOutSerializer para obtener datos completos
     ser = PiezaOutSerializer(piezas, many=True, context={'request': request})
@@ -1243,6 +1262,9 @@ def exportar_excel_con_imagenes(request):
         ]
         ws.append(row)
 
+        # Ajustamos la altura de la fila para acomodar imágenes y texto
+        ws.row_dimensions[idx].height = 150
+
         # Imagen embebida (leer desde /imagenes)
         imagenes = pieza_data.get("imagenes", [])
         if imagenes and len(imagenes) > 0:
@@ -1256,16 +1278,14 @@ def exportar_excel_con_imagenes(request):
                 if os.path.exists(img_path):
                     try:
                         img = XLImage(img_path)
-                        img.width = 80
-                        img.height = 80
+                        img.width = 180
+                        img.height = 180
                         cell = f"J{idx}"  # Columna J es la 10ma (Imagen)
                         ws.add_image(img, cell)
                     except Exception as e:
                         print(f"Error al insertar imagen {file_name}: {e}")
                 else:
                     print(f"Imagen no encontrada: {img_path}")
-
-    ws.column_dimensions["J"].width = 20
 
     with BytesIO() as output:
         wb.save(output)
