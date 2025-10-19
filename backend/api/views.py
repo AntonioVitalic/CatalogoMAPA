@@ -32,6 +32,9 @@ from .serializers import (
 from accounts.models import RegistroCambioPieza
 
 _UNSET = object() # esto es para distinguir None de no-seteado
+_NUM_ORDER_EXPR = "coalesce(p.numero_inventario_int, toInteger(p.numero_inventario))"
+_NUM_ORDER_CLAUSE = f"ORDER BY {_NUM_ORDER_EXPR}"
+
 
 def _clean_empty(value):
     """Normaliza valores que representan "vacío"."""
@@ -127,6 +130,25 @@ def _to_int_or_none(value):
     if ival == 0:
         return None
     return ival
+
+
+def _numero_inventario_to_int(value):
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    match = re.match(r"^-?\d+", text)
+    if not match:
+        return None
+    try:
+        value_int = int(match.group(0))
+    except ValueError:
+        return None
+    if value_int <= 0:
+        return None
+    return value_int
+
 
 def _rel_display_value(node):
     if hasattr(node, 'nombre') and node.nombre:
@@ -322,7 +344,7 @@ class PiezaViewSet(viewsets.ViewSet):
         return filtered
 
     def _cypher_base(self):
-        return """
+        return f"""
         MATCH (p:Pieza)
         OPTIONAL MATCH (p)-[:PERTENECE_A]->(c:Coleccion)
         WITH p, collect(DISTINCT toLower(trim(c.nombre))) AS cols
@@ -353,7 +375,7 @@ class PiezaViewSet(viewsets.ViewSet):
             size($exposiciones) = 0 OR any(x IN $exposiciones WHERE any(e IN expo_list WHERE e CONTAINS x))
         )
         RETURN p
-        ORDER BY p.numero_inventario_int
+        {_NUM_ORDER_CLAUSE}
         """
 
     def list(self, request):
@@ -377,7 +399,7 @@ class PiezaViewSet(viewsets.ViewSet):
             OR toLower(coalesce(p.nombre_especifico, '')) CONTAINS '{search.lower()}'
             OR toLower(coalesce(p.descripcion_col, '')) CONTAINS '{search.lower()}'
             RETURN p
-            ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}
+            {_NUM_ORDER_CLAUSE} SKIP {skip} LIMIT {page_size}
             """
             rows, _ = db.cypher_query(q_simple)
             piezas = [Pieza.inflate(r[0]) for r in rows]
@@ -392,10 +414,10 @@ class PiezaViewSet(viewsets.ViewSet):
                 total_count = len(piezas)
                 piezas = piezas[skip:skip + page_size]
             else:
-                q_page = q.replace("ORDER BY p.numero_inventario_int", f"ORDER BY p.numero_inventario_int SKIP {skip} LIMIT {page_size}")
+                q_page = q.replace(_NUM_ORDER_CLAUSE, f"{_NUM_ORDER_CLAUSE} SKIP {skip} LIMIT {page_size}")
                 rows, _ = db.cypher_query(q_page, params)
                 piezas = [Pieza.inflate(r[0]) for r in rows]
-                q_count = q.replace("ORDER BY p.numero_inventario_int", "")
+                q_count = q.replace(_NUM_ORDER_CLAUSE, "")
                 count_rows, _ = db.cypher_query(q_count, params)
                 total_count = len(count_rows)
 
@@ -438,7 +460,10 @@ class PiezaViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='next-numero')
     def next_numero(self, request):
         # Calcula el siguiente número como: max(numero_inventario_int) + 1
-        q = "MATCH (p:Pieza) RETURN coalesce(max(p.numero_inventario_int), 0) AS maxn"
+        q = (
+            "MATCH (p:Pieza) "
+            "RETURN coalesce(max(coalesce(p.numero_inventario_int, toInteger(p.numero_inventario))), 0) AS maxn"
+        )
         rows, _ = db.cypher_query(q)
         maxn = int(rows[0][0]) if rows and rows[0] and rows[0][0] is not None else 0
         return Response({"next": maxn + 1})
@@ -450,10 +475,19 @@ class PiezaViewSet(viewsets.ViewSet):
 
     def create(self, request):
         data = request.data
+        numero_raw = _get('numero_inventario', data)
+        numero_int = _numero_inventario_to_int(numero_raw)
+        if numero_int is None:
+            return Response(
+                {"detail": "El número de inventario debe ser un entero positivo."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        numero_inventario = str(numero_int)
 
         # 1) Campos planos de Pieza (propiedades que SÍ existen como String/Float en el modelo)
         pieza = Pieza(
-            numero_inventario=_get('numero_inventario', data),
+            numero_inventario=numero_inventario,
+            numero_inventario_int=numero_int,
             revision=_get('revision', data),
             numero_registro_anterior=_get('numero_registro_anterior', data),
             codigo_surdoc=_get('codigo_surdoc', data),
@@ -901,6 +935,10 @@ class PiezaViewSet(viewsets.ViewSet):
                     "cambios_componentes": cambios_componentes,
                 }, ensure_ascii=False, indent=2)
             )
+        numero_int_actual = _numero_inventario_to_int(pieza.numero_inventario)
+        if numero_int_actual is not None and pieza.numero_inventario_int != numero_int_actual:
+            pieza.numero_inventario_int = numero_int_actual
+            pieza.save()
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
 

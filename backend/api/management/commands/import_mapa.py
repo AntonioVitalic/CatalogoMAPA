@@ -67,6 +67,8 @@ class Command(BaseCommand):
         df['__num'] = pd.to_numeric(df['numero_de_inventario'], errors='coerce')
         df = df[df['__num'].notnull()]
         df.sort_values('__num', inplace=True)
+        df['__num_int'] = df['__num'].astype(int)
+        df['__num_str'] = df['__num_int'].astype(str)
 
         # 2) Creamos un diccionario con las columnas del excel
         inventario_cols = dict(
@@ -128,22 +130,52 @@ class Command(BaseCommand):
             fecha_ultima_modificacion='fecha_ultima_modificacion',
         )
 
-        # PIEZAS: solo filas con letra vacía o letra == 'a'
-        piezas_df = df[
-            (df['letra'].astype(str).str.strip() == '') |
-            (df['letra'].astype(str).str.strip().str.lower() == 'a')
-        ][[v for v in inventario_cols.values() if v in df.columns]].copy()
-        piezas_df.rename(columns={v: k for k, v in inventario_cols.items() if v in df.columns}, inplace=True)
-        piezas_df['numero_inventario'] = piezas_df['numero_inventario'].astype(int).astype(str)
-        piezas_df['numero_inventario_int'] = piezas_df['numero_inventario'].astype(int)
-        # NORMALIZAR exposiciones en piezas: quitar comillas y convertir saltos de línea a ';'
-        if 'exposiciones' in piezas_df.columns:
-            piezas_df['exposiciones'] = (
-                piezas_df['exposiciones'].astype(str)
+        def _normalize_exposiciones(df_obj):
+            if 'exposiciones' not in df_obj.columns:
+                return df_obj
+            df_obj = df_obj.copy()
+            df_obj['exposiciones'] = (
+                df_obj['exposiciones'].astype(str)
                 .str.replace('"', '', regex=False)
                 .str.replace('\r\n', ';', regex=False)
                 .str.replace('\r', ';', regex=False)
                 .str.replace('\n', ';', regex=False)
+            )
+            return df_obj
+
+        df['__letra_norm'] = df['letra'].astype(str).str.strip().str.lower()
+        df['__letra_rank'] = df['__letra_norm'].map({'': 0, 'a': 1}).fillna(2).astype(int)
+
+        piezas_src = (
+            df
+            .sort_values(['__num_int', '__letra_rank', '__letra_norm'])
+            .groupby('__num_str', as_index=False)
+            .first()
+        )
+        piezas_src.loc[piezas_src['__letra_rank'] > 1, 'letra'] = 'a'
+
+        cols_for_pieza = [v for v in inventario_cols.values() if v in piezas_src.columns]
+        piezas_df = piezas_src[cols_for_pieza].copy()
+        piezas_df.rename(columns={v: k for k, v in inventario_cols.items() if v in piezas_df.columns}, inplace=True)
+        piezas_df['numero_inventario'] = piezas_src['__num_str']
+        piezas_df['numero_inventario_int'] = piezas_src['__num_int'].astype(int)
+        piezas_df = _normalize_exposiciones(piezas_df)
+
+        expected_total = len(set(df['__num_str']))
+        piezas_df['numero_inventario'] = piezas_df['numero_inventario'].astype(str)
+        piezas_df.sort_values('numero_inventario_int', inplace=True)
+        piezas_df = piezas_df.drop_duplicates(subset=['numero_inventario'], keep='first').reset_index(drop=True)
+
+        missing_after = sorted(set(df['__num_str']) - set(piezas_df['numero_inventario']), key=int)
+        if missing_after:
+            preview = ', '.join(missing_after[:10])
+            self.stdout.write(
+                f"Advertencia: {len(missing_after)} números de inventario quedaron sin Pieza. Ej: {preview}"
+            )
+
+        if len(piezas_df) != expected_total:
+            self.stdout.write(
+                f"Advertencia: se esperaban {expected_total} piezas y se generaron {len(piezas_df)}."
             )
         piezas_csv = os.path.join(import_dir, 'piezas.csv')
         piezas_df.to_csv(piezas_csv, index=False)
@@ -158,15 +190,7 @@ class Command(BaseCommand):
             letra=comp_df['letra'].astype(str).str.strip().str.lower()
         )
         comp_df.rename(columns={v: k for k, v in inventario_cols.items() if v in df.columns}, inplace=True)
-        # NORMALIZAR exposiciones en componentes: quitar comillas y convertir saltos de línea a ';'
-        if 'exposiciones' in comp_df.columns:
-            comp_df['exposiciones'] = (
-                comp_df['exposiciones'].astype(str)
-                .str.replace('"', '', regex=False)
-                .str.replace('\r\n', ';', regex=False)
-                .str.replace('\r', ';', regex=False)
-                .str.replace('\n', ';', regex=False)
-            )
+        comp_df = _normalize_exposiciones(comp_df)
         comp_csv = os.path.join(import_dir, 'componentes.csv')
         comp_df.to_csv(comp_csv, index=False)
 
