@@ -20,6 +20,7 @@ load_dotenv(PROJECT_DIR / '.env')
 
 MEDIA_URL  = '/imagenes/'
 MEDIA_ROOT = PROJECT_DIR / 'imagenes'   # <— ahora Django subirá *dentro* de la carpeta raíz/imagenes
+MEDIA_UPLOAD_SUBDIR = 'uploads'  # subcarpeta para cargas manuales
 
 # usa la URL base + credenciales
 bolt_url = os.getenv('NEO4J_URI', 'bolt://neo4j:7687')

@@ -1,6 +1,7 @@
 # backend/api/management/commands/import_mapa.py
 import os
 import re
+import shutil
 import time
 import unicodedata
 import pandas as pd
@@ -459,6 +460,14 @@ class Command(BaseCommand):
           {batchSize:1000, iterateList:true}
         )""")
 
+        # 9) Imágenes: limpiar subcarpeta de cargas manuales y vincular archivos del catálogo
+        uploads_dir = os.path.join(images_dir, 'uploads')
+        if os.path.isdir(uploads_dir):
+            shutil.rmtree(uploads_dir)
+            os.makedirs(uploads_dir, exist_ok=True)
+
+        # Escanear carpeta principal, normalizar letra a minúscula y vincular
+
         # 9) Imágenes: escanear carpeta, normalizar letra a minúscula y vincular
         img_rows = []
         for fn in os.listdir(images_dir):
@@ -469,7 +478,7 @@ class Command(BaseCommand):
             ext = ext.lower().lstrip('.')
             if ext not in ('jpg', 'jpeg', 'png', 'tif', 'tiff'):
                 continue
-            m = re.match(r'^0*(\d+)([A-Za-z]?)(?:.*)$', name)
+            m = re.match(r'^0*(\d+)([A-Za-z]+)?(?:[^A-Za-z].*)?$', name)
             if not m:
                 continue
             num = str(int(m.group(1)))

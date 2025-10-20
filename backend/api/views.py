@@ -141,11 +141,13 @@ def _store_uploaded_image(uploaded_file):
 
     filename = get_valid_filename(os.path.basename(uploaded_file.name) or "imagen")
 
-    # Asegura que exista la carpeta de destino para ``default_storage``
-    os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+    upload_subdir = getattr(settings, 'MEDIA_UPLOAD_SUBDIR', 'uploads')
+    destination_dir = os.path.join(settings.MEDIA_ROOT, upload_subdir)
+    os.makedirs(destination_dir, exist_ok=True)
+    relative_path = os.path.join(upload_subdir, filename)
 
     # ``default_storage.save`` puede devolver un nombre distinto si había colisiones
-    return default_storage.save(filename, uploaded_file)
+    return default_storage.save(relative_path, uploaded_file)
 
 
 def _numero_inventario_to_int(value):
@@ -260,8 +262,15 @@ def _snapshot_component_state(component: Componente) -> dict:
         '_id', '_labels', '_properties',
         'autor_rel', 'coleccion_rel', 'pais_rel', 'localidad_rel',
         'filiacion_cultural_rel', 'tipologias', 'exposiciones_rel',
+        'imagenes',
     ):
         data.pop(key, None)
+    exposiciones = data.get('exposiciones')
+    if exposiciones is not None:
+        try:
+            data['exposiciones'] = list(exposiciones)
+        except TypeError:
+            data['exposiciones'] = exposiciones
     return data
 
 

@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { getComponentDisplayLetter } from "@/utils/componentLabel";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 
@@ -59,6 +60,37 @@ const FIELD_LABELS: Record<string, string> = {
   responsable_coleccion: "Responsable colección",
   fecha_ultima_modificacion: "Fecha última modificación",
 };
+
+const formatComponentValue = (key: string, value: unknown) => {
+  if (value === null || value === undefined) {
+    return "Sin dato";
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(", ") : "Sin dato";
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return "Sin dato";
+    }
+
+    if (key === "letra") {
+      return trimmed.toUpperCase();
+    }
+
+    return trimmed;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "Sin dato";
+  }
+
+  return String(value);
+};
+
 
 const Detail = () => {
   const { id } = useParams<{ id: string }>();
@@ -133,7 +165,19 @@ const Detail = () => {
           fecha_ingreso: data.fecha_ingreso || "",
           responsable_coleccion: data.responsable_coleccion || "",
           fecha_ultima_modificacion: data.fecha_ultima_modificacion || "",
-          componentes: data.componentes ?? [],
+          componentes: Array.isArray(data.componentes)
+            ? data.componentes.map((component: any) => ({
+                ...component,
+                imagenes: Array.isArray(component.imagenes)
+                  ? component.imagenes.map((img: any) => ({
+                      ...img,
+                      imagen: img.imagen.startsWith("http")
+                        ? img.imagen
+                        : `${API_URL}${img.imagen}`,
+                    }))
+                  : [],
+              }))
+            : [],
           imagenes: Array.isArray(data.imagenes)
             ? data.imagenes.map((img: any) => ({
                 ...img,
@@ -214,7 +258,7 @@ const Detail = () => {
             {item.componentes.map((comp, idx) => (
               <div key={idx} className="mb-6 border rounded-lg p-6 bg-muted/10 ml-8">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  Componente {comp.letra ? comp.letra.toUpperCase() : idx + 1}
+                  Componente {getComponentDisplayLetter(comp.letra, idx)}
                   <Button
                     variant="outline"
                     size="sm"
@@ -237,7 +281,7 @@ const Detail = () => {
                             <td className="font-medium pr-4 py-2 align-top text-right w-1/3 text-muted-foreground">
                               {FIELD_LABELS[key] || key}
                             </td>
-                            <td className="pl-4 py-2 align-top">{String(value)}</td>
+                            <td className="pl-4 py-2 align-top">{formatComponentValue(key, value)}</td>
                           </tr>
                         )
                       ))}

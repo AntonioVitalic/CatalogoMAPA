@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react";
+import { getComponentDisplayLetter } from "@/utils/componentLabel";
 
 type ComponentForm = {
   id?: string;
@@ -383,7 +384,7 @@ export default function EditarPieza() {
   };
 
   const handleAddComponentModal = () => {
-    let defaultLetter = "a";
+    let defaultLetter = "b";
     if (components.length > 0) {
       const lastLetter = components[components.length - 1].letra;
       if (lastLetter) {
@@ -1094,7 +1095,7 @@ export default function EditarPieza() {
               {components.map((comp, idx) => (
                 <div key={idx} className="p-2 bg-gray-50 border rounded flex items-center justify-between">
                   <div>
-                    <strong>Componente {comp.letra.toUpperCase()}</strong>
+                    <strong>Componente {getComponentDisplayLetter(comp.letra, idx)}</strong>
                     {comp.nombre_comun && ` – ${comp.nombre_comun}`}
                     {comp.nombre_especifico && ` (${comp.nombre_especifico})`}
                   </div>

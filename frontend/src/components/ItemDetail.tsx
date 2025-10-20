@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { saveAs } from "file-saver";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { getComponentDisplayLetter } from "@/utils/componentLabel";
 
 interface ItemDetailProps {
   item: CollectionItem;
@@ -39,6 +40,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
 
   const FIELD_LABELS: Record<string, string> = {
     inventoryNumber: "N° de inventario",
+    pieza_numero_inventario: "N° de inventario",
     letra: "Letra",
     revision: "Revisión",
     previousRegistryNumber: "N° de registro anterior",
@@ -85,6 +87,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     fecha_ingreso: "Fecha ingreso",
     responsable_coleccion: "Responsable colección",
     fecha_ultima_modificacion: "Fecha última modificación",
+    imagenes: "Imágenes",
   };
 
   const downloadImage = async () => {
@@ -110,34 +113,110 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     }
   };
 
+  const ORDERED_FIELD_KEYS = Object.keys(FIELD_LABELS);
+
+  const formatFieldValue = (key: string, value: unknown) => {
+    if (value === null || value === undefined) {
+      return "Sin dato";
+    }
+
+    if (Array.isArray(value)) {
+      return value.length > 0 ? value.join(", ") : "Sin dato";
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+
+      if (!trimmed) {
+        return "Sin dato";
+      }
+
+      if (key === "letra") {
+        return trimmed.toUpperCase();
+      }
+
+      return trimmed;
+    }
+
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? String(value) : "Sin dato";
+    }
+
+    if (typeof value === "boolean") {
+      return value ? "Sí" : "No";
+    }
+
+    return String(value);
+  };
+
+  const getOrderedKeys = (data: Record<string, unknown>) => {
+    const ordered = ORDERED_FIELD_KEYS.filter((key) =>
+      Object.prototype.hasOwnProperty.call(data, key)
+    );
+
+    const additional = Object.keys(data).filter(
+      (key) => key !== "componentes" && !ORDERED_FIELD_KEYS.includes(key)
+    );
+
+    return [...ordered, ...additional];
+  };
+
   // Helper para mostrar todos los campos de una pieza/componente
-  const renderFullInfo = (data: any, title: string) => (
-    <div className="mb-8">
-      <h2 className="text-lg font-bold mb-2">{title}</h2>
-      <table className="w-full text-sm border">
-        <tbody>
-          {Object.entries(data).map(([key, value]) => (
-            key !== "imagenes" && key !== "componentes" && (
-              <tr key={key}>
-                <td className="font-medium pr-2 align-top">{FIELD_LABELS[key] || key}</td>
-                <td>{String(value)}</td>
-              </tr>
-            )
-          ))}
-          {data.imagenes && data.imagenes.length > 0 && (
-            <tr>
-              <td className="font-medium pr-2 align-top">Imágenes</td>
-              <td>
-                {data.imagenes.map((img: any, i: number) => (
-                  <img key={i} src={img.imagen} alt={img.descripcion || ""} className="inline-block h-16 mr-2" />
-                ))}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
+   const renderFullInfo = (data: any, title: string) => {
+    const normalizedData: Record<string, unknown> = data ?? {};
+    const keysToRender = getOrderedKeys(normalizedData);
+
+    return (
+      <div className="mb-8">
+        <h2 className="text-lg font-bold mb-2">{title}</h2>
+        <table className="w-full text-sm border">
+          <tbody>
+            {keysToRender.map((key) => {
+              if (key === "componentes") {
+                return null;
+              }
+
+              if (key === "imagenes") {
+                const rawImages = (normalizedData as any).imagenes;
+                const images = Array.isArray(rawImages)
+                  ? rawImages
+                  : rawImages && typeof rawImages === "object"
+                    ? Object.values(rawImages)
+                    : [];
+
+                if (!images || images.length === 0) {
+                  return null;
+                }
+
+                return (
+                  <tr key={key}>
+                    <td className="font-medium pr-2 align-top">{FIELD_LABELS[key]}</td>
+                    <td>
+                      {images.map((img: any, i: number) => (
+                        <img
+                          key={i}
+                          src={img.imagen}
+                          alt={img.descripcion || ""}
+                          className="inline-block h-16 mr-2"
+                        />
+                      ))}
+                    </td>
+                  </tr>
+                );
+              }
+
+              return (
+                <tr key={key}>
+                  <td className="font-medium pr-2 align-top">{FIELD_LABELS[key] || key}</td>
+                  <td>{formatFieldValue(key, normalizedData[key])}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <div className="container mx-auto py-8">
@@ -293,11 +372,11 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
           {item.componentes && item.componentes.length > 0 && (
             <div>
               <h3 className="text-xl font-semibold mb-2">Componentes</h3>
-              {item.componentes.map((comp: any, idx: number) =>
+              {item.componentes.map((comp: any, idx: number) => (
                 <div key={comp.id || comp.letra || idx}>
-                  {renderFullInfo(comp, `Componente ${comp.letra ? comp.letra.toUpperCase() : idx + 1}`)}
+                  {renderFullInfo(comp, `Componente ${getComponentDisplayLetter(comp.letra, idx)}`)}
                 </div>
-              )}
+              ))}
             </div>
           )}
         </DialogContent>
