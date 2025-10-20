@@ -6,6 +6,8 @@ from django.conf import settings
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import default_storage
+from django.utils.text import get_valid_filename
 from neomodel import db
 from datetime import datetime, timedelta
 import subprocess
@@ -131,6 +133,19 @@ def _to_int_or_none(value):
     if ival == 0:
         return None
     return ival
+
+def _store_uploaded_image(uploaded_file):
+    """Persiste el archivo recibido en MEDIA_ROOT y devuelve su nombre relativo."""
+    if not uploaded_file:
+        return None
+
+    filename = get_valid_filename(os.path.basename(uploaded_file.name) or "imagen")
+
+    # Asegura que exista la carpeta de destino para ``default_storage``
+    os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+
+    # ``default_storage.save`` puede devolver un nombre distinto si había colisiones
+    return default_storage.save(filename, uploaded_file)
 
 
 def _numero_inventario_to_int(value):
@@ -651,8 +666,10 @@ class PiezaViewSet(viewsets.ViewSet):
         # 5) Imagen de pieza (opcional)
         imagen = request.FILES.get('imagen')
         if imagen:
-            img = Imagen(file_name=imagen.name, descripcion="").save()
-            pieza.imagenes.connect(img)
+            stored_name = _store_uploaded_image(imagen)
+            if stored_name:
+                img = Imagen(file_name=stored_name, descripcion="").save()
+                pieza.imagenes.connect(img)
 
         # 6) Auditoría
         after_obj = {
@@ -949,6 +966,19 @@ class PiezaViewSet(viewsets.ViewSet):
                         None,
                         comp_after,
                     )
+
+        imagen = request.FILES.get('imagen')
+        if imagen:
+            existing_imgs = list(pieza.imagenes.all())
+            before_imgs = [img.file_name for img in existing_imgs]
+            stored_name = _store_uploaded_image(imagen)
+            if stored_name:
+                for old_img in existing_imgs:
+                    pieza.imagenes.disconnect(old_img)
+                    old_img.delete()
+                new_img = Imagen(file_name=stored_name, descripcion="").save()
+                pieza.imagenes.connect(new_img)
+                add_cambio_pieza("imagenes", before_imgs, [stored_name])
 
         if cambios_pieza or cambios_componentes:
             RegistroCambioPieza.objects.create(
