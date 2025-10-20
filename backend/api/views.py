@@ -675,6 +675,18 @@ class PiezaViewSet(viewsets.ViewSet):
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
 
         cambios_pieza: list[dict] = []
+        
+        def add_cambio_pieza(campo, antes, despues):
+            for cambio in cambios_pieza:
+                if cambio.get("campo") == campo:
+                    cambio["antes"] = antes
+                    cambio["despues"] = despues
+                    return
+            cambios_pieza.append({
+                "campo": campo,
+                "antes": antes,
+                "despues": despues,
+            })
 
         # Guardar snapshot de componentes antes
         before_components = []
@@ -750,11 +762,7 @@ class PiezaViewSet(viewsets.ViewSet):
                 continue
             setattr(pieza, attr, value)
             updated_scalar = True
-            cambios_pieza.append({
-                "campo": attr,
-                "antes": before_value,
-                "despues": value,
-            })
+            add_cambio_pieza(attr, before_value, value)
 
 
         exposiciones_value = _get_optional('exposiciones', data)
@@ -766,11 +774,7 @@ class PiezaViewSet(viewsets.ViewSet):
             if sorted([v.strip().lower() for v in before_list if v]) != sorted([v.strip().lower() for v in new_list if v]):
                 pieza.exposiciones = new_list
                 updated_scalar = True
-                cambios_pieza.append({
-                    "campo": "exposiciones",
-                    "antes": before_list,
-                    "despues": new_list,
-                })
+                add_cambio_pieza("exposiciones", before_list, new_list)
 
 
         if updated_scalar:
@@ -781,92 +785,56 @@ class PiezaViewSet(viewsets.ViewSet):
         if autor_val is not _UNSET:
             changed, before_rel, after_rel = _set_single_rel(pieza, 'autor_rel', Autor, autor_val)
             if changed:
-                cambios_pieza.append({
-                    "campo": "autor",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("autor", before_rel, after_rel)
 
         coleccion_val = _get_optional('coleccion', data)
         if coleccion_val is not _UNSET:
             changed, before_rel, after_rel = _set_single_rel(pieza, 'coleccion_rel', Coleccion, coleccion_val)
             if changed:
-                cambios_pieza.append({
-                    "campo": "coleccion",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("coleccion", before_rel, after_rel)
 
         pais_val = _get_optional('pais', data)
         if pais_val is not _UNSET:
             changed, before_rel, after_rel = _set_single_rel(pieza, 'pais_rel', Pais, pais_val)
             if changed:
-                cambios_pieza.append({
-                    "campo": "pais",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("pais", before_rel, after_rel)
 
 
         localidad_val = _get_optional('localidad', data)
         if localidad_val is not _UNSET:
             changed, before_rel, after_rel = _set_single_rel(pieza, 'localidad_rel', Localidad, localidad_val)
             if changed:
-                cambios_pieza.append({
-                    "campo": "localidad",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("localidad", before_rel, after_rel)
 
         filiacion_val = _get_optional('filiacion_cultural', data)
         if filiacion_val is not _UNSET:
             changed, before_rel, after_rel = _set_single_rel(pieza, 'filiacion_cultural_rel', Cultura, filiacion_val)
             if changed:
-                cambios_pieza.append({
-                    "campo": "filiacion_cultural",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("filiacion_cultural", before_rel, after_rel)
 
         tipologia_val = _get_optional('tipologia', data)
         if tipologia_val is not _UNSET:
             changed, before_rel, after_rel = _set_single_rel(pieza, 'tipologias', Tipologia, tipologia_val)
             if changed:
-                cambios_pieza.append({
-                    "campo": "tipologia",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("tipologia", before_rel, after_rel)
 
         # 3) Relaciones N–N
         materialidad_val = _get_optional('materialidad', data)
         if materialidad_val is not _UNSET:
             changed, before_rel, after_rel = _set_many_names(pieza, 'materiales', Material, _split_list(materialidad_val))
             if changed:
-                cambios_pieza.append({
-                    "campo": "materialidad",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("materialidad", before_rel, after_rel)
 
         tecnica_val = _get_optional('tecnica', data)
         if tecnica_val is not _UNSET:
             changed, before_rel, after_rel = _set_many_names(pieza, 'tecnica', Tecnica, _split_list(tecnica_val))
             if changed:
-                cambios_pieza.append({
-                    "campo": "tecnica",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("tecnica", before_rel, after_rel)
 
         if expos_list_for_rel is not None:
             changed, before_rel, after_rel = _set_many_names(pieza, 'exposiciones_rel', Exposicion, expos_list_for_rel)
             if changed:
-                cambios_pieza.append({
-                    "campo": "exposiciones_rel",
-                    "antes": before_rel,
-                    "despues": after_rel,
-                })
+                add_cambio_pieza("exposiciones_rel", before_rel, after_rel)
         
         # 4) Componentes (modo “reemplazar”)
         componentes = data.get('componentes')
@@ -939,6 +907,19 @@ class PiezaViewSet(viewsets.ViewSet):
 
         # Cambios en componentes
         cambios_componentes = []
+
+        def add_cambio_componente(campo, antes, despues):
+            for cambio in cambios_componentes:
+                if cambio.get("campo") == campo:
+                    cambio["antes"] = antes
+                    cambio["despues"] = despues
+                    return
+            cambios_componentes.append({
+                "campo": campo,
+                "antes": antes,
+                "despues": despues,
+            })
+
         if after_components or (componentes is not None and before_components):
             letras_antes = {c.get("letra", ""): c for c in before_components}
             letras_despues = {c.get("letra", ""): c for c in after_components}
@@ -949,25 +930,25 @@ class PiezaViewSet(viewsets.ViewSet):
                         continue
                     valor_before = comp_before.get(campo, None)
                     if _canonical(valor_before) != _canonical(valor_after):
-                        cambios_componentes.append({
-                            "campo": f"Componente {letra}: {campo}",
-                            "antes": valor_before,
-                            "despues": valor_after,
-                        })
+                        add_cambio_componente(
+                            f"Componente {letra}: {campo}",
+                            valor_before,
+                            valor_after,
+                        )
             for letra, comp_before in letras_antes.items():
                 if letra not in letras_despues:
-                    cambios_componentes.append({
-                        "campo": f"Componente {letra}",
-                        "antes": comp_before,
-                        "despues": None,
-                    })
+                    add_cambio_componente(
+                        f"Componente {letra}",
+                        comp_before,
+                        None,
+                    )
             for letra, comp_after in letras_despues.items():
                 if letra not in letras_antes:
-                    cambios_componentes.append({
-                        "campo": f"Componente {letra}",
-                        "antes": None,
-                        "despues": comp_after,
-                    })
+                    add_cambio_componente(
+                        f"Componente {letra}",
+                        None,
+                        comp_after,
+                    )
 
         if cambios_pieza or cambios_componentes:
             RegistroCambioPieza.objects.create(
