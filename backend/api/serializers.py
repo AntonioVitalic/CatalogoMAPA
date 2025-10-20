@@ -74,6 +74,18 @@ def _first_name(qs):
             return n.titulo
     return None
 
+def _first_catalog_value(node, rel_attr, str_attr):
+    rel = getattr(node, rel_attr, None)
+    if rel is not None and hasattr(rel, 'all'):
+        name = _first_name(rel.all())
+        if name:
+            return name
+    val = getattr(node, str_attr, None)
+    if isinstance(val, str):
+        trimmed = val.strip()
+        return trimmed or None
+    return val if val else None
+
 def _none_if_zeroish(val):
     if val is None:
         return None
@@ -256,19 +268,19 @@ class PiezaOutSerializer(serializers.Serializer):
         return int(p.numero_inventario)
 
     def get_coleccion(self, p: Pieza):
-        return _first_name(p.coleccion.all())
+        return _first_catalog_value(p, 'coleccion_rel', 'coleccion')
 
     def get_autor(self, p: Pieza):
-        return _first_name(p.autor.all())
+        return _first_catalog_value(p, 'autor_rel', 'autor')
 
     def get_filiacion_cultural(self, p: Pieza):
-        return _first_name(p.filiacion_cultural.all())
+        return _first_catalog_value(p, 'filiacion_cultural_rel', 'filiacion_cultural')
 
     def get_pais(self, p: Pieza):
-        return _first_name(p.pais.all())
+        return _first_catalog_value(p, 'pais_rel', 'pais')
 
     def get_localidad(self, p: Pieza):
-        return _first_name(p.localidad.all())
+        return _first_catalog_value(p, 'localidad_rel', 'localidad')
 
     def get_deposito(self, p: Pieza):
         val = getattr(p, 'deposito', None)
@@ -346,10 +358,10 @@ class PiezaExportSerializer(serializers.Serializer):
     imagen = serializers.SerializerMethodField()
 
     def get_pais(self, p: Pieza):
-        return _first_name(p.pais.all())
+        return _first_catalog_value(p, 'pais_rel', 'pais')
 
     def get_localidad(self, p: Pieza):
-        return _first_name(p.localidad.all())
+        return _first_catalog_value(p, 'localidad_rel', 'localidad')
     
     def get_materialidad(self, p: Pieza):
         # Si tienes relación materiales, usarla; si no, usa el atributo plano

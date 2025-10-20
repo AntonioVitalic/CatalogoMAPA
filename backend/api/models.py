@@ -21,6 +21,9 @@ class Coleccion(StructuredNode):
 class Autor(StructuredNode):
     nombre = StringProperty(index=True)
 
+class Tipologia(StructuredNode):
+    nombre = StringProperty(index=True)
+
 class Exposicion(StructuredNode):
     titulo = StringProperty(index=True)
     fecha_inicio = StringProperty()  # texto libre como en sqlite
@@ -97,6 +100,13 @@ class Componente(StructuredNode):
     # materiales = RelationshipTo(Material, 'USO_MATERIAL')
     # tecnica    = RelationshipTo(Tecnica,  'USO_TECNICA')
     imagenes   = RelationshipTo(Imagen,   'TIENE_IMAGEN')
+    autor_rel = RelationshipTo(Autor, 'CREADO_POR')
+    coleccion_rel = RelationshipTo(Coleccion, 'PERTENECE_A')
+    pais_rel = RelationshipTo(Pais, 'PROCEDENTE_DE')
+    localidad_rel = RelationshipTo(Localidad, 'LOCALIZADO_EN')
+    filiacion_cultural_rel = RelationshipTo(Cultura, 'FILIACION')
+    tipologias = RelationshipTo(Tipologia, 'TIENE_TIPOLOGIA')
+    exposiciones_rel = RelationshipTo(Exposicion, 'EXHIBIDO_EN')
 
 class Pieza(StructuredNode):
     uid = UniqueIdProperty()
@@ -117,15 +127,15 @@ class Pieza(StructuredNode):
     caja_actual = StringProperty()
 
     tipologia = StringProperty()
-    coleccion  = RelationshipTo(Coleccion, 'PERTENECE_A')
+    coleccion = StringProperty()
     clasificacion = StringProperty()
     conjunto = StringProperty()
     nombre_comun = StringProperty()
     nombre_especifico = StringProperty()
-    autor      = RelationshipTo(Autor, 'CREADO_POR')
-    filiacion_cultural = RelationshipTo(Cultura, 'FILIACION')
-    pais       = RelationshipTo(Pais, 'PROCEDENTE_DE')
-    localidad  = RelationshipTo(Localidad, 'LOCALIZADO_EN')
+    autor = StringProperty()
+    filiacion_cultural = StringProperty()
+    pais = StringProperty()
+    localidad = StringProperty()
     fecha_creacion = StringProperty()
     descripcion_col = StringProperty()
 
@@ -153,15 +163,22 @@ class Pieza(StructuredNode):
     
     # exposiciones = RelationshipTo(Exposicion, 'EXHIBIDO_EN')
     exposiciones = ArrayProperty(StringProperty(), default=[])
+    exposiciones_rel = RelationshipTo(Exposicion, 'EXHIBIDO_EN')
 
     avaluo = StringProperty()
     procedencia = StringProperty()
     donante = StringProperty()
-    fecha_ingreso = StringProperty()    
+    fecha_ingreso = StringProperty()
     responsable_coleccion = StringProperty()
     fecha_ultima_modificacion = StringProperty()
 
     etiqueta_eliminado = BooleanProperty(default=False)
     
     componentes = RelationshipTo(Componente, 'TIENE_COMPONENTE')
-    imagenes    = RelationshipTo(Imagen, 'TIENE_IMAGEN')
+    imagenes = RelationshipTo(Imagen, 'TIENE_IMAGEN')
+    tipologias = RelationshipTo(Tipologia, 'TIENE_TIPOLOGIA')
+    autor_rel = RelationshipTo(Autor, 'CREADO_POR')
+    coleccion_rel = RelationshipTo(Coleccion, 'PERTENECE_A')
+    pais_rel = RelationshipTo(Pais, 'PROCEDENTE_DE')
+    localidad_rel = RelationshipTo(Localidad, 'LOCALIZADO_EN')
+    filiacion_cultural_rel = RelationshipTo(Cultura, 'FILIACION')

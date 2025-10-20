@@ -21,7 +21,8 @@ import os
 from io import BytesIO
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
-    Localidad, Material, Tecnica, Coleccion, Cultura, Exposicion
+    Localidad, Material, Tecnica, Coleccion, Cultura, Exposicion,
+    Tipologia,
 )
 
 from .serializers import (
@@ -226,6 +227,28 @@ def _set_many_names(node, rel_attr: str, label_cls, names: list[str]):
         connected_names.append(getattr(inst, lookup_field))
 
     return True, before_names, connected_names
+
+def _sync_component_relations(component: Componente, data: dict):
+    """Sincroniza relaciones 1–1 y N–N del componente a partir de ``data``."""
+    _set_single_rel(component, 'autor_rel', Autor, data.get('autor'))
+    _set_single_rel(component, 'coleccion_rel', Coleccion, data.get('coleccion'))
+    _set_single_rel(component, 'pais_rel', Pais, data.get('pais'))
+    _set_single_rel(component, 'localidad_rel', Localidad, data.get('localidad'))
+    _set_single_rel(component, 'filiacion_cultural_rel', Cultura, data.get('filiacion_cultural'))
+    _set_single_rel(component, 'tipologias', Tipologia, data.get('tipologia'))
+    expos_list = _split_list(data.get('exposiciones', ''))
+    _set_many_names(component, 'exposiciones_rel', Exposicion, expos_list)
+
+def _snapshot_component_state(component: Componente) -> dict:
+    data = component.__dict__.copy()
+    for key in (
+        '_id', '_labels', '_properties',
+        'autor_rel', 'coleccion_rel', 'pais_rel', 'localidad_rel',
+        'filiacion_cultural_rel', 'tipologias', 'exposiciones_rel',
+    ):
+        data.pop(key, None)
+    return data
+
 
 def extract_year(fecha: str) -> int | None:
     """
@@ -496,10 +519,15 @@ class PiezaViewSet(viewsets.ViewSet):
             estante=_get('estante', data),
             caja_actual=_get('caja_actual', data),
             tipologia=_get('tipologia', data),
+            coleccion=_get('coleccion', data),
             clasificacion=_get('clasificacion', data),
             conjunto=_get('conjunto', data),
             nombre_comun=_get('nombre_comun', data),
             nombre_especifico=_get('nombre_especifico', data),
+            autor=_get('autor', data),
+            filiacion_cultural=_get('filiacion_cultural', data),
+            pais=_get('pais', data),
+            localidad=_get('localidad', data),
             fecha_creacion=_get('fecha_creacion', data),
             # Alias: descripcion ⇢ descripcion_col
             descripcion_col=_get('descripcion_col', data, 'descripcion'),
@@ -531,11 +559,12 @@ class PiezaViewSet(viewsets.ViewSet):
         ).save()
 
         # 2) Relaciones 1–1 (strings del form)
-        _set_single_rel(pieza, 'autor', Autor, _get('autor', data))
-        _set_single_rel(pieza, 'coleccion', Coleccion, _get('coleccion', data))
-        _set_single_rel(pieza, 'pais', Pais, _get('pais', data))
-        _set_single_rel(pieza, 'localidad', Localidad, _get('localidad', data))
-        _set_single_rel(pieza, 'filiacion_cultural', Cultura, _get('filiacion_cultural', data))
+        _set_single_rel(pieza, 'autor_rel', Autor, _get('autor', data))
+        _set_single_rel(pieza, 'coleccion_rel', Coleccion, _get('coleccion', data))
+        _set_single_rel(pieza, 'pais_rel', Pais, _get('pais', data))
+        _set_single_rel(pieza, 'localidad_rel', Localidad, _get('localidad', data))
+        _set_single_rel(pieza, 'filiacion_cultural_rel', Cultura, _get('filiacion_cultural', data))
+        _set_single_rel(pieza, 'tipologias', Tipologia, _get('tipologia', data))
 
         # 3) Relaciones N–N (listas desde string con ; o ,)
         _set_many_names(pieza, 'materiales', Material, _split_list(_get('materialidad', data)))
@@ -543,8 +572,10 @@ class PiezaViewSet(viewsets.ViewSet):
         # _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(_get('exposiciones', data)))
 
         # NUEVO: guardar exposiciones como lista
-        pieza.exposiciones = _split_list(_get('exposiciones', data))
+        expos_list = _split_list(_get('exposiciones', data))
+        pieza.exposiciones = expos_list
         pieza.save()
+        _set_many_names(pieza, 'exposiciones_rel', Exposicion, expos_list)
 
         # 4) Componentes (lista JSON serializada o nativa)
         componentes = data.get('componentes')
@@ -610,6 +641,7 @@ class PiezaViewSet(viewsets.ViewSet):
                  # NUEVO: exposiciones de componente (string -> lista)
                 c.exposiciones = _split_list(comp.get('exposiciones', ''))
                 c.save()
+                _sync_component_relations(c, comp)
                 pieza.componentes.connect(c)
                 # exposiciones_raw = comp.get('exposiciones', '')
                 # exposiciones_list = _split_list(exposiciones_raw)
@@ -647,11 +679,7 @@ class PiezaViewSet(viewsets.ViewSet):
         # Guardar snapshot de componentes antes
         before_components = []
         for c in pieza.componentes.all():
-            comp_dict = c.__dict__.copy()
-            comp_dict.pop('_id', None)
-            comp_dict.pop('_labels', None)
-            comp_dict.pop('_properties', None)
-            before_components.append(comp_dict)
+            before_components.append(_snapshot_component_state(c))
 
         # 1) Actualizar PROPIEDADES planas (sin tocar relaciones)
         scalar_field_map = {
@@ -663,10 +691,15 @@ class PiezaViewSet(viewsets.ViewSet):
             'estante': ('estante',),
             'caja_actual': ('caja_actual',),
             'tipologia': ('tipologia',),
+            'coleccion': ('coleccion',),
             'clasificacion': ('clasificacion',),
             'conjunto': ('conjunto',),
             'nombre_comun': ('nombre_comun',),
             'nombre_especifico': ('nombre_especifico',),
+            'autor': ('autor',),
+            'filiacion_cultural': ('filiacion_cultural',),
+            'pais': ('pais',),
+            'localidad': ('localidad',),
             'fecha_creacion': ('fecha_creacion',),
             'descripcion_col': ('descripcion_col', 'descripcion'),
             'marcas_inscripciones': ('marcas_inscripciones',),
@@ -725,9 +758,11 @@ class PiezaViewSet(viewsets.ViewSet):
 
 
         exposiciones_value = _get_optional('exposiciones', data)
+        expos_list_for_rel = None
         if exposiciones_value is not _UNSET:
             before_list = list(getattr(pieza, 'exposiciones', []) or [])
             new_list = _split_list(exposiciones_value)
+            expos_list_for_rel = new_list
             if sorted([v.strip().lower() for v in before_list if v]) != sorted([v.strip().lower() for v in new_list if v]):
                 pieza.exposiciones = new_list
                 updated_scalar = True
@@ -744,7 +779,7 @@ class PiezaViewSet(viewsets.ViewSet):
         # 2) Relaciones 1–1
         autor_val = _get_optional('autor', data)
         if autor_val is not _UNSET:
-            changed, before_rel, after_rel = _set_single_rel(pieza, 'autor', Autor, autor_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'autor_rel', Autor, autor_val)
             if changed:
                 cambios_pieza.append({
                     "campo": "autor",
@@ -754,7 +789,7 @@ class PiezaViewSet(viewsets.ViewSet):
 
         coleccion_val = _get_optional('coleccion', data)
         if coleccion_val is not _UNSET:
-            changed, before_rel, after_rel = _set_single_rel(pieza, 'coleccion', Coleccion, coleccion_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'coleccion_rel', Coleccion, coleccion_val)
             if changed:
                 cambios_pieza.append({
                     "campo": "coleccion",
@@ -764,7 +799,7 @@ class PiezaViewSet(viewsets.ViewSet):
 
         pais_val = _get_optional('pais', data)
         if pais_val is not _UNSET:
-            changed, before_rel, after_rel = _set_single_rel(pieza, 'pais', Pais, pais_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'pais_rel', Pais, pais_val)
             if changed:
                 cambios_pieza.append({
                     "campo": "pais",
@@ -775,7 +810,7 @@ class PiezaViewSet(viewsets.ViewSet):
 
         localidad_val = _get_optional('localidad', data)
         if localidad_val is not _UNSET:
-            changed, before_rel, after_rel = _set_single_rel(pieza, 'localidad', Localidad, localidad_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'localidad_rel', Localidad, localidad_val)
             if changed:
                 cambios_pieza.append({
                     "campo": "localidad",
@@ -785,10 +820,20 @@ class PiezaViewSet(viewsets.ViewSet):
 
         filiacion_val = _get_optional('filiacion_cultural', data)
         if filiacion_val is not _UNSET:
-            changed, before_rel, after_rel = _set_single_rel(pieza, 'localidad', Localidad, localidad_val)
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'filiacion_cultural_rel', Cultura, filiacion_val)
             if changed:
                 cambios_pieza.append({
-                    "campo": "localidad",
+                    "campo": "filiacion_cultural",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
+
+        tipologia_val = _get_optional('tipologia', data)
+        if tipologia_val is not _UNSET:
+            changed, before_rel, after_rel = _set_single_rel(pieza, 'tipologias', Tipologia, tipologia_val)
+            if changed:
+                cambios_pieza.append({
+                    "campo": "tipologia",
                     "antes": before_rel,
                     "despues": after_rel,
                 })
@@ -814,9 +859,14 @@ class PiezaViewSet(viewsets.ViewSet):
                     "despues": after_rel,
                 })
 
-        # exposiciones_rel_val = _get_optional('exposiciones', data)
-        # if exposiciones_rel_val is not _UNSET:
-        #     _set_many_names(pieza, 'exposiciones', Exposicion, _split_list(exposiciones_rel_val))
+        if expos_list_for_rel is not None:
+            changed, before_rel, after_rel = _set_many_names(pieza, 'exposiciones_rel', Exposicion, expos_list_for_rel)
+            if changed:
+                cambios_pieza.append({
+                    "campo": "exposiciones_rel",
+                    "antes": before_rel,
+                    "despues": after_rel,
+                })
         
         # 4) Componentes (modo “reemplazar”)
         componentes = data.get('componentes')
@@ -878,20 +928,14 @@ class PiezaViewSet(viewsets.ViewSet):
                     responsable_coleccion=comp.get('responsable_coleccion', ''),
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
-                # # NUEVO: exposiciones del componente (string -> lista)
-                # c.exposiciones = _split_list(comp.get('exposiciones', ''))
-                # c.save()
+                _sync_component_relations(c, comp)
                 pieza.componentes.connect(c)
                 # exposiciones_raw = comp.get('exposiciones', '')
                 # exposiciones_list = _split_list(exposiciones_raw)
                 # if exposiciones_list and any(e.strip() for e in exposiciones_list):
                 #     _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
                 # snapshot after
-                comp_dict = c.__dict__.copy()
-                comp_dict.pop('_id', None)
-                comp_dict.pop('_labels', None)
-                comp_dict.pop('_properties', None)
-                after_components.append(comp_dict)
+                after_components.append(_snapshot_component_state(c))
 
         # Cambios en componentes
         cambios_componentes = []
@@ -1074,6 +1118,13 @@ class PaisViewSet(viewsets.ViewSet):
             ORDER BY nombre
             """,
             """
+            MATCH (comp:Componente)-[:PROCEDENTE_DE]->(pa:Pais)
+            WITH DISTINCT trim(pa.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
             MATCH (c:Componente)
             WITH DISTINCT trim(c.pais) AS nombre
             WHERE nombre <> ''
@@ -1088,6 +1139,13 @@ class ColeccionViewSet(viewsets.ViewSet):
         data = _catalog_from_queries(
             """
             MATCH (p:Pieza)-[:PERTENECE_A]->(c:Coleccion)
+            WITH DISTINCT trim(c.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)-[:PERTENECE_A]->(c:Coleccion)
             WITH DISTINCT trim(c.nombre) AS nombre
             WHERE nombre <> ''
             RETURN nombre
@@ -1114,6 +1172,13 @@ class AutorViewSet(viewsets.ViewSet):
             ORDER BY nombre
             """,
             """
+            MATCH (comp:Componente)-[:CREADO_POR]->(a:Autor)
+            WITH DISTINCT trim(a.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
             MATCH (comp:Componente)
             WITH DISTINCT trim(comp.autor) AS nombre
             WHERE nombre <> ''
@@ -1128,6 +1193,13 @@ class LocalidadViewSet(viewsets.ViewSet):
         data = _catalog_from_queries(
             """
             MATCH (p:Pieza)-[:LOCALIZADO_EN]->(l:Localidad)
+            WITH DISTINCT trim(l.nombre) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)-[:LOCALIZADO_EN]->(l:Localidad)
             WITH DISTINCT trim(l.nombre) AS nombre
             WHERE nombre <> ''
             RETURN nombre
@@ -1154,8 +1226,29 @@ class TipologiaViewSet(viewsets.ViewSet):
             ORDER BY nombre
             """,
             """
+            MATCH (p:Pieza)-[:TIENE_TIPOLOGIA]->(t:Tipologia)
+            WITH DISTINCT trim(coalesce(t.nombre, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
             MATCH (comp:Componente)
             WITH DISTINCT trim(coalesce(comp.tipologia, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+             """
+            MATCH (comp:Componente)-[:TIENE_TIPOLOGIA]->(t:Tipologia)
+            WITH DISTINCT trim(coalesce(t.nombre, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (t:Tipologia)
+            WITH DISTINCT trim(coalesce(t.nombre, '')) AS nombre
             WHERE nombre <> ''
             RETURN nombre
             ORDER BY nombre
@@ -1176,9 +1269,23 @@ class ExposicionViewSet(viewsets.ViewSet):
             ORDER BY nombre
             """,
             """
+            MATCH (p:Pieza)-[:EXHIBIDO_EN]->(e:Exposicion)
+            WITH DISTINCT trim(coalesce(e.titulo, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
             MATCH (comp:Componente)
             UNWIND coalesce(comp.exposiciones, []) AS expo
             WITH DISTINCT trim(replace(expo, '"', '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)-[:EXHIBIDO_EN]->(e:Exposicion)
+            WITH DISTINCT trim(coalesce(e.titulo, '')) AS nombre
             WHERE nombre <> ''
             RETURN nombre
             ORDER BY nombre

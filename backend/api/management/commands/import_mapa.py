@@ -214,6 +214,7 @@ class Command(BaseCommand):
             "CREATE INDEX idx_cultura_nombre IF NOT EXISTS FOR (cu:Cultura) ON (cu.nombre)",
             "CREATE INDEX idx_material_nombre IF NOT EXISTS FOR (m:Material) ON (m.nombre)",
             "CREATE INDEX idx_tecnica_nombre IF NOT EXISTS FOR (t:Tecnica) ON (t.nombre)",
+            "CREATE INDEX idx_tipologia_nombre IF NOT EXISTS FOR (ti:Tipologia) ON (ti.nombre)",
             "CREATE INDEX idx_coleccion_nombre IF NOT EXISTS FOR (co:Coleccion) ON (co.nombre)",
             "CREATE INDEX idx_expo_titulo IF NOT EXISTS FOR (e:Exposicion) ON (e.titulo)"
         ]:
@@ -319,6 +320,16 @@ class Command(BaseCommand):
                MERGE (l)-[:PERTENECE_A]->(pa)
              )
            )
+          // Tipología
+           FOREACH (_ IN CASE WHEN row.tipologia<>'' THEN [1] ELSE [] END |
+             MERGE (ti:Tipologia {nombre:trim(row.tipologia)}) MERGE (p)-[:TIENE_TIPOLOGIA]->(ti))
+
+           WITH p, row,
+                [expo IN split(coalesce(row.exposiciones, ''), ';') WHERE trim(expo) <> ''] AS expos_list
+           FOREACH (expo IN expos_list |
+             MERGE (e:Exposicion {titulo:trim(replace(expo, '\\"', ''))})
+             MERGE (p)-[:EXHIBIDO_EN]->(e)
+           )
           ",
           {batchSize:1000, iterateList:true}
         )""")
@@ -414,6 +425,36 @@ class Command(BaseCommand):
            MATCH (p:Pieza {numero_inventario:row.pieza_numero_inventario})
            MATCH (c:Componente {pieza_numero_inventario:row.pieza_numero_inventario, letra:row.letra})
            MERGE (p)-[:TIENE_COMPONENTE]->(c)
+          ",
+          {batchSize:1000, iterateList:true}
+        )""")
+
+        # 8b) Relaciones de componentes con dominios (autor/coleccion/pais/etc.)
+        db.cypher_query("""
+        CALL apoc.periodic.iterate(
+          "LOAD CSV WITH HEADERS FROM 'file:///componentes.csv' AS row RETURN row",
+          "
+           MATCH (c:Componente {pieza_numero_inventario:row.pieza_numero_inventario, letra:row.letra})
+
+           FOREACH (_ IN CASE WHEN row.autor<>'' THEN [1] ELSE [] END |
+             MERGE (a:Autor {nombre:trim(row.autor)}) MERGE (c)-[:CREADO_POR]->(a))
+           FOREACH (_ IN CASE WHEN row.coleccion<>'' THEN [1] ELSE [] END |
+             MERGE (co:Coleccion {nombre:trim(row.coleccion)}) MERGE (c)-[:PERTENECE_A]->(co))
+           FOREACH (_ IN CASE WHEN row.filiacion_cultural<>'' THEN [1] ELSE [] END |
+             MERGE (cu:Cultura {nombre:trim(row.filiacion_cultural)}) MERGE (c)-[:FILIACION]->(cu))
+           FOREACH (_ IN CASE WHEN row.pais<>'' THEN [1] ELSE [] END |
+             MERGE (pa:Pais {nombre:trim(row.pais)}) MERGE (c)-[:PROCEDENTE_DE]->(pa))
+           FOREACH (_ IN CASE WHEN row.localidad<>'' THEN [1] ELSE [] END |
+             MERGE (l:Localidad {nombre:trim(row.localidad)}) MERGE (c)-[:LOCALIZADO_EN]->(l))
+           FOREACH (_ IN CASE WHEN row.tipologia<>'' THEN [1] ELSE [] END |
+             MERGE (ti:Tipologia {nombre:trim(row.tipologia)}) MERGE (c)-[:TIENE_TIPOLOGIA]->(ti))
+
+           WITH c, row,
+                [expo IN split(coalesce(row.exposiciones, ''), ';') WHERE trim(expo) <> ''] AS expos_list
+           FOREACH (expo IN expos_list |
+             MERGE (e:Exposicion {titulo:trim(replace(expo, '\\"', ''))})
+             MERGE (c)-[:EXHIBIDO_EN]->(e)
+           )
           ",
           {batchSize:1000, iterateList:true}
         )""")
