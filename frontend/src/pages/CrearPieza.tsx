@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react";
-import { set } from "date-fns";
 import { getComponentDisplayLetter } from "@/utils/componentLabel";
+import { ComponentImageForm, prepareComponentPayload } from "@/utils/componentImages";
 
 type ComponentForm = {
   id?: string;
@@ -57,7 +57,7 @@ type ComponentForm = {
   fecha_ingreso?: string;
   responsable_coleccion?: string;
   fecha_ultima_modificacion?: string;
-  imagenes?: { imagen: string; descripcion?: string; file?: File }[];
+  imagenes?: ComponentImageForm[];
 };
 
 const initialComp: ComponentForm = {
@@ -168,6 +168,7 @@ export default function CrearPieza() {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [showCompModal, setShowCompModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Catálogos para autocompletar
   const [authors, setAuthors] = useState<string[]>([]);
@@ -176,6 +177,22 @@ export default function CrearPieza() {
   const [collections, setCollections] = useState<string[]>([]);
   const [tipologias, setTipologias] = useState<string[]>([]);
   const [exposiciones, setExposiciones] = useState<string[]>([]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  const revokeImagePreviews = (images?: ComponentImageForm[]) => {
+    images?.forEach(img => {
+      if (img?.file && typeof img.imagen === "string" && img.imagen.startsWith("blob:")) {
+        URL.revokeObjectURL(img.imagen);
+      }
+    });
+  };
 
   useEffect(() => {
     const fetchCatalogs = async () => {
@@ -218,6 +235,15 @@ export default function CrearPieza() {
     setPieceData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFile = e.target.files?.[0] ?? null;
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setFile(nextFile);
+    setImagePreview(nextFile ? URL.createObjectURL(nextFile) : null);
+  };
+
   const handleAddComponentModal = () => {
     let defaultLetter = "b";
     if (components.length > 0) {
@@ -227,17 +253,23 @@ export default function CrearPieza() {
       }
     }
     setEditIndex(null);
-    setCompForm({ ...initialComp, letra: defaultLetter });
+    setCompForm({ ...initialComp, letra: defaultLetter, imagenes: [] });
     setShowCompModal(true);
   };
 
   const handleEditComponentModal = (index: number) => {
     setEditIndex(index);
-    setCompForm({ ...components[index] });
+    const target = components[index];
+    setCompForm({
+      ...target,
+      imagenes: target.imagenes ? target.imagenes.map(img => ({ ...img })) : [],
+    });
     setShowCompModal(true);
   };
 
   const handleRemoveComponent = (index: number) => {
+    const target = components[index];
+    revokeImagePreviews(target?.imagenes);
     setComponents(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -267,10 +299,14 @@ export default function CrearPieza() {
       Object.entries(pieceData).forEach(([key, value]) => {
         formData.append(key, value ?? "");
       });
-      formData.append("componentes", JSON.stringify(components));
+      const preparedComponents = prepareComponentPayload(components);
+      formData.append("componentes", JSON.stringify(preparedComponents.payload));
       if (file) {
         formData.append("imagen", file);
       }
+      preparedComponents.files.forEach(({ field, file: compFile }) => {
+        formData.append(field, compFile);
+      });
       const response = await api.post("/api/piezas/", formData);
       const newPiece = response.data;
       alert("Pieza creada correctamente");
@@ -863,23 +899,51 @@ export default function CrearPieza() {
             <h3 className="text-xl font-semibold mt-6 mb-2">Componentes</h3>
             {components.length > 0 ? (
               <div className="mb-4 space-y-2">
-                {components.map((comp, idx) => (
-                  <div key={idx} className="p-2 bg-gray-50 border rounded flex items-center justify-between">
-                    <div>
-                      <strong>Componente {getComponentDisplayLetter(comp.letra, idx)}</strong>
-                      {comp.nombre_comun && ` – ${comp.nombre_comun}`}
-                      {comp.nombre_especifico && ` (${comp.nombre_especifico})`}
+                {components.map((comp, idx) => {
+                  const previewImage = comp.imagenes?.[0]?.imagen;
+                  const extraImages = Math.max((comp.imagenes?.length ?? 0) - 1, 0);
+                  const hasPendingUploads = (comp.imagenes ?? []).some(img => Boolean(img?.file));
+                  return (
+                    <div key={idx} className="p-2 bg-gray-50 border rounded flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        {previewImage ? (
+                          <div className="relative">
+                            <img
+                              src={previewImage}
+                              alt={`Vista previa componente ${getComponentDisplayLetter(comp.letra, idx)}`}
+                              className="h-16 w-16 object-cover rounded border bg-white"
+                            />
+                            {extraImages > 0 && (
+                              <span className="absolute -bottom-2 right-0 rounded-full bg-primary px-2 text-[10px] font-medium text-white">
+                                +{extraImages}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Sin imágenes</span>
+                        )}
+                        <div>
+                          <div className="font-semibold">
+                            Componente {getComponentDisplayLetter(comp.letra, idx)}
+                            {comp.nombre_comun && ` – ${comp.nombre_comun}`}
+                            {comp.nombre_especifico && ` (${comp.nombre_especifico})`}
+                          </div>
+                          {hasPendingUploads && (
+                            <p className="text-xs text-amber-600">Nueva imagen pendiente de guardar</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-x-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleEditComponentModal(idx)}>
+                          Editar
+                        </Button>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveComponent(idx)}>
+                          Quitar
+                        </Button>
+                      </div>
                     </div>
-                    <div className="space-x-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleEditComponentModal(idx)}>
-                        Editar
-                      </Button>
-                      <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveComponent(idx)}>
-                        Quitar
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="mb-4 text-sm text-muted-foreground">No hay componentes añadidos.</p>
@@ -893,8 +957,18 @@ export default function CrearPieza() {
               <input
                 type="file"
                 accept=".jpg"
-                onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+                 onChange={handleMainImageChange}
               />
+              {imagePreview && (
+                <div className="mt-3">
+                  <p className="text-sm text-muted-foreground">Vista previa</p>
+                  <img
+                    src={imagePreview}
+                    alt="Vista previa de la pieza"
+                    className="mt-2 h-32 w-auto rounded border object-contain bg-white"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex items-center gap-4">
@@ -1409,7 +1483,8 @@ export default function CrearPieza() {
                               size="sm"
                               onClick={() => {
                                 const newImgs = [...(compForm.imagenes ?? [])];
-                                newImgs.splice(idx, 1);
+                                const [removed] = newImgs.splice(idx, 1);
+                                revokeImagePreviews([removed]);
                                 setCompForm(prev => ({ ...prev, imagenes: newImgs }));
                               }}
                             >
@@ -1429,7 +1504,7 @@ export default function CrearPieza() {
                           const newImgs = files.map(f => ({
                             imagen: URL.createObjectURL(f),
                             descripcion: "",
-                            file: f,
+                            file_name: undefined,
                           }));
                           setCompForm(prev => ({
                             ...prev,

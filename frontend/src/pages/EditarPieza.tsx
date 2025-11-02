@@ -6,6 +6,11 @@ import Header from "@/components/Header";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react";
 import { getComponentDisplayLetter } from "@/utils/componentLabel";
+import {
+  ComponentImageForm,
+  extractMediaFileName,
+  prepareComponentPayload,
+} from "@/utils/componentImages";
 
 type ComponentForm = {
   id?: string;
@@ -56,7 +61,7 @@ type ComponentForm = {
   fecha_ingreso?: string;
   responsable_coleccion?: string;
   fecha_ultima_modificacion?: string;
-  imagenes?: { imagen: string; descripcion?: string }[];
+  imagenes?: ComponentImageForm[];
 };
 
 type PieceForm = {
@@ -107,7 +112,7 @@ type PieceForm = {
   fecha_ingreso: string;
   responsable_coleccion: string;
   fecha_ultima_modificacion: string;
-  imagenes: { imagen: string; descripcion?: string }[];
+  imagenes: ComponentImageForm[];
 };
 
 const initialComp: ComponentForm = {
@@ -227,6 +232,25 @@ export default function EditarPieza() {
   const [showCompModal, setShowCompModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [initialComponentsPayloadJson, setInitialComponentsPayloadJson] = useState<string>("[]");
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  const revokeImagePreviews = (images?: ComponentImageForm[]) => {
+    images?.forEach(img => {
+      if (img?.file && typeof img.imagen === "string" && img.imagen.startsWith("blob:")) {
+        URL.revokeObjectURL(img.imagen);
+      }
+    });
+  };
+
   const [authors, setAuthors] = useState<string[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
   const [localidades, setLocalidades] = useState<string[]>([]);
@@ -305,7 +329,11 @@ export default function EditarPieza() {
           fecha_ingreso: p.fecha_ingreso || "",
           responsable_coleccion: p.responsable_coleccion || "",
           fecha_ultima_modificacion: p.fecha_ultima_modificacion || "",
-          imagenes: p.imagenes ?? [],
+          imagenes: (p.imagenes ?? []).map((img: any) => ({
+            imagen: img.imagen,
+            descripcion: img.descripcion ?? "",
+            file_name: extractMediaFileName(img.imagen),
+          })),
         };
         setPieceData(nextPiece);
         setInitialPieceData(JSON.parse(JSON.stringify(nextPiece)) as PieceForm);
@@ -358,13 +386,19 @@ export default function EditarPieza() {
             fecha_ingreso: c.fecha_ingreso || "",
             responsable_coleccion: c.responsable_coleccion || "",
             fecha_ultima_modificacion: c.fecha_ultima_modificacion || "",
-            imagenes: c.imagenes ?? [],
+            imagenes: (c.imagenes ?? []).map((img: any) => ({
+              imagen: img.imagen,
+              descripcion: img.descripcion ?? "",
+              file_name: extractMediaFileName(img.imagen),
+            })),
           }));
           setComponents(compList);
-           setInitialComponents(JSON.parse(JSON.stringify(compList)) as ComponentForm[]);
+          setInitialComponents(JSON.parse(JSON.stringify(compList)) as ComponentForm[]);
+          const preparedInitial = prepareComponentPayload(compList);
+          setInitialComponentsPayloadJson(JSON.stringify(preparedInitial.payload));
         } else {
           setComponents([]);
-          setInitialComponents([]);
+          setInitialComponentsPayloadJson("[]");
         }
       } catch (err) {
         console.error("Error cargando pieza:", err);
@@ -383,6 +417,15 @@ export default function EditarPieza() {
     setPieceData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFile = e.target.files?.[0] ?? null;
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setFile(nextFile);
+    setImagePreview(nextFile ? URL.createObjectURL(nextFile) : null);
+  };
+
   const handleAddComponentModal = () => {
     let defaultLetter = "b";
     if (components.length > 0) {
@@ -392,17 +435,28 @@ export default function EditarPieza() {
       }
     }
     setEditIndex(null);
-    setCompForm({ ...initialComp, letra: defaultLetter, pieza_numero_inventario: pieceData.numero_inventario });
+    setCompForm({
+      ...initialComp,
+      letra: defaultLetter,
+      pieza_numero_inventario: pieceData.numero_inventario,
+      imagenes: [],
+    });
     setShowCompModal(true);
   };
 
   const handleEditComponentModal = (index: number) => {
     setEditIndex(index);
-    setCompForm({ ...components[index] });
+    const target = components[index];
+    setCompForm({
+      ...target,
+      imagenes: target.imagenes ? target.imagenes.map(img => ({ ...img })) : [],
+    });
     setShowCompModal(true);
   };
 
   const handleRemoveComponent = (index: number) => {
+    const target = components[index];
+    revokeImagePreviews(target?.imagenes);
     setComponents(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -458,11 +512,20 @@ export default function EditarPieza() {
           changedFields[fieldKey] = currentValue ?? "";
         }
       });
-      if (JSON.stringify(components) !== JSON.stringify(initialComponents)) {
-        changedFields.componentes = components;
+
+      const preparedComponents = prepareComponentPayload(components);
+      const componentsPayload = preparedComponents.payload;
+      const componentFiles = preparedComponents.files;
+      const componentsJson = JSON.stringify(componentsPayload);
+      const componentsChanged = componentsJson !== initialComponentsPayloadJson;
+      if (componentsChanged) {
+        changedFields.componentes = componentsPayload;
+      }
+      if (componentFiles.length > 0 && !componentsChanged) {
+        changedFields.componentes = componentsPayload;
       }
 
-      const hasFile = Boolean(file);
+      const hasFile = Boolean(file) || componentFiles.length > 0;
       const hasChanges = hasFile || Object.keys(changedFields).length > 0;
 
       if (!hasChanges) {
@@ -485,7 +548,12 @@ export default function EditarPieza() {
           }
         });
 
-        formData.append("imagen", file);
+        if (file) {
+          formData.append("imagen", file);
+        }
+        componentFiles.forEach(({ field, file: compFile }) => {
+          formData.append(field, compFile);
+        });
         await api.put(`/api/piezas/${id}/`, formData);
       } else {
         await api.put(`/api/piezas/${id}/`, changedFields);
@@ -1092,23 +1160,51 @@ export default function EditarPieza() {
           <h3 className="text-xl font-semibold mt-6 mb-2">Componentes</h3>
           {components.length > 0 ? (
             <div className="mb-4 space-y-2">
-              {components.map((comp, idx) => (
-                <div key={idx} className="p-2 bg-gray-50 border rounded flex items-center justify-between">
-                  <div>
-                    <strong>Componente {getComponentDisplayLetter(comp.letra, idx)}</strong>
-                    {comp.nombre_comun && ` – ${comp.nombre_comun}`}
-                    {comp.nombre_especifico && ` (${comp.nombre_especifico})`}
+               {components.map((comp, idx) => {
+                const previewImage = comp.imagenes?.[0]?.imagen;
+                const extraImages = Math.max((comp.imagenes?.length ?? 0) - 1, 0);
+                const hasPendingUploads = (comp.imagenes ?? []).some(img => Boolean(img?.file));
+                return (
+                  <div key={idx} className="p-2 bg-gray-50 border rounded flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {previewImage ? (
+                        <div className="relative">
+                          <img
+                            src={previewImage}
+                            alt={`Vista previa componente ${getComponentDisplayLetter(comp.letra, idx)}`}
+                            className="h-16 w-16 object-cover rounded border bg-white"
+                          />
+                          {extraImages > 0 && (
+                            <span className="absolute -bottom-2 right-0 rounded-full bg-primary px-2 text-[10px] font-medium text-white">
+                              +{extraImages}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Sin imágenes</span>
+                      )}
+                      <div>
+                        <div className="font-semibold">
+                          Componente {getComponentDisplayLetter(comp.letra, idx)}
+                          {comp.nombre_comun && ` – ${comp.nombre_comun}`}
+                          {comp.nombre_especifico && ` (${comp.nombre_especifico})`}
+                        </div>
+                        {hasPendingUploads && (
+                          <p className="text-xs text-amber-600">Nueva imagen pendiente de guardar</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-x-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleEditComponentModal(idx)}>
+                        Editar
+                      </Button>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveComponent(idx)}>
+                        Quitar
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-x-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => handleEditComponentModal(idx)}>
-                      Editar
-                    </Button>
-                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveComponent(idx)}>
-                      Quitar
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="mb-4 text-sm text-muted-foreground">Esta pieza no tiene componentes.</p>
@@ -1122,9 +1218,19 @@ export default function EditarPieza() {
             <input
               type="file"
               accept=".jpg"
-              onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+              onChange={handleMainImageChange}
             />
             <small className="text-gray-600">Sube un archivo solo si deseas reemplazar la imagen actual.</small>
+            {(imagePreview || pieceData.imagenes?.[0]) && (
+              <div className="mt-3">
+                <p className="text-sm text-muted-foreground">Vista previa</p>
+                <img
+                  src={imagePreview ?? pieceData.imagenes?.[0]?.imagen}
+                  alt="Vista previa de la pieza"
+                  className="mt-2 h-32 w-auto rounded border object-contain bg-white"
+                />
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex items-center gap-4">
@@ -1639,7 +1745,8 @@ export default function EditarPieza() {
                             size="sm"
                             onClick={() => {
                               const newImgs = [...(compForm.imagenes ?? [])];
-                              newImgs.splice(idx, 1);
+                              const [removed] = newImgs.splice(idx, 1);
+                              revokeImagePreviews([removed]);
                               setCompForm(prev => ({ ...prev, imagenes: newImgs }));
                             }}
                           >
@@ -1659,7 +1766,7 @@ export default function EditarPieza() {
                         const newImgs = files.map(f => ({
                           imagen: URL.createObjectURL(f),
                           descripcion: "",
-                          file: f,
+                          file_name: undefined,
                         }));
                         setCompForm(prev => ({
                           ...prev,

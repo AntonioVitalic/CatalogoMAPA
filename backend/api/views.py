@@ -20,6 +20,7 @@ from openpyxl.drawing.image import Image as XLImage
 import tempfile
 import requests
 import os
+from urllib.parse import urlparse
 from io import BytesIO
 from .models import (
     Pieza, Componente, Imagen, Autor, Pais,
@@ -134,20 +135,253 @@ def _to_int_or_none(value):
         return None
     return ival
 
-def _store_uploaded_image(uploaded_file):
-    """Persiste el archivo recibido en MEDIA_ROOT y devuelve su nombre relativo."""
+def _store_uploaded_image(uploaded_file, preferred_name: str | None = None):
+    """Persiste ``uploaded_file`` en MEDIA_ROOT manteniendo el nombre original."""
     if not uploaded_file:
         return None
 
-    filename = get_valid_filename(os.path.basename(uploaded_file.name) or "imagen")
+    raw_name = preferred_name or getattr(uploaded_file, "name", None) or "imagen"
+    base_name = os.path.basename(raw_name)
+    filename = get_valid_filename(base_name) or "imagen"
+
+    original_ext = os.path.splitext(base_name)[1]
+    current_ext = os.path.splitext(filename)[1]
+    if original_ext and not current_ext:
+        filename = f"{filename}{original_ext}"
 
     upload_subdir = getattr(settings, 'MEDIA_UPLOAD_SUBDIR', 'uploads')
     destination_dir = os.path.join(settings.MEDIA_ROOT, upload_subdir)
     os.makedirs(destination_dir, exist_ok=True)
-    relative_path = os.path.join(upload_subdir, filename)
+    relative_path = os.path.join(upload_subdir, filename).replace("\\", "/")
 
-    # ``default_storage.save`` puede devolver un nombre distinto si había colisiones
-    return default_storage.save(relative_path, uploaded_file)
+    try:
+        if default_storage.exists(relative_path):
+            default_storage.delete(relative_path)
+    except Exception:
+        # Si no se puede borrar, dejamos que el storage resuelva el conflicto.
+        pass
+
+    try:
+        if hasattr(uploaded_file, 'seek'):
+            try:
+                uploaded_file.seek(0)
+            except (OSError, ValueError):
+                pass
+
+        with default_storage.open(relative_path, 'wb') as destination:
+            if hasattr(uploaded_file, 'chunks') and callable(uploaded_file.chunks):
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            else:
+                destination.write(uploaded_file.read())
+    except Exception:
+        return None
+
+    return relative_path
+
+
+def _extract_media_file_name(url: str | None) -> str | None:
+    """Obtiene la ruta relativa dentro de MEDIA_URL a partir de una URL completa."""
+    if not url:
+        return None
+
+    try:
+        parsed = urlparse(url)
+        path = parsed.path or url
+    except ValueError:
+        path = url
+
+    if not path:
+        return None
+
+    normalized_path = path.replace("\\", "/")
+    media_url = (getattr(settings, 'MEDIA_URL', '') or '').replace("\\", "/")
+    if media_url and normalized_path.startswith(media_url):
+        return normalized_path[len(media_url):].lstrip('/') or None
+
+    media_prefix = media_url.strip('/')
+    if media_prefix:
+        marker = f"/{media_prefix}/"
+        idx = normalized_path.find(marker)
+        if idx != -1:
+            return normalized_path[idx + len(marker):].lstrip('/') or None
+
+        alt_marker = f"{media_prefix}/"
+        if normalized_path.startswith(alt_marker):
+            return normalized_path[len(alt_marker):].lstrip('/') or None
+
+        idx = normalized_path.find(alt_marker)
+        if idx != -1:
+            return normalized_path[idx + len(alt_marker):].lstrip('/') or None
+
+    return normalized_path.lstrip('/') or None
+
+
+def _normalize_upload_key(name: str | None) -> str:
+    if not isinstance(name, str):
+        return ""
+    cleaned = name.replace("[]", "")
+    if "[" in cleaned:
+        cleaned = cleaned.split("[", 1)[0]
+    return cleaned.strip()
+
+
+def _get_uploaded_file(files, field_name: str | None):
+    """Busca un archivo en ``files`` tolerando variantes comunes del nombre de campo."""
+    if not files or not field_name:
+        return None
+
+    getter = getattr(files, 'get', None)
+    getlist = getattr(files, 'getlist', None)
+
+    consumed = getattr(files, '_component_consumed', None)
+    if consumed is None:
+        consumed = set()
+        try:
+            setattr(files, '_component_consumed', consumed)
+        except Exception:
+            consumed = set()
+
+    def _consume(candidate_key: str, values: list):
+        for value in values:
+            token = (candidate_key, id(value))
+            if token in consumed:
+                continue
+            consumed.add(token)
+            return value
+        return None
+
+    def _gather_values(candidate_key: str):
+        if callable(getlist):
+            values = getlist(candidate_key) or []
+            if values:
+                return list(values)
+        if callable(getter):
+            single = getter(candidate_key)
+            if single:
+                return [single]
+        if isinstance(files, dict):
+            existing = files.get(candidate_key)
+            if existing:
+                return [existing]
+        return []
+
+    # Intento directo con el nombre recibido.
+    if callable(getter):
+        direct = getter(field_name)
+        if direct:
+            taken = _consume(field_name, [direct])
+            if taken:
+                return taken
+
+        # Algunos navegadores agregan "[]" cuando proviene de inputs múltiples.
+        alt_direct = getter(f"{field_name}[]")
+        if alt_direct:
+            taken = _consume(f"{field_name}[]", [alt_direct])
+            if taken:
+                return taken
+
+    normalized_target = _normalize_upload_key(field_name)
+
+    if hasattr(files, 'keys'):
+        keys_iter = list(files.keys())
+    elif isinstance(files, dict):
+        keys_iter = list(files.keys())
+    else:
+        keys_iter = []
+
+    for candidate in keys_iter:
+        if not isinstance(candidate, str):
+            continue
+
+        normalized_candidate = _normalize_upload_key(candidate)
+        if not normalized_candidate:
+            continue
+
+        if normalized_candidate == normalized_target or (
+            normalized_target and normalized_target in normalized_candidate
+        ) or (
+            normalized_candidate and normalized_candidate in normalized_target
+        ):
+            values = _gather_values(candidate)
+            taken = _consume(candidate, values)
+            if taken:
+                return taken
+
+    return None
+
+
+def _sync_component_images(component: Componente, data: dict, files) -> None:
+    """Actualiza las imágenes asociadas a un componente."""
+
+    raw_images = data.get('imagenes')
+    if not raw_images:
+        for img in list(component.imagenes.all()):
+            component.imagenes.disconnect(img)
+            rows, _ = db.cypher_query(
+                "MATCH (i:Imagen {file_name: $file})<-[:TIENE_IMAGEN]-() RETURN count(*)",
+                {"file": img.file_name},
+            )
+            remaining = rows[0][0] if rows else 0
+            if not remaining:
+                img.delete()
+        return
+
+    if isinstance(raw_images, dict):
+        images = list(raw_images.values())
+    elif isinstance(raw_images, list):
+        images = raw_images
+    else:
+        return
+
+    existing = list(component.imagenes.all())
+    keep_existing: list[Imagen] = []
+
+    for entry in images:
+        if not isinstance(entry, dict):
+            continue
+
+        descripcion = entry.get('descripcion') or ""
+        upload_field = entry.get('upload_field') or entry.get('file_field')
+        if upload_field:
+            uploaded = _get_uploaded_file(files, upload_field)
+            if not uploaded:
+                continue
+            preferred_name = entry.get('file_name') or getattr(uploaded, 'name', None)
+            stored_name = _store_uploaded_image(uploaded, preferred_name=preferred_name)
+            if not stored_name:
+                continue
+            img_node = Imagen(file_name=stored_name, descripcion=descripcion).save()
+            component.imagenes.connect(img_node)
+            continue
+
+        file_name = entry.get('file_name') or _extract_media_file_name(entry.get('imagen'))
+        if not file_name:
+            continue
+
+        existing_node = next((img for img in existing if img.file_name == file_name), None)
+        if not existing_node:
+            existing_node = Imagen.nodes.first_or_none(file_name=file_name)
+            if existing_node:
+                component.imagenes.connect(existing_node)
+
+        if existing_node:
+            keep_existing.append(existing_node)
+            new_desc = descripcion or ""
+            if (existing_node.descripcion or "") != new_desc:
+                existing_node.descripcion = new_desc
+                existing_node.save()
+
+    for img in existing:
+        if img not in keep_existing:
+            component.imagenes.disconnect(img)
+            rows, _ = db.cypher_query(
+                "MATCH (i:Imagen {file_name: $file})<-[:TIENE_IMAGEN]-() RETURN count(*)",
+                {"file": img.file_name},
+            )
+            remaining = rows[0][0] if rows else 0
+            if not remaining:
+                img.delete()
 
 
 def _numero_inventario_to_int(value):
@@ -666,6 +900,7 @@ class PiezaViewSet(viewsets.ViewSet):
                 c.exposiciones = _split_list(comp.get('exposiciones', ''))
                 c.save()
                 _sync_component_relations(c, comp)
+                _sync_component_images(c, comp, request.FILES)
                 pieza.componentes.connect(c)
                 # exposiciones_raw = comp.get('exposiciones', '')
                 # exposiciones_list = _split_list(exposiciones_raw)
@@ -923,6 +1158,7 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 _sync_component_relations(c, comp)
+                _sync_component_images(c, comp, request.FILES)
                 pieza.componentes.connect(c)
                 # exposiciones_raw = comp.get('exposiciones', '')
                 # exposiciones_list = _split_list(exposiciones_raw)
