@@ -86,16 +86,16 @@ const ItemGrid = ({
           }`}
         >
           <div className="flex-shrink-0 mr-3">
-            <div className="relative h-16 w-16 overflow-hidden rounded-md">
+            <div className="relative h-16 w-16 rounded-md bg-muted/10 flex items-center justify-center">
               {item.imagenes && item.imagenes.length > 0 ? (
                 <img
                   src={item.imagenes[0].imagen}
                   alt={item.imagenes[0].descripcion || ""}
-                  className="h-full w-full object-cover"
+                  className="max-h-full max-w-full object-contain p-1"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-muted">
-                  <span className="text-xs text-muted-foreground">
+                <div className="flex h-full w-full items-center justify-center p-2">
+                  <span className="text-xs text-muted-foreground text-center">
                     Sin imagen
                   </span>
                 </div>

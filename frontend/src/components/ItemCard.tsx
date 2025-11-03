@@ -24,17 +24,17 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
 
   return (
     <Card className={`overflow-hidden hover:shadow-md transition-shadow ${isSelected ? 'ring-2 ring-primary' : ''}`}>
-      <div className="relative aspect-square">
+      <div className="relative aspect-square bg-muted/10 flex items-center justify-center">
         {item.imagenes && item.imagenes.length > 0 ? (
-        <img
-              src={item.imagenes[0].imagen}
-              alt={item.imagenes[0].descripcion || item.nombre_comun || "Sin imagen"}
-              className="w-full h-full object-cover"
-            />
+          <img
+            src={item.imagenes[0].imagen}
+            alt={item.imagenes[0].descripcion || item.nombre_comun || "Sin imagen"}
+            className="max-h-full max-w-full object-contain p-2"
+          />
         ) : (
-            <div className="absolute inset-0 flex justify-center items-center bg-muted/30">
-              <span className="text-muted-foreground text-sm">Sin imagen</span>
-            </div>
+          <div className="flex h-full w-full items-center justify-center p-4">
+            <span className="text-muted-foreground text-sm text-center">Sin imagen</span>
+          </div>
         )}
         {isSelected && (
           <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
