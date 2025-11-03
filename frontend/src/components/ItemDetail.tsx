@@ -42,13 +42,13 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     inventoryNumber: "N° de inventario",
     pieza_numero_inventario: "N° de inventario",
     letra: "Letra",
-    revision: "Revisión",
+    unidad_relacionada: "Unidad relacionada",
     previousRegistryNumber: "N° de registro anterior",
     surdoc: "SURDOC",
     ubicacion: "Ubicación",
     deposito: "Depósito",
-    estante: "Estante",
-    caja_actual: "Caja actual",
+    estante_o_fullspace: "Estante o fullspace",
+    cajas_o_nivel: "Cajas o nivel",
     tipologia: "Tipología",
     coleccion: "Colección",
     clasificacion: "Clasificación",
@@ -340,7 +340,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             item.surdoc ||
             item.localidad ||
             item.deposito ||
-            item.estante) && (
+            item.estante_o_fullspace) && (
             <>
               <Separator />
               <div className="space-y-4">
@@ -354,7 +354,12 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
                 {item.surdoc && <DetailItem label="ID SURDOC" value={item.surdoc ? item.surdoc : "Sin dato de ID de SURDOC"} />}
                 {item.localidad && <DetailItem label="Ubicación" value={item.localidad ? item.localidad : "Sin dato de ubicación"} />}
                 {item.deposito && <DetailItem label="Depósito" value={item.deposito ? item.deposito : "Sin dato de depósito"} />}
-                {item.estante && <DetailItem label="Estante" value={item.estante ? item.estante : "Sin dato de estante"} />}
+                 {item.estante_o_fullspace && (
+                  <DetailItem
+                    label="Estante o fullspace"
+                    value={item.estante_o_fullspace ? item.estante_o_fullspace : "Sin dato de estante o fullspace"}
+                  />
+                )}
               </div>
             </>
           )}

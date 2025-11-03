@@ -16,13 +16,13 @@ type ComponentForm = {
   id?: string;
   pieza_numero_inventario: string;
   letra: string;
-  revision?: string;
+  unidad_relacionada?: string;
   numero_registro_anterior?: string;
   codigo_surdoc?: string;
   ubicacion?: string;
   deposito?: string;
-  estante?: string;
-  caja_actual?: string;
+  estante_o_fullspace?: string;
+  cajas_o_nivel?: string;
   tipologia?: string;
   coleccion?: string;
   clasificacion?: string;
@@ -67,13 +67,13 @@ type ComponentForm = {
 type PieceForm = {
   numero_inventario: string;
   letra: string;
-  revision: string;
+  unidad_relacionada: string;
   numero_registro_anterior: string;
   codigo_surdoc: string;
   ubicacion: string;
   deposito: string;
-  estante: string;
-  caja_actual: string;
+  estante_o_fullspace: string;
+  cajas_o_nivel: string;
   tipologia: string;
   coleccion: string;
   clasificacion: string;
@@ -118,13 +118,13 @@ type PieceForm = {
 const initialComp: ComponentForm = {
   pieza_numero_inventario: "",
   letra: "",
-  revision: "",
+  unidad_relacionada: "",
   numero_registro_anterior: "",
   codigo_surdoc: "",
   ubicacion: "",
   deposito: "",
-  estante: "",
-  caja_actual: "",
+  estante_o_fullspace: "",
+  cajas_o_nivel: "",
   tipologia: "",
   coleccion: "",
   clasificacion: "",
@@ -169,13 +169,13 @@ const initialComp: ComponentForm = {
 const initialPiece: PieceForm = {
   numero_inventario: "",
   letra: "",
-  revision: "",
+  unidad_relacionada: "",
   numero_registro_anterior: "",
   codigo_surdoc: "",
   ubicacion: "",
   deposito: "",
-  estante: "",
-  caja_actual: "",
+  estante_o_fullspace: "",
+  cajas_o_nivel: "",
   tipologia: "",
   coleccion: "",
   clasificacion: "",
@@ -284,13 +284,13 @@ export default function EditarPieza() {
         const nextPiece: PieceForm = {
           numero_inventario: p.numero_inventario || "",
           letra: p.letra || "",
-          revision: p.revision || "",
+          unidad_relacionada: p.unidad_relacionada || "",
           numero_registro_anterior: p.numero_registro_anterior || "",
           codigo_surdoc: p.codigo_surdoc || "",
           ubicacion: p.ubicacion || "",
           deposito: p.deposito || "",
-          estante: p.estante || "",
-          caja_actual: p.caja_actual || "",
+          estante_o_fullspace: p.estante_o_fullspace || "",
+          cajas_o_nivel: p.cajas_o_nivel || "",
           tipologia: p.tipologia || "",
           coleccion: p.coleccion || "",
           clasificacion: p.clasificacion || "",
@@ -341,13 +341,13 @@ export default function EditarPieza() {
           const compList: ComponentForm[] = p.componentes.map((c: any) => ({
             pieza_numero_inventario: c.pieza_numero_inventario || "",
             letra: c.letra || "",
-            revision: c.revision || "",
+            unidad_relacionada: c.unidad_relacionada || "",
             numero_registro_anterior: c.numero_registro_anterior || "",
             codigo_surdoc: c.codigo_surdoc || "",
             ubicacion: c.ubicacion || "",
             deposito: c.deposito || "",
-            estante: c.estante || "",
-            caja_actual: c.caja_actual || "",
+            estante_o_fullspace: c.estante_o_fullspace || "",
+            cajas_o_nivel: c.cajas_o_nivel || "",
             tipologia: c.tipologia || "",
             coleccion: c.coleccion || "",
             clasificacion: c.clasificacion || "",
@@ -611,14 +611,14 @@ export default function EditarPieza() {
                 disabled
               />
             </div> */}
-            {/* Revisión */}
+            {/* Unidad relacionada */}
             <div>
-              <label className="block text-sm font-medium mb-1">Revisión</label>
+              <label className="block text-sm font-medium mb-1">Unidad relacionada</label>
               <input
                 type="text"
-                name="revision"
+                name="unidad_relacionada"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.revision}
+                value={pieceData.unidad_relacionada}
                 onChange={handleChangePiece}
               />
             </div>
@@ -666,25 +666,25 @@ export default function EditarPieza() {
                 onChange={handleChangePiece}
               />
             </div>
-            {/* Estante */}
+             {/* Estante o fullspace */}
             <div>
-              <label className="block text-sm font-medium mb-1">Estante</label>
+              <label className="block text-sm font-medium mb-1">Estante o fullspace</label>
               <input
                 type="text"
-                name="estante"
+                name="estante_o_fullspace"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.estante}
+                value={pieceData.estante_o_fullspace}
                 onChange={handleChangePiece}
               />
             </div>
-            {/* Caja actual */}
+            {/* Cajas o nivel */}
             <div>
-              <label className="block text-sm font-medium mb-1">Caja actual</label>
+              <label className="block text-sm font-medium mb-1">Cajas o nivel</label>
               <input
                 type="text"
-                name="caja_actual"
+                name="cajas_o_nivel"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.caja_actual}
+                value={pieceData.cajas_o_nivel}
                 onChange={handleChangePiece}
               />
             </div>
@@ -1263,12 +1263,12 @@ export default function EditarPieza() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Revisión</label>
+                  <label className="block text-sm font-medium mb-2">Unidad relacionada</label>
                   <input
                     type="text"
-                    name="revision"
+                    name="unidad_relacionada"
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                    value={compForm.revision}
+                    value={compForm.unidad_relacionada}
                     onChange={handleChangeComp}
                   />
                 </div>
@@ -1313,22 +1313,22 @@ export default function EditarPieza() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Estante</label>
+                  <label className="block text-sm font-medium mb-2">Estante o fullspace</label>
                   <input
                     type="text"
-                    name="estante"
+                    name="estante_o_fullspace"
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                    value={compForm.estante}
+                    value={compForm.estante_o_fullspace}
                     onChange={handleChangeComp}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Caja actual</label>
+                  <label className="block text-sm font-medium mb-2">Cajas o nivel</label>
                   <input
                     type="text"
-                    name="caja_actual"
+                    name="cajas_o_nivel"
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                    value={compForm.caja_actual}
+                    value={compForm.cajas_o_nivel}
                     onChange={handleChangeComp}
                   />
                 </div>

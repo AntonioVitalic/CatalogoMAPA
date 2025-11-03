@@ -10,15 +10,15 @@ from .models import (
 # inventario_cols = dict(
 #     numero_inventario='numero_de_inventario',
 #     letra='letra',
-#     revision='Revisión',
+#     unidad_relacionada='Unidad relacionada',
 
 #     numero_registro_anterior='numero_de registro_anterior',
 #     codigo_surdoc='SURDOC',
 
 #     ubicacion='ubicacion',
 #     deposito='deposito',
-#     estante='estante',
-#     caja_actual='caja_actual',
+#     estante_o_fullspace='estante_o_fullspace',
+#     cajas_o_nivel='cajas_o_nivel',
 
 #     tipologia='tipologia',
 
@@ -125,13 +125,13 @@ class ComponenteOutSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
     pieza_numero_inventario = serializers.CharField()
     letra = serializers.CharField()
-    revision = serializers.CharField(allow_blank=True, required=False)
+    unidad_relacionada = serializers.CharField(allow_blank=True, required=False)
     numero_registro_anterior = serializers.CharField(allow_blank=True, required=False)
     codigo_surdoc = serializers.CharField(allow_blank=True, required=False)
     ubicacion = serializers.CharField(allow_blank=True, required=False)
     deposito = serializers.SerializerMethodField()
-    estante = serializers.CharField(allow_blank=True, required=False)
-    caja_actual = serializers.CharField(allow_blank=True, required=False)
+    estante_o_fullspace = serializers.CharField(allow_blank=True, required=False)
+    cajas_o_nivel = serializers.CharField(allow_blank=True, required=False)
     tipologia = serializers.CharField(allow_blank=True, required=False)
     coleccion = serializers.CharField(allow_blank=True, required=False)
     clasificacion = serializers.CharField(allow_blank=True, required=False)
@@ -215,13 +215,13 @@ class PiezaOutSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
     numero_inventario = serializers.CharField()
     letra = serializers.CharField(allow_blank=True, required=False)
-    revision = serializers.CharField(allow_blank=True, required=False)
+    unidad_relacionada = serializers.CharField(allow_blank=True, required=False)
     numero_registro_anterior = serializers.CharField(allow_blank=True, required=False)
     codigo_surdoc = serializers.CharField(allow_blank=True, required=False)
     ubicacion = serializers.CharField(allow_blank=True, required=False)
     deposito = serializers.SerializerMethodField()
-    estante = serializers.CharField(allow_blank=True, required=False)
-    caja_actual = serializers.CharField(allow_blank=True, required=False)
+    estante_o_fullspace = serializers.CharField(allow_blank=True, required=False)
+    cajas_o_nivel = serializers.CharField(allow_blank=True, required=False)
     tipologia = serializers.CharField(allow_blank=True, required=False)
     coleccion = serializers.SerializerMethodField()
     clasificacion = serializers.CharField(allow_blank=True, required=False)

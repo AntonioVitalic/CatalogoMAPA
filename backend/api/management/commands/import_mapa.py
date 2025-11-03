@@ -75,15 +75,15 @@ class Command(BaseCommand):
         inventario_cols = dict(
             numero_inventario='numero_de_inventario',
             letra='letra',
-            revision='Revisión',
+            unidad_relacionada='Unidad relacionada',
 
             numero_registro_anterior='numero_de registro_anterior',
             codigo_surdoc='SURDOC',
 
             ubicacion='ubicacion',
             deposito='deposito',
-            estante='estante',
-            caja_actual='caja_actual',
+            estante_o_fullspace='estante_o_fullspace',
+            cajas_o_nivel='cajas_o_nivel',
 
             tipologia='tipologia',
 
@@ -236,7 +236,7 @@ class Command(BaseCommand):
             numero_inventario: row.numero_inventario,
             numero_inventario_int: toInteger(row.numero_inventario_int),
             letra: row.letra,
-            revision: row.revision,
+            unidad_relacionada: row.unidad_relacionada,
             numero_registro_anterior: row.numero_registro_anterior,
             codigo_surdoc: row.codigo_surdoc,
             ubicacion: row.ubicacion,
@@ -244,8 +244,8 @@ class Command(BaseCommand):
               WHEN row.deposito IS NULL OR trim(row.deposito) = '' THEN null
               ELSE toInteger(row.deposito)
             END,
-            estante: row.estante,
-            caja_actual: row.caja_actual,
+            estante_o_fullspace: row.estante_o_fullspace,
+            cajas_o_nivel: row.cajas_o_nivel,
             tipologia: row.tipologia,
             coleccion: row.coleccion,
             clasificacion: row.clasificacion,
@@ -361,7 +361,7 @@ class Command(BaseCommand):
           CREATE (c:Componente {
             pieza_numero_inventario: row.pieza_numero_inventario,
             letra: row.letra,
-            revision: row.revision,
+            unidad_relacionada: row.unidad_relacionada,
             numero_registro_anterior: row.numero_registro_anterior,
             codigo_surdoc: row.codigo_surdoc,
             ubicacion: row.ubicacion,
@@ -369,8 +369,8 @@ class Command(BaseCommand):
               WHEN row.deposito IS NULL OR trim(row.deposito) = '' THEN null
               ELSE toInteger(row.deposito)
             END,
-            estante: row.estante,
-            caja_actual: row.caja_actual,
+            estante_o_fullspace: row.estante_o_fullspace,
+            cajas_o_nivel: row.cajas_o_nivel,
             tipologia: row.tipologia,
             coleccion: row.coleccion,
             clasificacion: row.clasificacion,

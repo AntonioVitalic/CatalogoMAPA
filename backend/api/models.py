@@ -43,15 +43,15 @@ class Componente(StructuredNode):
     uid = UniqueIdProperty()
     pieza_numero_inventario = StringProperty(index=True)
     letra = StringProperty(index=True)
-    revision = StringProperty()
+    unidad_relacionada = StringProperty()
 
     numero_registro_anterior = StringProperty()
     codigo_surdoc = StringProperty()
 
     ubicacion = StringProperty()
     deposito = IntegerProperty(required=False)
-    estante = StringProperty()
-    caja_actual = StringProperty()
+    estante_o_fullspace = StringProperty()
+    cajas_o_nivel = StringProperty()
 
     tipologia = StringProperty()
     coleccion = StringProperty()
@@ -116,15 +116,15 @@ class Pieza(StructuredNode):
     numero_inventario_int = IntegerProperty(index=True)  # para ordenar rápido
 
     letra = StringProperty(index=True)
-    revision = StringProperty()
+    unidad_relacionada = StringProperty()
 
     numero_registro_anterior = StringProperty()
     codigo_surdoc = StringProperty()
 
     ubicacion = StringProperty()
     deposito = IntegerProperty(required=False)
-    estante = StringProperty()
-    caja_actual = StringProperty()
+    estante_o_fullspace = StringProperty()
+    cajas_o_nivel = StringProperty()
 
     tipologia = StringProperty()
     coleccion = StringProperty()
