@@ -17,6 +17,7 @@ import copy
 import re
 import openpyxl
 from openpyxl.drawing.image import Image as XLImage
+from openpyxl.styles import Alignment
 import tempfile
 import requests
 import os
@@ -1614,23 +1615,26 @@ def exportar_excel_con_imagenes(request):
     ws.title = "Piezas"
 
     headers = [
-        "N° de inventario", "Nombre común", "Nombre atribuido", "País", "Localidad",
-        "Fecha de creación", "Materialidad", "Descripción de colecciones", "Estado de conservación", "Imagen"
+        "N° de inventario", "Imagen", "Nombre común", "Nombre atribuido", "País",
+        "Localidad", "Fecha de creación", "Materialidad", "Descripción de colecciones",
+        "Estado de conservación"
     ]
     ws.append(headers)
+    ws["F1"].alignment = Alignment(wrap_text=True)
+    ws["I1"].alignment = Alignment(wrap_text=True)
     
     # Ajustamos ancho de columnas para que el contenido se vea completo
     column_widths = {
         "A": 16,  # N° de inventario
-        "B": 22,  # Nombre común
-        "C": 22,  # Nombre atribuido
-        "D": 16,  # País
-        "E": 20,  # Localidad
-        "F": 18,  # Fecha de creación
-        "G": 22,  # Materialidad
-        "H": 32,  # Descripción de colecciones
-        "I": 22,  # Estado de conservación
-        "J": 24,  # Imagen
+        "B": 24,  # Imagen
+        "C": 22,  # Nombre común
+        "D": 22,  # Nombre atribuido
+        "E": 16,  # País
+        "F": 20,  # Localidad
+        "G": 18,  # Fecha de creación
+        "H": 22,  # Materialidad
+        "I": 32,  # Descripción de colecciones
+        "J": 22,  # Estado de conservación
     }
     for column, width in column_widths.items():
         ws.column_dimensions[column].width = width
@@ -1651,6 +1655,7 @@ def exportar_excel_con_imagenes(request):
 
         row = [
             pieza_data.get("numero_inventario", ""),
+            "",  # Aquí irá la imagen embebida
             pieza_data.get("nombre_comun", ""),
             pieza_data.get("nombre_especifico", ""),
             pieza_data.get("pais", ""),
@@ -1659,12 +1664,15 @@ def exportar_excel_con_imagenes(request):
             materialidad,
             pieza_data.get("descripcion_col", ""),
             pieza_data.get("estado_conservacion", ""),
-            "",  # Aquí irá la imagen embebida
         ]
         ws.append(row)
 
         # Ajustamos la altura de la fila para acomodar imágenes y texto
         ws.row_dimensions[idx].height = 150
+
+        # Ajustamos celdas con ajuste de texto
+        ws[f"F{idx}"].alignment = Alignment(wrap_text=True)
+        ws[f"I{idx}"].alignment = Alignment(wrap_text=True)
 
         # Imagen embebida (leer desde /imagenes)
         imagenes = pieza_data.get("imagenes", [])
@@ -1681,7 +1689,7 @@ def exportar_excel_con_imagenes(request):
                         img = XLImage(img_path)
                         img.width = 180
                         img.height = 180
-                        cell = f"J{idx}"  # Columna J es la 10ma (Imagen)
+                        cell = f"B{idx}"  # Columna B es la de Imagen
                         ws.add_image(img, cell)
                     except Exception as e:
                         print(f"Error al insertar imagen {file_name}: {e}")
@@ -1697,3 +1705,4 @@ def exportar_excel_con_imagenes(request):
         )
         response["Content-Disposition"] = 'attachment; filename="piezas_con_imagenes.xlsx"'
         return response
+    
