@@ -9,6 +9,13 @@ import {
   PaginationNext,
 } from "@/components/ui/pagination";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { LayoutGrid, List, Check } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -26,6 +33,8 @@ interface ItemGridProps {
   totalFilteredItems: number;
   searchFilters: SearchFilters;
   userRole?: "admin" | "editor" | "visitor";
+  onItemsPerPageChange: (size: number) => void;
+  itemsPerPageOptions: readonly number[];
 }
 
 const ItemGrid = ({
@@ -40,7 +49,9 @@ const ItemGrid = ({
   onSelectAllFiltered,
   totalFilteredItems,
   searchFilters,
-  userRole
+  userRole,
+  onItemsPerPageChange,
+  itemsPerPageOptions,
 }: ItemGridProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -181,29 +192,53 @@ const ItemGrid = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between mb-4">
-        {(userRole === "admin" || userRole === "editor") && (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSelectAllFiltered}
-            className="flex items-center gap-2"
-          >
-            <Check size={16} />
-            Todas filtradas ({totalFilteredItems})
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSelectAllVisible}
-            className="flex items-center gap-2"
-          >
-            <Check size={16} />
-            Solo visible en página actual ({items.length})
-          </Button>
+       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {(userRole === "admin" || userRole === "editor") && (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onSelectAllFiltered}
+                  className="flex items-center gap-2"
+                >
+                  <Check size={16} />
+                  Todas filtradas ({totalFilteredItems})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onSelectAllVisible}
+                  className="flex items-center gap-2"
+                >
+                  <Check size={16} />
+                  Solo visible en página actual ({items.length})
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  Cantidad de piezas por página:
+                </span>
+                <Select
+                  value={String(pagination.itemsPerPage)}
+                  onValueChange={(value) => onItemsPerPageChange(Number(value))}
+                >
+                  <SelectTrigger className="w-[4.5rem] h-9">
+                    <SelectValue placeholder={String(pagination.itemsPerPage)} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {itemsPerPageOptions.map((option) => (
+                      <SelectItem key={option} value={String(option)}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
         </div>
-        )}
         <div className={`bg-background border rounded-md p-1 flex ${userRole === "visitor" ? "ml-auto" : ""}`}>
           <Button
             variant={pagination.viewMode === "grid" ? "default" : "ghost"}

@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import api from "@/services/api";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE_OPTIONS = [10, 30, 50] as const;
+const DEFAULT_ITEMS_PER_PAGE = ITEMS_PER_PAGE_OPTIONS[0];
 
 const DEFAULT_FILTERS: SearchFilters = {
   query: "",
@@ -63,13 +64,20 @@ export default function Index() {
   // Lee el parámetro page del query string
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const initialPage = params.get("page") && !isNaN(Number(params.get("page"))) ? Number(params.get("page")) : 1;
+  const initialItemsPerPage = useMemo(() => {
+    const pageSizeParam = params.get("page_size");
+    const parsed = pageSizeParam ? Number(pageSizeParam) : NaN;
+    return ITEMS_PER_PAGE_OPTIONS.includes(parsed as (typeof ITEMS_PER_PAGE_OPTIONS)[number])
+      ? parsed
+      : DEFAULT_ITEMS_PER_PAGE;
+  }, [params]);
   const initialFilters = useMemo(() => parseFiltersFromParams(params), [params]);
 
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationState>({
     page: initialPage,
-    itemsPerPage: ITEMS_PER_PAGE,
+    itemsPerPage: initialItemsPerPage,
     totalItems: 0,
     totalPages: 1,
     viewMode: "grid",
@@ -103,15 +111,26 @@ export default function Index() {
 
   useEffect(() => {
     const currentPage = params.get("page") && !isNaN(Number(params.get("page"))) ? Number(params.get("page")) : 1;
+    const pageSizeParam = params.get("page_size");
+    const parsedPageSize = pageSizeParam ? Number(pageSizeParam) : NaN;
+    const currentItemsPerPage =
+      !Number.isNaN(parsedPageSize) &&
+      ITEMS_PER_PAGE_OPTIONS.includes(parsedPageSize as (typeof ITEMS_PER_PAGE_OPTIONS)[number])
+        ? parsedPageSize
+        : DEFAULT_ITEMS_PER_PAGE;
     const parsedFilters = parseFiltersFromParams(params);
 
-    setPagination((prev) => ({ ...prev, page: currentPage }));
+    setPagination((prev) => ({
+      ...prev,
+      page: currentPage,
+      itemsPerPage: currentItemsPerPage,
+    }));
     setSearchFilters(parsedFilters);
     if (hasAdvancedFilters(parsedFilters)) {
       setShowFilters(true);
     }
 
-    fetchPiezas(currentPage, parsedFilters);
+    fetchPiezas(currentPage, parsedFilters, currentItemsPerPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [params]);
 
@@ -172,34 +191,42 @@ export default function Index() {
     };
   };
 
-  const buildParamsFromFilters = (page: number, filters: SearchFilters, includePageSize = false) => {
-    const params = new URLSearchParams();
-    params.append("page", page.toString());
-    if (includePageSize) {
-      params.append("page_size", ITEMS_PER_PAGE.toString());
+   const buildParamsFromFilters = (
+    page: number,
+    filters: SearchFilters,
+    options: { includePageSize?: boolean; itemsPerPage?: number } = {}
+  ) => {
+    const searchParams = new URLSearchParams();
+    searchParams.append("page", page.toString());
+    if (options.includePageSize) {
+      const size = options.itemsPerPage ?? pagination.itemsPerPage ?? DEFAULT_ITEMS_PER_PAGE;
+      searchParams.append("page_size", size.toString());
     }
-    if (filters.query) params.append("search", filters.query);
-    filters.country?.forEach((c) => params.append("pais__nombre", c));
-    filters.collection?.forEach((c) => params.append("coleccion__nombre", c));
-    filters.author?.forEach((a) => params.append("autor__nombre", a));
-    filters.locality?.forEach((l) => params.append("localidad__nombre", l));
-    filters.tipologias?.forEach((t) => params.append("tipologia", t));
+     if (filters.query) searchParams.append("search", filters.query);
+    filters.country?.forEach((c) => searchParams.append("pais__nombre", c));
+    filters.collection?.forEach((c) => searchParams.append("coleccion__nombre", c));
+    filters.author?.forEach((a) => searchParams.append("autor__nombre", a));
+    filters.locality?.forEach((l) => searchParams.append("localidad__nombre", l));
+    filters.tipologias?.forEach((t) => searchParams.append("tipologia", t));
     // Normaliza exposiciones antes de agregarlas al URLSearchParams
     filters.exhibitions?.forEach((e) => {
       const normalized = e.replace(/"/g, "").trim().toLowerCase();
-      params.append("exposiciones__titulo", normalized);
+      searchParams.append("exposiciones__titulo", normalized);
     });
-    if (filters.dateFrom) params.append("fecha_creacion_after", filters.dateFrom);
-    if (filters.dateTo) params.append("fecha_creacion_before", filters.dateTo);
+    if (filters.dateFrom) searchParams.append("fecha_creacion_after", filters.dateFrom);
+    if (filters.dateTo) searchParams.append("fecha_creacion_before", filters.dateTo);
 
-    return params;
+    return searchParams;
   };
 
-  const fetchPiezas = async (page: number, filters: SearchFilters) => {
+   const fetchPiezas = async (page: number, filters: SearchFilters, pageSize: number) => {
     setLoading(true);
     try {
-      const params = buildParamsFromFilters(page, filters, true);
-      const res = await fetch(`${API_URL}/api/piezas/?${params.toString()}`);
+      const searchParams = buildParamsFromFilters(page, filters, {
+        includePageSize: true,
+        itemsPerPage: pageSize,
+      });
+      const res = await fetch(`${API_URL}/api/piezas/?${searchParams.toString()}`);
       if (!res.ok) throw new Error("Error al cargar piezas");
       const data = await res.json();
 
@@ -209,8 +236,9 @@ export default function Index() {
       setPagination((prev) => ({
         ...prev,
         page,
+        itemsPerPage: pageSize,
         totalItems: data.count ?? 0,
-        totalPages: Math.max(1, Math.ceil((data.count ?? 0) / ITEMS_PER_PAGE)),
+        totalPages: Math.max(1, Math.ceil((data.count ?? 0) / pageSize)),
       }));
     } catch (err) {
       console.error(err);
@@ -225,22 +253,49 @@ export default function Index() {
       ...searchFilters,
       query: simple.query ?? "",
     };
-    const params = buildParamsFromFilters(1, updatedFilters, false);
+     const params = buildParamsFromFilters(1, updatedFilters, {
+      includePageSize: true,
+      itemsPerPage: pagination.itemsPerPage,
+    });
     navigate(`/home?${params.toString()}`);
   };
 
   // Aplicar filtros avanzados y serializar la URL
   const handleApplyFilters = (advanced: SearchFilters) => {
-    const params = buildParamsFromFilters(1, advanced, false);
+    const params = buildParamsFromFilters(1, advanced, {
+      includePageSize: true,
+      itemsPerPage: pagination.itemsPerPage,
+    });
     navigate(`/home?${params.toString()}`);
   };
 
-  const handleResetFilters = () =>
-    navigate("/home?page=1");
+  const handleResetFilters = () => {
+    const params = buildParamsFromFilters(1, DEFAULT_FILTERS, {
+      includePageSize: true,
+      itemsPerPage: pagination.itemsPerPage,
+    });
+    navigate(`/home?${params.toString()}`);
+  };
 
   // Cambiar página (URL)
   const handlePageChange = (newPage: number) => {
-    const params = buildParamsFromFilters(newPage, searchFilters, false);
+     const params = buildParamsFromFilters(newPage, searchFilters, {
+      includePageSize: true,
+      itemsPerPage: pagination.itemsPerPage,
+    });
+    navigate(`/home?${params.toString()}`);
+  };
+
+  const handleItemsPerPageChange = (newSize: number) => {
+    const params = buildParamsFromFilters(1, searchFilters, {
+      includePageSize: true,
+      itemsPerPage: newSize,
+    });
+    setPagination((prev) => ({
+      ...prev,
+      itemsPerPage: newSize,
+      page: 1,
+    }));
     navigate(`/home?${params.toString()}`);
   };
 
@@ -267,7 +322,10 @@ export default function Index() {
   const handleSelectAllFiltered = async () => {
     setLoading(true);
     try {
-      const params = buildParamsFromFilters(1, searchFilters, true); // page no importa, backend ignora paginación
+      const params = buildParamsFromFilters(1, searchFilters, {
+        includePageSize: true,
+        itemsPerPage: pagination.itemsPerPage,
+      }); // page no importa, backend ignora paginación
       // remueve parámetros de paginación si quedaron
       params.delete("page");
       params.delete("page_size");
@@ -399,7 +457,7 @@ export default function Index() {
                       }
                       setSelectedItems([]);
                       setTimeout(() => {
-                        fetchPiezas(pagination.page, searchFilters);
+                        fetchPiezas(pagination.page, searchFilters, pagination.itemsPerPage);
                       }, 500); // espera 0.5 segundos antes de recargar
                     }}
                     disabled={selectedItems.length === 0}
@@ -424,6 +482,8 @@ export default function Index() {
               totalFilteredItems={pagination.totalItems}
               searchFilters={searchFilters}
               userRole={user?.role}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              itemsPerPageOptions={ITEMS_PER_PAGE_OPTIONS}
             />
           </div>
         </div>
