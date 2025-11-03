@@ -13,7 +13,8 @@ import {
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 
 interface ExportButtonProps {
@@ -24,7 +25,7 @@ interface ExportButtonProps {
 const ExportButton = ({ selectedItems, user }: ExportButtonProps) => {
   const [isExporting, setIsExporting] = useState(false);
 
-  const headers = [
+  const tableHeaders  = [
     "N° de inventario",
     "Nombre común",
     "Nombre atribuido",
@@ -45,19 +46,7 @@ const ExportButton = ({ selectedItems, user }: ExportButtonProps) => {
     setIsExporting(true);
     try {
       // Headers SIN columna de imagen
-      const csvHeaders = [
-        "N° de inventario",
-        "Nombre común",
-        "Nombre atribuido",
-        "País",
-        "Localidad",
-        "Fecha de creación",
-        "Materialidad",
-        "Descripción de colecciones",
-        "Estado de conservación",
-      ];
-      
-      let csvContent = "\uFEFF" + csvHeaders.join(",") + "\n";
+      let csvContent = "\uFEFF" + tableHeaders.join(",") + "\n";
 
       selectedItems.forEach((item) => {
         const row: string[] = [
@@ -163,6 +152,48 @@ const ExportButton = ({ selectedItems, user }: ExportButtonProps) => {
     }
   };
 
+  const exportToPDF = () => {
+    if (selectedItems.length === 0) {
+      toast.error("No hay piezas seleccionadas para exportar");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const doc = new jsPDF({ orientation: "landscape" });
+      const tableRows = selectedItems.map((item) => [
+        String(item.inventoryNumber ?? ""),
+        String(item.nombre_comun ?? ""),
+        String(item.nombre_especifico ?? ""),
+        String(item.pais ?? ""),
+        String(item.localidad ?? ""),
+        String(item.fecha_creacion ?? ""),
+        String(item.materialidad ?? ""),
+        String(item.descripcion_col ?? ""),
+        String(item.estado_conservacion ?? ""),
+      ]);
+
+      autoTable(doc, {
+        head: [tableHeaders],
+        body: tableRows,
+        styles: { fontSize: 8, cellWidth: "wrap" },
+        headStyles: { fillColor: [33, 37, 41] },
+        columnStyles: {
+          0: { cellWidth: 28 },
+          3: { cellWidth: 28 },
+          4: { cellWidth: 28 },
+        },
+      });
+
+      doc.save(`mapa_export_${new Date().toISOString().split("T")[0]}.pdf`);
+      toast.success(`${selectedItems.length} piezas exportadas a PDF`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar a PDF");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -180,6 +211,9 @@ const ExportButton = ({ selectedItems, user }: ExportButtonProps) => {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={exportToExcel}>
           Exportar a Excel
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportToPDF}>
+          Exportar a PDF
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
