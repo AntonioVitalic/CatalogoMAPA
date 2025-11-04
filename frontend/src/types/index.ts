@@ -127,6 +127,7 @@ export interface SearchFilters {
   collection?: string[];
   author?: string[];
   locality?: string[];
+  location?: string[];
   tipologias?: string[];
   exhibitions?: string[];
   dateFrom?: string;

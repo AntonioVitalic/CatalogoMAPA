@@ -13,8 +13,30 @@ type FilterOptions = {
   collections: string[];
   authors: string[];
   localities: string[];
+  locations: string[];
   tipologias: string[];
   exhibitions: string[];
+};
+
+type MultiFilterKey =
+  | "country"
+  | "collection"
+  | "author"
+  | "locality"
+  | "location"
+  | "tipologias"
+  | "exhibitions";
+
+type FilterDescriptor = {
+  key: MultiFilterKey;
+  optionsKey: keyof FilterOptions;
+  label: string;
+  placeholder: string;
+};
+
+type NamedResource = {
+  id: number;
+  nombre: string;
 };
 
 interface FilterPanelProps {
@@ -30,6 +52,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
     collection: [],
     author: [],
     locality: [],
+    location: [],
     tipologias: [],
     exhibitions: [],
     dateFrom: "",
@@ -41,6 +64,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
     collections: [],
     authors: [],
     localities: [],
+    locations: [],
     tipologias: [],
     exhibitions: [],
   });
@@ -52,34 +76,43 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
 
   // cargar opciones desde el backend
   useEffect(() => {
+      const fetchCatalog = async (path: string): Promise<string[]> => {
+      const response = await fetch(`${API_URL}${path}`);
+      if (!response.ok) {
+        throw new Error(`Error al cargar ${path}`);
+      }
+      const data: NamedResource[] = await response.json();
+      return data.map((item) => item.nombre);
+    };
     (async () => {
       try {
-        const resps = await Promise.all([
-          fetch(`${API_URL}/api/paises/`),
-          fetch(`${API_URL}/api/colecciones/`),
-          fetch(`${API_URL}/api/autores/`),
-          fetch(`${API_URL}/api/localidades/`),
-          fetch(`${API_URL}/api/tipologias/`),
-          fetch(`${API_URL}/api/exposiciones/`),
-        ]);
-        resps.forEach(r => { if (!r.ok) throw new Error("Error al cargar filtros"); });
-        const [paises, coles, autores, locs, tips, expos] = await Promise.all(resps.map(r => r.json()));
+         const [countries, collections, authors, localities, locations, tipologias, exhibitions] =
+          await Promise.all([
+            fetchCatalog("/api/paises/"),
+            fetchCatalog("/api/colecciones/"),
+            fetchCatalog("/api/autores/"),
+            fetchCatalog("/api/localidades/"),
+            fetchCatalog("/api/ubicacion/"),
+            fetchCatalog("/api/tipologias/"),
+            fetchCatalog("/api/exposiciones/"),
+          ]);
         setOpts({
-          countries: paises.map((x: any) => x.nombre),
-          collections: coles.map((x: any) => x.nombre),
-          authors: autores.map((x: any) => x.nombre),
-          localities: locs.map((x: any) => x.nombre),
-          tipologias: tips.map((x: any) => x.nombre),
-          exhibitions: expos.map((x: any) => x.nombre),
+          countries,
+          collections,
+          authors,
+          localities,
+          locations,
+          tipologias,
+          exhibitions,
         });
-      } catch (e) {
-        console.error("Error fetching filter options:", e);
+      } catch (error) {
+        console.error("Error fetching filter options:", error);
       }
     })();
   }, []);
 
   const onMulti = (
-    category: "country" | "collection" | "author" | "locality" | "tipologias" | "exhibitions",
+    category: MultiFilterKey,
     values: string[]
   ) => setFilters(prev => ({ ...prev, [category]: values }));
 
@@ -90,6 +123,7 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
       collection: [],
       author: [],
       locality: [],
+      location: [],
       tipologias: [],
       exhibitions: [],
       dateFrom: "",
@@ -98,6 +132,51 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
     setFilters(cleared);
     onReset();
   };
+
+   const MULTI_FILTERS: FilterDescriptor[] = [
+    {
+      key: "country",
+      optionsKey: "countries",
+      label: "País",
+      placeholder: "Selec. países",
+    },
+    {
+      key: "collection",
+      optionsKey: "collections",
+      label: "Colección",
+      placeholder: "Selec. colecciones",
+    },
+    {
+      key: "author",
+      optionsKey: "authors",
+      label: "Autor",
+      placeholder: "Selec. autores",
+    },
+    {
+      key: "locality",
+      optionsKey: "localities",
+      label: "Localidad",
+      placeholder: "Selec. localidades",
+    },
+    {
+      key: "location",
+      optionsKey: "locations",
+      label: "Ubicación",
+      placeholder: "Selec. ubicaciones",
+    },
+    {
+      key: "tipologias",
+      optionsKey: "tipologias",
+      label: "Tipología",
+      placeholder: "Selec. tipologías",
+    },
+    {
+      key: "exhibitions",
+      optionsKey: "exhibitions",
+      label: "Exposiciones",
+      placeholder: "Selec. exposiciones",
+    },
+  ];
 
   return (
     <div className="bg-background border rounded-lg p-4 w-full">
@@ -109,137 +188,35 @@ const FilterPanel = ({ onApplyFilters, onReset, initialFilters }: FilterPanelPro
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium w-28">País</Label>
-          <SearchableMultiSelect
-            options={opts.countries}
-            selectedValues={filters.country || []}
-            onSelectionChange={(v) => onMulti("country", v)}
-            placeholder="Selec. países"
-            label="País"
-          />
-           {filters.country && filters.country.length > 0 && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="ml-2"
-              onClick={() => setFilters(prev => ({ ...prev, country: [] }))}
-              title="Limpiar país"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        {MULTI_FILTERS.map(({ key, optionsKey, label, placeholder }) => {
+          const selectedValues = (filters[key] ?? []) as string[];
+          const hasSelection = selectedValues.length > 0;
+          const options = opts[optionsKey];
 
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium w-28">Colección</Label>
-          <SearchableMultiSelect
-            options={opts.collections}
-            selectedValues={filters.collection || []}
-            onSelectionChange={(v) => onMulti("collection", v)}
-            placeholder="Selec. colecciones"
-            label="Colección"
-          />
-          {filters.collection && filters.collection.length > 0 && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="ml-2"
-              onClick={() => setFilters(prev => ({ ...prev, collection: [] }))}
-              title="Limpiar colección"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium w-28">Autor</Label>
-          <SearchableMultiSelect
-            options={opts.authors}
-            selectedValues={filters.author || []}
-            onSelectionChange={(v) => onMulti("author", v)}
-            placeholder="Selec. autores"
-            label="Autor"
-          />
-          {filters.author && filters.author.length > 0 && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="ml-2"
-              onClick={() => setFilters(prev => ({ ...prev, author: [] }))}
-              title="Limpiar autor"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium w-28">Localidad</Label>
-          <SearchableMultiSelect
-            options={opts.localities}
-            selectedValues={filters.locality || []}
-            onSelectionChange={(v) => onMulti("locality", v)}
-            placeholder="Selec. localidades"
-            label="Localidad"
-          />
-          {filters.locality && filters.locality.length > 0 && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="ml-2"
-              onClick={() => setFilters(prev => ({ ...prev, locality: [] }))}
-              title="Limpiar localidad"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium w-28">Tipología</Label>
-          <SearchableMultiSelect
-            options={opts.tipologias}
-            selectedValues={filters.tipologias || []}
-            onSelectionChange={(v) => onMulti("tipologias", v)}
-            placeholder="Selec. tipologías"
-            label="Tipología"
-          />
-          {filters.tipologias && filters.tipologias.length > 0 && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="ml-2"
-              onClick={() => setFilters(prev => ({ ...prev, tipologias: [] }))}
-              title="Limpiar tipologías"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium w-28">Exposiciones</Label>
-          <SearchableMultiSelect
-            options={opts.exhibitions}
-            selectedValues={filters.exhibitions || []}
-            onSelectionChange={(v) => onMulti("exhibitions", v)}
-            placeholder="Selec. exposiciones"
-            label="Exposiciones"
-          />
-          {filters.exhibitions && filters.exhibitions.length > 0 && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="ml-2"
-              onClick={() => setFilters(prev => ({ ...prev, exhibitions: [] }))}
-              title="Limpiar exposiciones"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+          return (
+            <div key={key} className="flex items-center gap-3">
+              <Label className="text-sm font-medium w-28">{label}</Label>
+              <SearchableMultiSelect
+                options={options}
+                selectedValues={selectedValues}
+                onSelectionChange={(value) => onMulti(key, value)}
+                placeholder={placeholder}
+                label={label}
+              />
+              {hasSelection && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="ml-2"
+                  onClick={() => setFilters((prev) => ({ ...prev, [key]: [] }))}
+                  title={`Limpiar ${label.toLowerCase()}`}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          );
+        })}
 
         <div className="space-y-2">
           <Label className="text-sm font-medium">Fecha de creación</Label>

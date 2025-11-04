@@ -22,6 +22,7 @@ const DEFAULT_FILTERS: SearchFilters = {
   collection: [],
   author: [],
   locality: [],
+  location: [],
   tipologias: [],
   exhibitions: [],
   dateFrom: "",
@@ -34,6 +35,7 @@ const hasAdvancedFilters = (filters: SearchFilters) =>
       filters.collection?.length ||
       filters.author?.length ||
       filters.locality?.length ||
+      filters.location?.length ||
       filters.tipologias?.length ||
       filters.exhibitions?.length ||
       filters.dateFrom ||
@@ -48,6 +50,7 @@ const parseFiltersFromParams = (params: URLSearchParams): SearchFilters => {
   filters.collection = params.getAll("coleccion__nombre");
   filters.author = params.getAll("autor__nombre");
   filters.locality = params.getAll("localidad__nombre");
+  filters.location = params.getAll("ubicacion");
   filters.tipologias = params.getAll("tipologia");
   filters.exhibitions = params.getAll("exposiciones__titulo");
   filters.dateFrom = params.get("fecha_creacion_after") ?? "";
@@ -207,6 +210,7 @@ export default function Index() {
     filters.collection?.forEach((c) => searchParams.append("coleccion__nombre", c));
     filters.author?.forEach((a) => searchParams.append("autor__nombre", a));
     filters.locality?.forEach((l) => searchParams.append("localidad__nombre", l));
+    filters.location?.forEach((u) => searchParams.append("ubicacion", u));
     filters.tipologias?.forEach((t) => searchParams.append("tipologia", t));
     // Normaliza exposiciones antes de agregarlas al URLSearchParams
     filters.exhibitions?.forEach((e) => {

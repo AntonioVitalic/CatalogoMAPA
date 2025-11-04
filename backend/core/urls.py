@@ -22,7 +22,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from api.views import (
     PiezaViewSet, ComponenteViewSet, ImagenViewSet, 
-    AutorViewSet, PaisViewSet, LocalidadViewSet, 
+    AutorViewSet, PaisViewSet, LocalidadViewSet, UbicacionViewSet,
     TipologiaViewSet, ColeccionViewSet, ExposicionViewSet,
     importacion_masiva, exportar_excel_con_imagenes
 )
@@ -35,6 +35,7 @@ router.register(r'paises', PaisViewSet, basename='pais')
 router.register(r'colecciones', ColeccionViewSet, basename='coleccion')
 router.register(r'autores', AutorViewSet, basename='autor')
 router.register(r'localidades', LocalidadViewSet, basename='localidad')
+router.register(r'ubicacion', UbicacionViewSet, basename='ubicacion')
 router.register(r'tipologias', TipologiaViewSet, basename='tipologia')
 router.register(r'exposiciones', ExposicionViewSet, basename='exposicion')
 

@@ -16,6 +16,8 @@ const ActiveFilters = ({ filters }: ActiveFiltersProps) => {
     active.push(`autor: ${filters.author.join(", ")}`);
   if (filters.locality?.length)
     active.push(`localidad: ${filters.locality.join(", ")}`);
+  if (filters.location?.length)
+    active.push(`ubicación: ${filters.location.join(", ")}`);
   if (filters.tipologias?.length)
     active.push(`tipología: ${filters.tipologias.join(", ")}`);
   if (filters.exhibitions?.length)

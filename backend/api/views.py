@@ -583,6 +583,7 @@ class PiezaViewSet(viewsets.ViewSet):
         paises      = request.query_params.getlist('pais__nombre')
         autores     = request.query_params.getlist('autor__nombre')
         localidades = request.query_params.getlist('localidad__nombre')
+        ubicaciones = request.query_params.getlist('ubicacion')
         tipologias  = request.query_params.getlist('tipologia')
         expos_a     = request.query_params.getlist('exposiciones')
         expos_b     = request.query_params.getlist('exposiciones__titulo')
@@ -599,6 +600,7 @@ class PiezaViewSet(viewsets.ViewSet):
             "paises":      _norm_list(paises),
             "autores":     _norm_list(autores),
             "localidades": _norm_list(localidades),
+            "ubicaciones": _norm_list(ubicaciones),
             "tipologias":  _norm_list(tipologias),
             "exposiciones": _norm_list(expos_a + expos_b),
             "fecha_from":  fecha_from,
@@ -649,6 +651,9 @@ class PiezaViewSet(viewsets.ViewSet):
         )
         AND (
             size($localidades) = 0 OR any(x IN $localidades WHERE x IN loc_list)
+        )
+        AND (
+            size($ubicaciones) = 0 OR toLower(trim(coalesce(p.ubicacion, ''))) IN $ubicaciones
         )
         AND (
             size($tipologias) = 0 OR toLower(trim(coalesce(p.tipologia, ''))) IN $tipologias
@@ -1465,6 +1470,26 @@ class LocalidadViewSet(viewsets.ViewSet):
             """
             MATCH (comp:Componente)
             WITH DISTINCT trim(comp.localidad) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+        )
+        return Response(data)
+
+class UbicacionViewSet(viewsets.ViewSet):
+    def list(self, request):
+        data = _catalog_from_queries(
+            """
+            MATCH (p:Pieza)
+            WITH DISTINCT trim(coalesce(p.ubicacion, '')) AS nombre
+            WHERE nombre <> ''
+            RETURN nombre
+            ORDER BY nombre
+            """,
+            """
+            MATCH (comp:Componente)
+            WITH DISTINCT trim(coalesce(comp.ubicacion, '')) AS nombre
             WHERE nombre <> ''
             RETURN nombre
             ORDER BY nombre
