@@ -11,6 +11,7 @@ import EditarPieza from "./pages/EditarPieza";
 import HistorialCambios from "./pages/HistorialCambios";
 import ImportacionMasiva from "./pages/ImportacionMasiva";
 import MiCuenta from "./pages/MiCuenta";
+import PasswordReset from "./pages/PasswordReset";
 
 export default function AppRoutes() {
   const { isAuthenticated, loading, user } = useContext(AuthContext);
@@ -23,6 +24,7 @@ export default function AppRoutes() {
    return (
     <Routes>
       <Route path="/login" element={<Auth />} />
+      <Route path="/recuperar-password" element={<PasswordReset />} />
       <Route
         path="/"
         element={<Navigate to="/home?page=1" replace />}

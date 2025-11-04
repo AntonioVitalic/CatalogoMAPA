@@ -181,3 +181,8 @@ SIMPLE_JWT = {
 
 # Usuario personalzido
 AUTH_USER_MODEL = 'accounts.Usuario'
+
+# Email y URLs externas
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@inventariomapa.local")
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")

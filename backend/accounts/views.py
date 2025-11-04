@@ -1,13 +1,23 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from .models import Usuario, RegistroCambioPieza
 from .serializers import UsuarioPublicSerializer, RegistroCambioPiezaSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+token_generator = PasswordResetTokenGenerator()
 
 def _admin_activo_existe(exclude_id=None):
     qs = Usuario.objects.filter(role='admin', is_active=True)
@@ -49,6 +59,70 @@ class RegisterView(APIView):
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         }, status=201)
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'error': 'El correo electrónico es obligatorio.'}, status=400)
+
+        try:
+            user = Usuario.objects.get(email=email)
+        except Usuario.DoesNotExist:
+            # Para evitar enumeración de usuarios, devolvemos éxito genérico
+            return Response({'detail': 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.'})
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = token_generator.make_token(user)
+        reset_link = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/recuperar-password?uid={uid}&token={token}"
+        subject = 'Recuperación de contraseña - Inventario MAPA'
+        message = (
+            'Hola,\n\n'
+            'Se ha solicitado restablecer la contraseña de tu cuenta en Inventario MAPA. '
+            'Para continuar, haz clic en el siguiente enlace o cópialo en tu navegador:\n\n'
+            f"{reset_link}\n\n"
+            'Si no solicitaste este cambio, puedes ignorar este mensaje.'
+        )
+
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+        except Exception:
+            return Response({'error': 'No se pudo enviar el correo de recuperación. Intenta nuevamente más tarde.'}, status=500)
+        return Response({'detail': 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.'})
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        uid = request.data.get('uid', '')
+        token = request.data.get('token', '')
+        password = request.data.get('password', '')
+
+        if not all([uid, token, password]):
+            return Response({'error': 'Faltan datos para restablecer la contraseña.'}, status=400)
+
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = Usuario.objects.get(pk=user_id)
+        except (ValueError, Usuario.DoesNotExist, TypeError):
+            return Response({'error': 'El enlace de recuperación no es válido.'}, status=400)
+
+        if not token_generator.check_token(user, token):
+            return Response({'error': 'El enlace de recuperación ha expirado o no es válido.'}, status=400)
+
+        try:
+            validate_password(password, user)
+        except ValidationError as exc:
+            return Response({'error': ' '.join(exc.messages)}, status=400)
+
+        user.set_password(password)
+        user.save(update_fields=['password'])
+
+        return Response({'detail': 'Contraseña actualizada correctamente.'})
+
 
 class LoginView(TokenObtainPairView):
     """
