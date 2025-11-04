@@ -189,6 +189,29 @@ const ItemGrid = ({
     </div>
   );
 
+  const renderItemsPerPageSelect = () => (
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-muted-foreground whitespace-nowrap">
+        Cantidad de piezas por página:
+      </span>
+      <Select
+        value={String(pagination.itemsPerPage)}
+        onValueChange={(value) => onItemsPerPageChange(Number(value))}
+      >
+        <SelectTrigger className="w-[4.5rem] h-9">
+          <SelectValue placeholder={String(pagination.itemsPerPage)} />
+        </SelectTrigger>
+        <SelectContent>
+          {itemsPerPageOptions.map((option) => (
+            <SelectItem key={option} value={String(option)}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -215,28 +238,10 @@ const ItemGrid = ({
                   Solo visible en página actual ({items.length})
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  Cantidad de piezas por página:
-                </span>
-                <Select
-                  value={String(pagination.itemsPerPage)}
-                  onValueChange={(value) => onItemsPerPageChange(Number(value))}
-                >
-                  <SelectTrigger className="w-[4.5rem] h-9">
-                    <SelectValue placeholder={String(pagination.itemsPerPage)} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {itemsPerPageOptions.map((option) => (
-                      <SelectItem key={option} value={String(option)}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {renderItemsPerPageSelect()}
             </>
           )}
+          {(userRole !== "admin" && userRole !== "editor") && renderItemsPerPageSelect()}
         </div>
         <div className={`bg-background border rounded-md p-1 flex ${userRole === "visitor" ? "ml-auto" : ""}`}>
           <Button

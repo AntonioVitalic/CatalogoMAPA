@@ -1512,9 +1512,9 @@ export default function CrearPieza() {
                           }));
                         }}
                       />
-                      <small className="text-gray-500">
+                      {/* <small className="text-gray-500">
                         Los nombres deben seguir el formato del museo (regex de import). Se subirán al guardar la pieza si se implementa el backend para archivos por componente.
-                      </small>
+                      </small> */}
                     </div>
                   </div>
                 </div>
