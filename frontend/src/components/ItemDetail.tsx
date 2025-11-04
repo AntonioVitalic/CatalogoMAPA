@@ -167,7 +167,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   };
 
   // Helper para mostrar todos los campos de una pieza/componente
-   const renderFullInfo = (data: any, title: string) => {
+  const renderFullInfo = (data: any, title: string) => {
     const normalizedData: Record<string, unknown> = data ?? {};
     const keysToRender = getOrderedKeys(normalizedData);
 
@@ -243,7 +243,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             Editar pieza
           </Button>
         )}
-         <Button variant="outline" size="sm" onClick={() => setShowFullInfo(true)}>
+        <Button variant="outline" size="sm" onClick={() => setShowFullInfo(true)}>
           Ver información completa
         </Button>
       </div>
@@ -263,7 +263,6 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
               </div>
             )}
           </div>
-
           <div className="flex justify-between">
             <p className="text-sm text-muted-foreground">
               {item.fecha_creacion
@@ -272,9 +271,32 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             </p>
             <Button variant="ghost" size="sm" onClick={downloadImage}>
               <DownloadIcon className="mr-2 h-4 w-4" />
-              Descargar imagen
+              Descargar imagen principal
             </Button>
           </div>
+
+          {item.imagenes && item.imagenes.length > 1 && (
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                Otras imágenes
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {item.imagenes.slice(1).map((img, index) => (
+                  <div
+                    key={`${img.imagen}-${index}`}
+                    className="relative w-full overflow-hidden rounded-md bg-muted/20"
+                  >
+                    <img
+                      src={img.imagen}
+                      alt={img.descripcion || item.nombre_comun || `Imagen ${index + 2}`}
+                      className="w-full h-28 sm:h-32 object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
 
         <div className="space-y-6">

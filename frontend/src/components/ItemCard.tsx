@@ -28,15 +28,45 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
     });
   };
 
+  const images = item.imagenes ?? [];
+  const hasImages = images.length > 0;
+  const showGrid = images.length > 1;
+  const maxGridImages = 4;
+
   return (
     <Card className={`overflow-hidden hover:shadow-md transition-shadow ${isSelected ? 'ring-2 ring-primary' : ''}`}>
       <div className="relative aspect-square bg-muted/10 flex items-center justify-center">
-        {item.imagenes && item.imagenes.length > 0 ? (
-          <img
-            src={item.imagenes[0].imagen}
-            alt={item.imagenes[0].descripcion || item.nombre_comun || "Sin imagen"}
-            className="max-h-full max-w-full object-contain p-2"
-          />
+        {hasImages ? (
+          showGrid ? (
+            <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full h-full p-1">
+              {images.slice(0, maxGridImages).map((img, index) => {
+                const remaining = Math.max(images.length - maxGridImages, 0);
+                const isLastVisible =
+                  index === Math.min(images.length, maxGridImages) - 1;
+
+                return (
+                  <div key={`${img.imagen}-${index}`} className="relative w-full h-full overflow-hidden rounded-sm bg-background">
+                    <img
+                      src={img.imagen}
+                      alt={img.descripcion || item.nombre_comun || "Sin imagen"}
+                      className="w-full h-full object-cover"
+                    />
+                    {remaining > 0 && isLastVisible && (
+                      <div className="absolute inset-0 bg-black/50 text-white text-sm font-semibold flex items-center justify-center">
+                        +{remaining}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <img
+              src={images[0].imagen}
+              alt={images[0].descripcion || item.nombre_comun || "Sin imagen"}
+              className="max-h-full max-w-full object-contain p-2"
+            />
+          )
         ) : (
           <div className="flex h-full w-full items-center justify-center p-4">
             <span className="text-muted-foreground text-sm text-center">Sin imagen</span>
