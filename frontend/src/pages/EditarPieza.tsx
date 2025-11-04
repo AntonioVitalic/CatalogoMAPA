@@ -622,6 +622,28 @@ export default function EditarPieza() {
                 onChange={handleChangePiece}
               />
             </div>
+            {/* Nombre común */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Nombre común</label>
+              <input
+                type="text"
+                name="nombre_comun"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.nombre_comun}
+                onChange={handleChangePiece}
+              />
+            </div>
+            {/* Nombre atribuido */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Nombre atribuido</label>
+              <input
+                type="text"
+                name="nombre_especifico"
+                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                value={pieceData.nombre_especifico}
+                onChange={handleChangePiece}
+              />
+            </div>
             {/* Número de registro anterior */}
             <div>
               <label className="block text-sm font-medium mb-1">N° de registro anterior</label>
@@ -640,7 +662,7 @@ export default function EditarPieza() {
                 type="text"
                 name="codigo_surdoc"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                 value={pieceData.codigo_surdoc}
+                value={pieceData.codigo_surdoc}
                 onChange={handleChangePiece}
               />
             </div>
@@ -743,28 +765,6 @@ export default function EditarPieza() {
                 name="conjunto"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 value={pieceData.conjunto}
-                onChange={handleChangePiece}
-              />
-            </div>
-            {/* Nombre común */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Nombre común</label>
-              <input
-                type="text"
-                name="nombre_comun"
-                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.nombre_comun}
-                onChange={handleChangePiece}
-              />
-            </div>
-            {/* Nombre atribuido */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Nombre atribuido</label>
-              <input
-                type="text"
-                name="nombre_especifico"
-                className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={pieceData.nombre_especifico}
                 onChange={handleChangePiece}
               />
             </div>
@@ -1273,6 +1273,26 @@ export default function EditarPieza() {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium mb-2">Nombre común</label>
+                  <input
+                    type="text"
+                    name="nombre_comun"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.nombre_comun}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nombre atribuido</label>
+                  <input
+                    type="text"
+                    name="nombre_especifico"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.nombre_especifico}
+                    onChange={handleChangeComp}
+                  />
+                </div>
+                <div>
                   <label className="block text-sm font-medium mb-2">Número de registro anterior</label>
                   <input
                     type="text"
@@ -1369,26 +1389,6 @@ export default function EditarPieza() {
                     name="conjunto"
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.conjunto}
-                    onChange={handleChangeComp}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Nombre común</label>
-                  <input
-                    type="text"
-                    name="nombre_comun"
-                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                    value={compForm.nombre_comun}
-                    onChange={handleChangeComp}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Nombre atribuido</label>
-                  <input
-                    type="text"
-                    name="nombre_especifico"
-                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                    value={compForm.nombre_especifico}
                     onChange={handleChangeComp}
                   />
                 </div>
