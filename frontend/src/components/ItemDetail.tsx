@@ -10,7 +10,7 @@ import { saveAs } from "file-saver";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { getComponentDisplayLetter } from "@/utils/componentLabel";
-
+import { formatInventoryNumberWithComponents } from "@/utils/inventoryNumber";
 interface ItemDetailProps {
   item: CollectionItem;
 }
@@ -37,6 +37,11 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     }
     navigate("/home?page=1");
   };
+
+  const displayInventoryNumber = formatInventoryNumberWithComponents(
+    item.inventoryNumber,
+    item.componentes
+  );
 
   const FIELD_LABELS: Record<string, string> = {
     inventoryNumber: "N° de inventario",
@@ -226,11 +231,6 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
           Volver al inventario
         </Button>
 
-        {item.componentes && item.componentes.length > 0 && (
-          <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded">
-            Posee componente(s)
-          </span>
-        )}
         {item.etiqueta_eliminado && (
           <span className="text-xs font-bold text-red-600 bg-red-100 border border-red-400 px-2 py-1 rounded ml-2">
             Eliminado
@@ -279,7 +279,7 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
 
         <div className="space-y-6">
           <div>
-            <p className="text-sm text-muted-foreground">{item.inventoryNumber}</p>
+            <p className="text-sm text-muted-foreground">{displayInventoryNumber}</p>
             <h1 className="text-2xl font-bold">{item.nombre_comun}</h1>
             {item.nombre_especifico && (
               <p className="text-lg text-muted-foreground">{item.nombre_especifico}</p>

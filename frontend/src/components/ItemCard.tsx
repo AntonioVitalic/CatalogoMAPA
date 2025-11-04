@@ -4,7 +4,7 @@ import { CollectionItem } from "@/types";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye } from "lucide-react";
-
+import { formatInventoryNumberWithComponents } from "@/utils/inventoryNumber";
 interface ItemCardProps {
   item: CollectionItem;
   onSelect: (item: CollectionItem) => void;
@@ -15,6 +15,12 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useAuth();
+
+  const displayInventoryNumber = formatInventoryNumberWithComponents(
+    item.inventoryNumber,
+    item.componentes
+  );
+
 
   const viewDetails = () => {
     navigate(`/detail/${item.id}`, {
@@ -56,7 +62,7 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
       <CardContent className="p-4">
         <div className="space-y-2">
           <div>
-            <p className="text-xs text-muted-foreground">{item.inventoryNumber}</p>
+            <p className="text-xs text-muted-foreground">{displayInventoryNumber}</p>
             <h3 className="font-medium line-clamp-2">{item.nombre_comun}</h3>
             {item.nombre_especifico && (
               <p className="text-sm text-muted-foreground line-clamp-1">{item.nombre_especifico}</p>
@@ -74,13 +80,6 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
             <div>
               <p className="text-xs font-medium">Autor</p>
               <p className="text-sm line-clamp-1">{item.autor}</p>
-            </div>
-          )}
-          {item.componentes && item.componentes.length > 0 && (
-            <div className="my-2">
-              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded">
-                Posee componente(s)
-              </span>
             </div>
           )}
           {item.etiqueta_eliminado && (

@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LayoutGrid, List, Check } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { formatInventoryNumberWithComponents } from "@/utils/inventoryNumber";
 
 interface ItemGridProps {
   items: CollectionItem[];
@@ -117,7 +118,10 @@ const ItemGrid = ({
             <div className="flex justify-between">
               <div className="max-w-[70%] space-y-1">
               <p className="text-xs text-muted-foreground">
-                {item.inventoryNumber}
+                {formatInventoryNumberWithComponents(
+                  item.inventoryNumber,
+                  item.componentes
+                )}
               </p>
               <h3 className="font-medium text-sm truncate">
                 {item.nombre_comun}
@@ -132,11 +136,6 @@ const ItemGrid = ({
                   <p className="text-xs font-medium">Autor</p>
                   <p className="text-sm line-clamp-1">{item.autor}</p>
                 </div>
-              )}
-              {item.componentes && item.componentes.length > 0 && (
-                <span className="text-xs font-bold text-primary bg-primary/10 border border-primary px-2 py-1 rounded inline-block my-1">
-                  Posee componente(s)
-                </span>
               )}
               {item.etiqueta_eliminado && (
                 <span className="text-xs font-bold text-red-600 bg-red-100 border border-red-400 px-2 py-1 rounded ml-2">
