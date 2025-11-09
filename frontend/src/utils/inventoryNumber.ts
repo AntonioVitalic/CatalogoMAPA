@@ -34,7 +34,7 @@ export const formatInventoryNumberWithComponents = (
   }
 
   if (componentCount === 1) {
-    return `${inventoryNumber}+a`;
+    return `${inventoryNumber}a`;
   }
 
   const lastLetter = getLastComponentLetter(componentCount);
@@ -43,5 +43,5 @@ export const formatInventoryNumberWithComponents = (
     return inventoryNumber;
   }
 
-  return `${inventoryNumber}+a${lastLetter}`;
+  return `${inventoryNumber}a${lastLetter}`;
 };

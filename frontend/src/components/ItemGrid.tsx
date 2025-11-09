@@ -226,7 +226,7 @@ const ItemGrid = ({
                   className="flex items-center gap-2"
                 >
                   <Check size={16} />
-                  Todas filtradas ({totalFilteredItems})
+                  Seleccionar todas las filtradas ({totalFilteredItems})
                 </Button>
                 <Button
                   variant="outline"
@@ -235,7 +235,7 @@ const ItemGrid = ({
                   className="flex items-center gap-2"
                 >
                   <Check size={16} />
-                  Solo visible en página actual ({items.length})
+                  Seleccionar todas las visibles ({items.length})
                 </Button>
               </div>
               {renderItemsPerPageSelect()}
