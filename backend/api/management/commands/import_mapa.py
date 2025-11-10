@@ -557,6 +557,14 @@ class Command(BaseCommand):
         
         pd.DataFrame({"nombre": _uniq_series(piezas_df.get("exposiciones", pd.Series(dtype=str)))}) \
           .to_csv(os.path.join(aux_dir, "exposiciones.csv"), index=False)
+        
+        ubicaciones_series = _uniq_series(pd.concat([
+            piezas_df.get("ubicacion", pd.Series(dtype=str)),
+            comp_df.get("ubicacion", pd.Series(dtype=str)),
+        ], ignore_index=True))
+
+        pd.DataFrame({"nombre": ubicaciones_series}) \
+          .to_csv(os.path.join(aux_dir, "ubicaciones.csv"), index=False)
 
         self.stdout.write(self.style.SUCCESS(
             f"✅ Import finalizado: {len(piezas_df)} piezas, {len(img_rows)} imágenes, en {time.monotonic()-t0:.2f}s"

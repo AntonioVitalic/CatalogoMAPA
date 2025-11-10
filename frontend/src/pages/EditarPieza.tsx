@@ -255,21 +255,23 @@ export default function EditarPieza() {
   const [countries, setCountries] = useState<string[]>([]);
   const [localidades, setLocalidades] = useState<string[]>([]);
   const [collections, setCollections] = useState<string[]>([]);
+  const [ubicaciones, setUbicaciones] = useState<string[]>([]);
   const [tipologias, setTipologias] = useState<string[]>([]);
   const [exposiciones, setExposiciones] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
-        const [autRes, paisRes, locRes, colRes, tipRes, expRes] = await Promise.all([
+        const [autRes, paisRes, locRes, colRes, ubiRes, tipRes, expRes] = await Promise.all([
           api.get("/api/autores/"), api.get("/api/paises/"),
           api.get("/api/localidades/"), api.get("/api/colecciones/"),
-          api.get("/api/tipologias/"), api.get("/api/exposiciones/")
+          api.get("/api/ubicacion/"), api.get("/api/tipologias/"), api.get("/api/exposiciones/")
         ]);
         setAuthors(autRes.data.map((a: any) => a.nombre));
         setCountries(paisRes.data.map((p: any) => p.nombre));
         setLocalidades(locRes.data.map((l: any) => l.nombre));
         setCollections(colRes.data.map((c: any) => c.nombre));
+        setUbicaciones(ubiRes.data.map((u: any) => u.nombre));
         setTipologias(tipRes.data.map((t: any) => t.nombre));
         setExposiciones(expRes.data.map((e: any) => e.nombre));
       } catch (err) {
@@ -672,10 +674,15 @@ export default function EditarPieza() {
               <input
                 type="text"
                 name="ubicacion"
+                list="list-ubicaciones"
                 className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 value={pieceData.ubicacion}
                 onChange={handleChangePiece}
               />
+              <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+              <datalist id="ubicaciones-list">
+                {ubicaciones.map(u => <option key={u} value={u} />)}
+              </datalist>
             </div>
             {/* Depósito */}
             <div>
@@ -1317,10 +1324,12 @@ export default function EditarPieza() {
                   <input
                     type="text"
                     name="ubicacion"
+                    list="ubicaciones-list"
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.ubicacion}
                     onChange={handleChangeComp}
                   />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Depósito</label>
