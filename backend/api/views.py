@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
 from django.utils.text import get_valid_filename
 from neomodel import db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import subprocess
 import time
 import json
@@ -1256,26 +1256,43 @@ class PiezaViewSet(viewsets.ViewSet):
 
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
 
-        # Verifica fecha_ingreso
-        fecha_ingreso = pieza.fecha_ingreso
-        if fecha_ingreso:
-            try:
-                # Asume formato YYYY-MM-DD, ajusta si es necesario
-                fecha_dt = datetime.strptime(fecha_ingreso[:10], "%Y-%m-%d")
-                if (datetime.now() - fecha_dt).days > 365:
-                    return Response({"detail": "No se puede eliminar piezas con fecha de ingreso mayor a 1 año."}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception:
-                pass  # Si no se puede parsear, permite eliminar
+        created_at = getattr(pieza, "created_at", None)
+        if not isinstance(created_at, datetime):
+            return Response(
+                {"detail": "Solo se pueden eliminar piezas creadas en la última hora."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Marca como eliminada (agrega propiedad o relación)
-        pieza.etiqueta_eliminado = True
-        pieza.save()
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        if now - created_at > timedelta(hours=1):
+            return Response(
+                {"detail": "Solo se pueden eliminar piezas creadas en la última hora."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        numero_inventario = pieza.numero_inventario
+
+        # Elimina componentes e imágenes asociados antes de eliminar la pieza
+        for comp in list(pieza.componentes.all()):
+            for img in list(comp.imagenes.all()):
+                comp.imagenes.disconnect(img)
+                img.delete()
+            comp.delete()
+
+        for img in list(pieza.imagenes.all()):
+            pieza.imagenes.disconnect(img)
+            img.delete()
+
+        pieza.delete()
 
         # Auditoría
         RegistroCambioPieza.objects.create(
             usuario=request.user,
-            pieza_id=pieza.numero_inventario,
-            accion="EDITAR",
+            pieza_id=numero_inventario,
+            accion="ELIMINAR",
             detalle=json.dumps({"eliminado": True})
         )
         return Response(status=status.HTTP_204_NO_CONTENT)

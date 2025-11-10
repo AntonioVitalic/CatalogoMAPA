@@ -1,7 +1,8 @@
 # api/models.py (Neo4j / neomodel)
 from neomodel import (
     StructuredNode, StringProperty, IntegerProperty, FloatProperty,
-    UniqueIdProperty, RelationshipTo, BooleanProperty, ArrayProperty
+    UniqueIdProperty, RelationshipTo, BooleanProperty, ArrayProperty,
+    DateTimeProperty,
 )
 
 class Pais(StructuredNode):
@@ -114,6 +115,7 @@ class Pieza(StructuredNode):
     # Clave pública que usaremos como “id” para el API (entero)
     numero_inventario = StringProperty(index=True)
     numero_inventario_int = IntegerProperty(index=True)  # para ordenar rápido
+    created_at = DateTimeProperty(default_now=True)
 
     letra = StringProperty(index=True)
     unidad_relacionada = StringProperty()
