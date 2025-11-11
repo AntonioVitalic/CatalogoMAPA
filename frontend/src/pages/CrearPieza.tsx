@@ -60,6 +60,10 @@ type ComponentForm = {
   imagenes?: ComponentImageForm[];
 };
 
+type StringComponentField = {
+  [Key in keyof ComponentForm]: ComponentForm[Key] extends string | undefined ? Key : never;
+}[keyof ComponentForm];
+
 const initialComp: ComponentForm = {
   letra: "",
   unidad_relacionada: "",
@@ -110,58 +114,111 @@ const initialComp: ComponentForm = {
   imagenes: []
 };
 
+const initialPieceData = {
+  numero_inventario: "",
+  unidad_relacionada: "",
+  numero_registro_anterior: "",
+  codigo_surdoc: "",
+  ubicacion: "",
+  deposito: "",
+  estante_o_fullspace: "",
+  cajas_o_nivel: "",
+  tipologia: "",
+  clasificacion: "",
+  conjunto: "",
+  nombre_comun: "",
+  nombre_especifico: "",
+  fecha_creacion: "",
+  descripcion: "",
+  alto_cm: "",
+  ancho_cm: "",
+  profundidad_cm: "",
+  diametro_cm: "",
+  espesor_mm: "",
+  peso_gr: "",
+  funcion: "",
+  marcas_inscripciones: "",
+  contexto_historico: "",
+  bibliografia: "",
+  iconografia: "",
+  notas_investigacion: "",
+  exposiciones: "",
+  avaluo: "",
+  procedencia: "",
+  donante: "",
+  fecha_ingreso: "",
+  estado_conservacion: "",
+  descripcion_conservacion: "",
+  responsable_conservacion: "",
+  fecha_actualizacion_conservacion: "",
+  comentarios_conservacion: "",
+  responsable_coleccion: "",
+  autor: "",
+  filiacion_cultural: "",
+  pais: "",
+  localidad: "",
+  coleccion: "",
+  materialidad: "",
+  tecnica: "",
+  fecha_ultima_modificacion: ""
+};
+
+type PieceForm = typeof initialPieceData;
+
+const pieceToComponentFieldPairs: Array<[keyof ComponentForm, keyof PieceForm]> = [
+  ["unidad_relacionada", "unidad_relacionada"],
+  ["numero_registro_anterior", "numero_registro_anterior"],
+  ["codigo_surdoc", "codigo_surdoc"],
+  ["ubicacion", "ubicacion"],
+  ["deposito", "deposito"],
+  ["estante_o_fullspace", "estante_o_fullspace"],
+  ["cajas_o_nivel", "cajas_o_nivel"],
+  ["tipologia", "tipologia"],
+  ["coleccion", "coleccion"],
+  ["clasificacion", "clasificacion"],
+  ["conjunto", "conjunto"],
+  ["nombre_comun", "nombre_comun"],
+  ["nombre_especifico", "nombre_especifico"],
+  ["autor", "autor"],
+  ["filiacion_cultural", "filiacion_cultural"],
+  ["pais", "pais"],
+  ["localidad", "localidad"],
+  ["fecha_creacion", "fecha_creacion"],
+  ["descripcion_col", "descripcion"],
+  ["marcas_inscripciones", "marcas_inscripciones"],
+  ["tecnica", "tecnica"],
+  ["materialidad", "materialidad"],
+  ["descripcion_cr", "descripcion_conservacion"],
+  ["alto_cm", "alto_cm"],
+  ["ancho_cm", "ancho_cm"],
+  ["profundidad_cm", "profundidad_cm"],
+  ["diametro_cm", "diametro_cm"],
+  ["espesor_mm", "espesor_mm"],
+  ["peso_gr", "peso_gr"],
+  ["funcion", "funcion"],
+  ["contexto_historico", "contexto_historico"],
+  ["bibliografia", "bibliografia"],
+  ["iconografia", "iconografia"],
+  ["notas_investigacion", "notas_investigacion"],
+  ["estado_conservacion", "estado_conservacion"],
+  ["responsable_conservacion", "responsable_conservacion"],
+  ["fecha_actualizacion_conservacion", "fecha_actualizacion_conservacion"],
+  ["comentarios_conservacion", "comentarios_conservacion"],
+  ["exposiciones", "exposiciones"],
+  ["avaluo", "avaluo"],
+  ["procedencia", "procedencia"],
+  ["donante", "donante"],
+  ["fecha_ingreso", "fecha_ingreso"],
+  ["responsable_coleccion", "responsable_coleccion"],
+  ["fecha_ultima_modificacion", "fecha_ultima_modificacion"]
+];
+
+
 export default function CrearPieza() {
   const [showLogin, setShowLogin] = useState(false);
   const navigate = useNavigate();
 
-  const [pieceData, setPieceData] = useState({
-    numero_inventario: "",
-    unidad_relacionada: "",
-    numero_registro_anterior: "",
-    codigo_surdoc: "",
-    ubicacion: "",
-    deposito: "",
-    estante_o_fullspace: "",
-    cajas_o_nivel: "",
-    tipologia: "",
-    clasificacion: "",
-    conjunto: "",
-    nombre_comun: "",
-    nombre_especifico: "",
-    fecha_creacion: "",
-    descripcion: "",
-    alto_cm: "",
-    ancho_cm: "",
-    profundidad_cm: "",
-    diametro_cm: "",
-    espesor_mm: "",
-    peso_gr: "",
-    funcion: "",
-    marcas_inscripciones: "",
-    contexto_historico: "",
-    bibliografia: "",
-    iconografia: "",
-    notas_investigacion: "",
-    exposiciones: "",
-    avaluo: "",
-    procedencia: "",
-    donante: "",
-    fecha_ingreso: "",
-    estado_conservacion: "",
-    descripcion_conservacion: "",
-    responsable_conservacion: "",
-    fecha_actualizacion_conservacion: "",
-    comentarios_conservacion: "",
-    responsable_coleccion: "",
-    autor: "",
-    filiacion_cultural: "",
-    pais: "",
-    localidad: "",
-    coleccion: "",
-    materialidad: "",
-    tecnica: "",
-    fecha_ultima_modificacion: ""
-  });
+  const [pieceData, setPieceData] = useState<PieceForm>({ ...initialPieceData });
 
   const [components, setComponents] = useState<ComponentForm[]>([]);
   const [compForm, setCompForm] = useState<ComponentForm>(initialComp);
@@ -255,8 +312,21 @@ export default function CrearPieza() {
         defaultLetter = String.fromCharCode(lastLetter.toLowerCase().charCodeAt(0) + 1);
       }
     }
+
+    const mappedValues = pieceToComponentFieldPairs.reduce((acc, [componentField, pieceField]) => {
+      const value = pieceData[pieceField];
+      if (typeof value !== "undefined") {
+        acc[componentField] = value;
+      }
+      return acc;
+    }, {} as Partial<Pick<ComponentForm, StringComponentField>>);
     setEditIndex(null);
-    setCompForm({ ...initialComp, letra: defaultLetter, imagenes: [] });
+    setCompForm({
+      ...initialComp,
+      ...mappedValues,
+      letra: defaultLetter,
+      imagenes: []
+    });
     setShowCompModal(true);
   };
 
