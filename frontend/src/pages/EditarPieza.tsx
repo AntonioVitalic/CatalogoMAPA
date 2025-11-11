@@ -1369,7 +1369,9 @@ export default function EditarPieza() {
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.tipologia}
                     onChange={handleChangeComp}
+                    list="tipologias-list"
                   />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Colección</label>
@@ -1379,7 +1381,9 @@ export default function EditarPieza() {
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.coleccion}
                     onChange={handleChangeComp}
+                    list="collections-list"
                   />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Clasificación</label>
@@ -1409,7 +1413,9 @@ export default function EditarPieza() {
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.autor}
                     onChange={handleChangeComp}
+                    list="authors-list"
                   />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Filiación cultural</label>
@@ -1429,7 +1435,9 @@ export default function EditarPieza() {
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.pais}
                     onChange={handleChangeComp}
+                    list="countries-list"
                   />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Localidad</label>
@@ -1667,7 +1675,9 @@ export default function EditarPieza() {
                     className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
                     value={compForm.exposiciones}
                     onChange={handleChangeComp}
+                    list="exposiciones-list"
                   />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Avaluo</label>

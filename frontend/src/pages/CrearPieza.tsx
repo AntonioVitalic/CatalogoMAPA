@@ -1100,26 +1100,30 @@ export default function CrearPieza() {
                       onChange={handleChangeComp}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Tipología</label>
-                    <input
-                      type="text"
-                      name="tipologia"
-                      className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                      value={compForm.tipologia}
-                      onChange={handleChangeComp}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Colección</label>
-                    <input
-                      type="text"
-                      name="coleccion"
-                      className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                      value={compForm.coleccion}
-                      onChange={handleChangeComp}
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Tipología</label>
+                  <input
+                    type="text"
+                    name="tipologia"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.tipologia}
+                    onChange={handleChangeComp}
+                    list="list-tipologias"
+                  />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Colección</label>
+                  <input
+                    type="text"
+                    name="coleccion"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.coleccion}
+                    onChange={handleChangeComp}
+                    list="list-colecciones"
+                  />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Clasificación</label>
                     <input
@@ -1141,15 +1145,17 @@ export default function CrearPieza() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Autor</label>
-                    <input
-                      type="text"
-                      name="autor"
-                      className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                      value={compForm.autor}
-                      onChange={handleChangeComp}
-                    />
-                  </div>
+                  <label className="block text-sm font-medium mb-2">Autor</label>
+                  <input
+                    type="text"
+                    name="autor"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.autor}
+                    onChange={handleChangeComp}
+                    list="list-autores"
+                  />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Filiación cultural</label>
                     <input
@@ -1161,15 +1167,17 @@ export default function CrearPieza() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">País</label>
-                    <input
-                      type="text"
-                      name="pais"
-                      className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                      value={compForm.pais}
-                      onChange={handleChangeComp}
-                    />
-                  </div>
+                  <label className="block text-sm font-medium mb-2">País</label>
+                  <input
+                    type="text"
+                    name="pais"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.pais}
+                    onChange={handleChangeComp}
+                    list="list-paises"
+                  />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Localidad</label>
                     <input
@@ -1399,15 +1407,17 @@ export default function CrearPieza() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Exposiciones</label>
-                    <input
-                      type="text"
-                      name="exposiciones"
-                      className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
-                      value={compForm.exposiciones}
-                      onChange={handleChangeComp}
-                    />
-                  </div>
+                  <label className="block text-sm font-medium mb-2">Exposiciones</label>
+                  <input
+                    type="text"
+                    name="exposiciones"
+                    className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2"
+                    value={compForm.exposiciones}
+                    onChange={handleChangeComp}
+                    list="list-exposiciones"
+                  />
+                  <small className="text-gray-500">Puedes preseleccionar valores ya guardados.</small>
+                </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Avaluo</label>
                     <input
