@@ -100,6 +100,25 @@ def _fmt_fecha_con_hora_or_nat(val):
         return s
     return f"{s} 00:00:00"
 
+def _imagen_sort_key(file_name, numero_inventario):
+    """Ordena imágenes priorizando la que coincide exactamente con el número de inventario.
+
+    Si existen variantes del mismo número (p. ej. 04616a.00.jpg), se ordenan después
+    de la imagen base (04616.00.jpg), manteniendo el orden alfabético para el resto.
+    """
+
+    numero = (numero_inventario or "").strip().lower()
+    fname = (file_name or "").strip().lower()
+    # Considerar únicamente el nombre del archivo, sin ruta.
+    name_only = fname.rsplit("/", 1)[-1]
+    base = name_only.split(".")[0]
+
+    if numero:
+        if base == numero:
+            return (0, name_only)
+        if base.startswith(numero):
+            return (1, name_only)
+    return (2, name_only)
 
 # -----------------------------
 #  Imágenes (compat sqlite)
@@ -196,7 +215,11 @@ class ComponenteOutSerializer(serializers.Serializer):
         # base['tecnica']    = [t.nombre for t in c.tecnica.all()]
         request = self.context.get('request')
         imgs, img_id = [], 0
-        for i in c.imagenes.all():
+        ordered_imgs = sorted(
+            c.imagenes.all(),
+            key=lambda img: _imagen_sort_key(getattr(img, 'file_name', ''), c.pieza_numero_inventario),
+        )
+        for i in ordered_imgs:
             img_id += 1
             rel = f"{settings.MEDIA_URL}{i.file_name}"
             imgs.append({
@@ -329,7 +352,8 @@ class PiezaOutSerializer(serializers.Serializer):
         # Imágenes
         request = self.context.get('request')
         imgs, img_id = [], 0
-        for i in p.imagenes.all():
+        ordered_imgs = sorted(p.imagenes.all(), key=lambda img: _imagen_sort_key(getattr(img, 'file_name', ''), p.numero_inventario))
+        for i in ordered_imgs:
             img_id += 1
             rel = f"{settings.MEDIA_URL}{i.file_name}"
             imgs.append({
@@ -371,7 +395,10 @@ class PiezaExportSerializer(serializers.Serializer):
         return getattr(p, "materialidad", "")
 
     def get_imagen(self, p: Pieza):
-        imgs = list(p.imagenes.all())
+        imgs = sorted(
+            p.imagenes.all(),
+            key=lambda img: _imagen_sort_key(getattr(img, 'file_name', ''), p.numero_inventario),
+        )
         if not imgs:
             return ""
         request = self.context.get('request')
