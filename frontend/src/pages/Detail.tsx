@@ -115,7 +115,7 @@ const Detail = () => {
         }
         const data = await res.json();
         console.log("API response for pieza", data);
-        // Map the API data to CollectionItem structure, substituting "Sin dato" for null/empty fields
+        // Mapear los datos de la API a la estructura CollectionItem, sustituyendo "Sin dato" por campos nulos/vacíos
         const mappedItem: CollectionItem = {
           id: data.id ? String(data.id) : "",
           inventoryNumber: data.numero_inventario || "Sin dato",
@@ -289,18 +289,20 @@ const Detail = () => {
                         <tr>
                           <td className="font-medium pr-4 py-2 align-top text-right text-muted-foreground">Imágenes</td>
                           <td className="pl-4 py-2 align-top">
-                            {comp.imagenes.map((img: any, i: number) => (
-                               <div key={i} className="relative inline-block mr-2">
-                                <img
-                                  src={img.imagen}
-                                  alt={img.descripcion || ""}
-                                  className="inline-block h-16 w-16 object-cover rounded border"
-                                />
-                                <span className="absolute -bottom-2 left-0 rounded-full bg-black/70 px-2 text-[10px] font-medium text-white">
-                                  Imagen {String(i).padStart(2, "0")}
-                                </span>
-                              </div>
-                            ))}
+                              <div className="flex flex-wrap gap-3">
+                              {comp.imagenes.map((img: any, i: number) => (
+                                <div key={i} className="inline-flex flex-col items-start">
+                                  <img
+                                    src={img.imagen}
+                                    alt={img.descripcion || ""}
+                                    className="inline-block h-16 w-16 object-cover rounded border"
+                                  />
+                                  <span className="mt-1 text-[10px] font-medium text-muted-foreground">
+                                    Imagen {String(i).padStart(2, "0")}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </td>
                         </tr>
                       )}

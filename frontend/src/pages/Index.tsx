@@ -92,26 +92,6 @@ export default function Index() {
   const [showLogin, setShowLogin] = useState(false);
   const [showNeo4j, setShowNeo4j] = useState(false);
 
-  // // Carga inicial y cuando cambian página o filtros
-  // useEffect(() => {
-  //   const currentPage = pageParam && !isNaN(Number(pageParam)) ? Number(pageParam) : 1;
-  //   setPagination((prev) => ({ ...prev, page: currentPage }));
-  //   fetchPiezas(currentPage, searchFilters);
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [pageParam, searchFilters]);
-
-  // useEffect(() => {
-  //   // Lee los filtros y la página desde los query params si existen
-  //   const params = new URLSearchParams(location.search);
-  //   const page = params.get("page") ? Number(params.get("page")) : initialPage;
-  //   const filters: SearchFilters = { ...searchFilters };
-  //   // Rellena filters con los valores de los params
-  //   // ...parsea cada filtro según tu estructura...
-  //   setPagination((prev) => ({ ...prev, page }));
-  //   setSearchFilters(filters);
-  //   fetchPiezas(page, filters);
-  // }, [location.search]);
-
   useEffect(() => {
     const currentPage = params.get("page") && !isNaN(Number(params.get("page"))) ? Number(params.get("page")) : 1;
     const pageSizeParam = params.get("page_size");
@@ -135,7 +115,7 @@ export default function Index() {
 
     fetchPiezas(currentPage, parsedFilters, currentItemsPerPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [params]);
+  }, [params]);
 
   const normalizeImage = (img: any) => {
     if (!img) return img;

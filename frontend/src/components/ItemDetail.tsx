@@ -279,15 +279,15 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
         <div className="space-y-4">
           <div className="bg-muted rounded-lg overflow-hidden">
             {mainImage ? (
-              <div className="relative">
+               <div>
                 <img
                   src={mainImage.imagen}
                   alt={mainImage.descripcion || ""}
                   className="w-full h-auto object-contain"
                 />
-                <span className="absolute top-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">
+                <p className="px-4 py-2 text-xs font-medium text-muted-foreground bg-white/70">
                   {mainImage.label}
-                </span>
+                </p>
               </div>
             ) : (
               <div className="h-80 flex items-center justify-center">
@@ -312,11 +312,11 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
               <h3 className="text-sm font-medium text-muted-foreground mb-2">
                 Otras imágenes
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {additionalImages.map((img, index) => (
                   <div
                     key={`${img.imagen}-${index}`}
-                    className="relative w-full overflow-hidden rounded-md bg-muted/20"
+                    className="w-full overflow-hidden rounded-md bg-muted/20"
                   >
                     <img
                       src={img.imagen}
@@ -324,9 +324,9 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
                       className="w-full h-28 sm:h-32 object-cover"
                     />
                     {img.label && (
-                      <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 text-[10px] font-medium text-white">
+                      <p className="px-2 py-2 text-[11px] font-medium text-muted-foreground bg-white/70">
                         {img.label}
-                      </span>
+                      </p>
                     )}
                   </div>
                 ))}
