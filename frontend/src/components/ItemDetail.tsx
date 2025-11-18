@@ -43,16 +43,30 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     item.componentes
   );
 
-  const componentImages = (item.componentes ?? []).flatMap((component, idx) =>
-    (component.imagenes ?? []).map((img) => ({
+  const formatImageLabel = (index: number) => `Imagen ${index.toString().padStart(2, "0")}`;
+
+  const pieceImages = item.imagenes ?? [];
+  const pieceImagesWithLabels = pieceImages.map((img, idx) => ({
+    ...img,
+    label: formatImageLabel(idx),
+  }));
+  const mainImage = pieceImagesWithLabels[0];
+  const additionalPieceImages = pieceImagesWithLabels.slice(1);
+
+  const componentImages = (item.componentes ?? []).flatMap((component, idx) => {
+    const compLabel = getComponentDisplayLetter(component.letra, idx);
+    return (component.imagenes ?? []).map((img, imgIdx) => ({
       ...img,
+      label: compLabel
+        ? `Componente ${compLabel} – ${formatImageLabel(imgIdx)}`
+        : formatImageLabel(imgIdx),
       descripcion:
         img.descripcion || `${item.inventoryNumber}${getComponentDisplayLetter(component.letra, idx).toLowerCase()}`,
-    }))
-  );
+    }));
+  });
 
   const additionalImages = [
-    ...(item.imagenes?.slice(1) ?? []),
+    ...additionalPieceImages,
     ...componentImages,
   ];
 
@@ -109,17 +123,17 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
   };
 
   const downloadImage = async () => {
-    if (!item.imagenes) {
+    if (!mainImage) {
       toast.error("No hay imagen disponible para descargar");
       return;
     }
     try {
       toast.loading("Descargando imagen...");
-      const response = await fetch(item.imagenes[0].imagen);
+      const response = await fetch(mainImage.imagen);
       if (!response.ok) throw new Error("Error al descargar la imagen");
       const blob = await response.blob();
       // Extraemos la extensión o usamos .jpg por defecto
-      const extension = item.imagenes[0].imagen.split(".").pop()?.split(/\#|\?/)[0] || "jpg";
+      const extension = mainImage.imagen.split(".").pop()?.split(/\#|\?/)[0] || "jpg";
       saveAs(
         blob,
         `${item.inventoryNumber || item.nombre_comun || "imagen"}.${extension}`
@@ -264,12 +278,17 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-4">
           <div className="bg-muted rounded-lg overflow-hidden">
-            {item.imagenes && item.imagenes.length > 0 ? (
-              <img
-                src={item.imagenes[0].imagen}
-                alt={item.imagenes[0].descripcion || ""}
-                className="w-full h-auto object-contain"
-              />
+            {mainImage ? (
+              <div className="relative">
+                <img
+                  src={mainImage.imagen}
+                  alt={mainImage.descripcion || ""}
+                  className="w-full h-auto object-contain"
+                />
+                <span className="absolute top-3 left-3 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">
+                  {mainImage.label}
+                </span>
+              </div>
             ) : (
               <div className="h-80 flex items-center justify-center">
                 <p className="text-muted-foreground">Imagen no disponible</p>
@@ -304,6 +323,11 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
                       alt={img.descripcion || item.nombre_comun || `Imagen ${index + 2}`}
                       className="w-full h-28 sm:h-32 object-cover"
                     />
+                    {img.label && (
+                      <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 text-[10px] font-medium text-white">
+                        {img.label}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

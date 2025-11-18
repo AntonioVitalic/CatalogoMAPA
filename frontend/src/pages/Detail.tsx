@@ -290,7 +290,16 @@ const Detail = () => {
                           <td className="font-medium pr-4 py-2 align-top text-right text-muted-foreground">Imágenes</td>
                           <td className="pl-4 py-2 align-top">
                             {comp.imagenes.map((img: any, i: number) => (
-                              <img key={i} src={img.imagen} alt={img.descripcion || ""} className="inline-block h-16 mr-2" />
+                               <div key={i} className="relative inline-block mr-2">
+                                <img
+                                  src={img.imagen}
+                                  alt={img.descripcion || ""}
+                                  className="inline-block h-16 w-16 object-cover rounded border"
+                                />
+                                <span className="absolute -bottom-2 left-0 rounded-full bg-black/70 px-2 text-[10px] font-medium text-white">
+                                  Imagen {String(i).padStart(2, "0")}
+                                </span>
+                              </div>
                             ))}
                           </td>
                         </tr>

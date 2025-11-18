@@ -15,6 +15,11 @@ export type ComponentImagePayloadEntry =
   | { upload_field: string; descripcion: string; file_name: string }
   | { file_name: string; descripcion: string };
 
+interface PreparedImagesResult {
+  payload: ComponentImagePayloadEntry[];
+  files: { field: string; file: File }[];
+}
+
 export const MEDIA_SEGMENT = '/imagenes/';
 
 export function extractMediaFileName(url?: string): string | undefined {
@@ -54,39 +59,58 @@ export function prepareComponentPayload(
     const { imagenes, ...rest } = component;
     const sanitized: Record<string, any> = { ...rest };
 
-    const normalizedImages: ComponentImagePayloadEntry[] = (imagenes ?? [])
-      .map((img, imgIndex) => {
-        if (!img) {
-          return null;
-        }
+     const componentImages = buildImagesPayload(
+      imagenes ?? [],
+      (imgIndex) => `component_image_${compIndex}_${imgIndex}`,
+    );
 
-        const descripcion = img.descripcion ?? '';
-
-        if (img.file) {
-          const field = `component_image_${compIndex}_${imgIndex}`;
-          files.push({ field, file: img.file });
-          return {
-            upload_field: field,
-            descripcion,
-            file_name: img.file.name,
-          };
-        }
-
-        const fileName = img.file_name ?? extractMediaFileName(img.imagen);
-        if (!fileName) {
-          return null;
-        }
-
-        return {
-          file_name: fileName,
-          descripcion,
-        };
-      })
-      .filter((entry): entry is ComponentImagePayloadEntry => entry !== null);
-
-    sanitized.imagenes = normalizedImages;
+    files.push(...componentImages.files);
+    sanitized.imagenes = componentImages.payload;
     return sanitized;
   });
+
+  return { payload, files };
+}
+
+export function preparePieceImagesPayload(images: ComponentImageForm[]): PreparedImagesResult {
+  return buildImagesPayload(images, (index) => `piece_image_${index}`);
+}
+
+function buildImagesPayload(
+  images: ComponentImageForm[],
+  makeFieldName: (index: number) => string
+): PreparedImagesResult {
+  const files: { field: string; file: File }[] = [];
+
+  const payload: ComponentImagePayloadEntry[] = (images ?? [])
+    .map((img, imgIndex) => {
+      if (!img) {
+        return null;
+      }
+
+      const descripcion = img.descripcion ?? '';
+
+      if (img.file) {
+        const field = makeFieldName(imgIndex);
+        files.push({ field, file: img.file });
+        return {
+          upload_field: field,
+          descripcion,
+          file_name: img.file.name,
+        };
+      }
+
+      const fileName = img.file_name ?? extractMediaFileName(img.imagen);
+      if (!fileName) {
+        return null;
+      }
+
+      return {
+        file_name: fileName,
+        descripcion,
+      };
+    })
+    .filter((entry): entry is ComponentImagePayloadEntry => entry !== null);
 
   return { payload, files };
 }

@@ -312,13 +312,40 @@ def _get_uploaded_file(files, field_name: str | None):
     return None
 
 
-def _sync_component_images(component: Componente, data: dict, files) -> None:
-    """Actualiza las imágenes asociadas a un componente."""
+def _parse_images_payload(raw_images):
+    """Normaliza el payload de imágenes desde strings JSON, dicts o listas."""
 
-    raw_images = data.get('imagenes')
-    if not raw_images:
-        for img in list(component.imagenes.all()):
-            component.imagenes.disconnect(img)
+    if raw_images is None:
+        return None
+
+    if isinstance(raw_images, str):
+        try:
+            raw_images = json.loads(raw_images)
+        except json.JSONDecodeError:
+            return None
+
+    if isinstance(raw_images, dict):
+        return list(raw_images.values())
+
+    if isinstance(raw_images, list):
+        return raw_images
+
+    return None
+
+
+def _sync_images(node, images_data, files):
+    """Actualiza las imágenes asociadas a una pieza o componente."""
+
+    parsed_images = _parse_images_payload(images_data)
+    existing = list(node.imagenes.all())
+    before_files = [img.file_name for img in existing]
+
+    if parsed_images is None:
+        return before_files, before_files
+
+    if not parsed_images:
+        for img in existing:
+            node.imagenes.disconnect(img)
             rows, _ = db.cypher_query(
                 "MATCH (i:Imagen {file_name: $file})<-[:TIENE_IMAGEN]-() RETURN count(*)",
                 {"file": img.file_name},
@@ -326,19 +353,11 @@ def _sync_component_images(component: Componente, data: dict, files) -> None:
             remaining = rows[0][0] if rows else 0
             if not remaining:
                 img.delete()
-        return
-
-    if isinstance(raw_images, dict):
-        images = list(raw_images.values())
-    elif isinstance(raw_images, list):
-        images = raw_images
-    else:
-        return
-
-    existing = list(component.imagenes.all())
+        return before_files, []
+    
     keep_existing: list[Imagen] = []
 
-    for entry in images:
+    for entry in parsed_images:
         if not isinstance(entry, dict):
             continue
 
@@ -353,7 +372,8 @@ def _sync_component_images(component: Componente, data: dict, files) -> None:
             if not stored_name:
                 continue
             img_node = Imagen(file_name=stored_name, descripcion=descripcion).save()
-            component.imagenes.connect(img_node)
+            node.imagenes.connect(img_node)
+            keep_existing.append(img_node)
             continue
 
         file_name = entry.get('file_name') or _extract_media_file_name(entry.get('imagen'))
@@ -364,7 +384,7 @@ def _sync_component_images(component: Componente, data: dict, files) -> None:
         if not existing_node:
             existing_node = Imagen.nodes.first_or_none(file_name=file_name)
             if existing_node:
-                component.imagenes.connect(existing_node)
+                node.imagenes.connect(existing_node)
 
         if existing_node:
             keep_existing.append(existing_node)
@@ -375,7 +395,7 @@ def _sync_component_images(component: Componente, data: dict, files) -> None:
 
     for img in existing:
         if img not in keep_existing:
-            component.imagenes.disconnect(img)
+            node.imagenes.disconnect(img)
             rows, _ = db.cypher_query(
                 "MATCH (i:Imagen {file_name: $file})<-[:TIENE_IMAGEN]-() RETURN count(*)",
                 {"file": img.file_name},
@@ -383,6 +403,9 @@ def _sync_component_images(component: Componente, data: dict, files) -> None:
             remaining = rows[0][0] if rows else 0
             if not remaining:
                 img.delete()
+    after_files = [img.file_name for img in node.imagenes.all()]
+    return before_files, after_files
+
 
 
 def _numero_inventario_to_int(value):
@@ -906,20 +929,15 @@ class PiezaViewSet(viewsets.ViewSet):
                 c.exposiciones = _split_list(comp.get('exposiciones', ''))
                 c.save()
                 _sync_component_relations(c, comp)
-                _sync_component_images(c, comp, request.FILES)
+                _sync_images(c, comp.get('imagenes'), request.FILES)
                 pieza.componentes.connect(c)
                 # exposiciones_raw = comp.get('exposiciones', '')
                 # exposiciones_list = _split_list(exposiciones_raw)
                 # if exposiciones_list and any(e.strip() for e in exposiciones_list):
                 #     _set_many_names(c, 'exposiciones', Exposicion, exposiciones_list)
 
-        # 5) Imagen de pieza (opcional)
-        imagen = request.FILES.get('imagen')
-        if imagen:
-            stored_name = _store_uploaded_image(imagen)
-            if stored_name:
-                img = Imagen(file_name=stored_name, descripcion="").save()
-                pieza.imagenes.connect(img)
+        # 5) Imágenes de pieza (opcionales)
+        _sync_images(pieza, data.get('imagenes'), request.FILES)
 
         # 6) Auditoría
         after_obj = {
@@ -1164,7 +1182,7 @@ class PiezaViewSet(viewsets.ViewSet):
                     fecha_ultima_modificacion=comp.get('fecha_ultima_modificacion', ''),
                 ).save()
                 _sync_component_relations(c, comp)
-                _sync_component_images(c, comp, request.FILES)
+                _sync_images(c, comp.get('imagenes'), request.FILES)
                 pieza.componentes.connect(c)
                 # exposiciones_raw = comp.get('exposiciones', '')
                 # exposiciones_list = _split_list(exposiciones_raw)
@@ -1218,18 +1236,10 @@ class PiezaViewSet(viewsets.ViewSet):
                         comp_after,
                     )
 
-        imagen = request.FILES.get('imagen')
-        if imagen:
-            existing_imgs = list(pieza.imagenes.all())
-            before_imgs = [img.file_name for img in existing_imgs]
-            stored_name = _store_uploaded_image(imagen)
-            if stored_name:
-                for old_img in existing_imgs:
-                    pieza.imagenes.disconnect(old_img)
-                    old_img.delete()
-                new_img = Imagen(file_name=stored_name, descripcion="").save()
-                pieza.imagenes.connect(new_img)
-                add_cambio_pieza("imagenes", before_imgs, [stored_name])
+        if 'imagenes' in data:
+            before_imgs, after_imgs = _sync_images(pieza, data.get('imagenes'), request.FILES)
+            if before_imgs != after_imgs:
+                add_cambio_pieza("imagenes", before_imgs, after_imgs)
 
         if cambios_pieza or cambios_componentes:
             RegistroCambioPieza.objects.create(

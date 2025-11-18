@@ -10,6 +10,7 @@ import {
   ComponentImageForm,
   extractMediaFileName,
   prepareComponentPayload,
+  preparePieceImagesPayload,
 } from "@/utils/componentImages";
 
 type ComponentForm = {
@@ -230,18 +231,9 @@ export default function EditarPieza() {
   const [compForm, setCompForm] = useState<ComponentForm>(initialComp);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [showCompModal, setShowCompModal] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pieceImages, setPieceImages] = useState<ComponentImageForm[]>([]);
+  const [initialPieceImagesPayloadJson, setInitialPieceImagesPayloadJson] = useState<string>("[]");
   const [initialComponentsPayloadJson, setInitialComponentsPayloadJson] = useState<string>("[]");
-
-  useEffect(() => {
-    return () => {
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
-      }
-    };
-  }, [imagePreview]);
 
   const revokeImagePreviews = (images?: ComponentImageForm[]) => {
     images?.forEach(img => {
@@ -250,6 +242,12 @@ export default function EditarPieza() {
       }
     });
   };
+
+   useEffect(() => {
+    return () => {
+      revokeImagePreviews(pieceImages);
+    };
+  }, [pieceImages]);
 
   const [authors, setAuthors] = useState<string[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
@@ -283,6 +281,12 @@ export default function EditarPieza() {
       try {
         const res = await api.get(`/api/piezas/${id}/`);
         const p = res.data;
+        const mappedPieceImages = (p.imagenes ?? []).map((img: any) => ({
+          imagen: img.imagen,
+          descripcion: img.descripcion ?? "",
+          file_name: extractMediaFileName(img.imagen),
+        }));
+
         const nextPiece: PieceForm = {
           numero_inventario: p.numero_inventario || "",
           letra: p.letra || "",
@@ -331,14 +335,13 @@ export default function EditarPieza() {
           fecha_ingreso: p.fecha_ingreso || "",
           responsable_coleccion: p.responsable_coleccion || "",
           fecha_ultima_modificacion: p.fecha_ultima_modificacion || "",
-          imagenes: (p.imagenes ?? []).map((img: any) => ({
-            imagen: img.imagen,
-            descripcion: img.descripcion ?? "",
-            file_name: extractMediaFileName(img.imagen),
-          })),
+          imagenes: mappedPieceImages,
         };
         setPieceData(nextPiece);
         setInitialPieceData(JSON.parse(JSON.stringify(nextPiece)) as PieceForm);
+        setPieceImages(mappedPieceImages);
+        const preparedPiece = preparePieceImagesPayload(mappedPieceImages);
+        setInitialPieceImagesPayloadJson(JSON.stringify(preparedPiece.payload));
         if (p.componentes && Array.isArray(p.componentes)) {
           const compList: ComponentForm[] = p.componentes.map((c: any) => ({
             pieza_numero_inventario: c.pieza_numero_inventario || "",
@@ -419,13 +422,15 @@ export default function EditarPieza() {
     setPieceData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextFile = e.target.files?.[0] ?? null;
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-    }
-    setFile(nextFile);
-    setImagePreview(nextFile ? URL.createObjectURL(nextFile) : null);
+  const handlePieceImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const newImgs = files.map(f => ({
+      imagen: URL.createObjectURL(f),
+      descripcion: "",
+      file: f,
+      file_name: undefined,
+    }));
+    setPieceImages(prev => [...prev, ...newImgs]);
   };
 
   const handleAddComponentModal = () => {
@@ -527,7 +532,17 @@ export default function EditarPieza() {
         changedFields.componentes = componentsPayload;
       }
 
-      const hasFile = Boolean(file) || componentFiles.length > 0;
+      const preparedPieceImages = preparePieceImagesPayload(pieceImages);
+      const pieceImagesJson = JSON.stringify(preparedPieceImages.payload);
+      const pieceImagesChanged = pieceImagesJson !== initialPieceImagesPayloadJson;
+      if (pieceImagesChanged) {
+        changedFields.imagenes = preparedPieceImages.payload;
+      }
+      if (preparedPieceImages.files.length > 0 && !pieceImagesChanged) {
+        changedFields.imagenes = preparedPieceImages.payload;
+      }
+
+      const hasFile = preparedPieceImages.files.length > 0 || componentFiles.length > 0;
       const hasChanges = hasFile || Object.keys(changedFields).length > 0;
 
       if (!hasChanges) {
@@ -550,9 +565,9 @@ export default function EditarPieza() {
           }
         });
 
-        if (file) {
-          formData.append("imagen", file);
-        }
+        preparedPieceImages.files.forEach(({ field, file }) => {
+          formData.append(field, file);
+        });
         componentFiles.forEach(({ field, file: compFile }) => {
           formData.append(field, compFile);
         });
@@ -1221,23 +1236,53 @@ export default function EditarPieza() {
           </Button>
 
           <div className="mt-6">
-            <label className="block text-sm font-medium mb-1">Nueva imagen (opcional, .jpg)</label>
-            <input
-              type="file"
-              accept=".jpg"
-              onChange={handleMainImageChange}
-            />
-            <small className="text-gray-600">Sube un archivo solo si deseas reemplazar la imagen actual.</small>
-            {(imagePreview || pieceData.imagenes?.[0]) && (
-              <div className="mt-3">
-                <p className="text-sm text-muted-foreground">Vista previa</p>
-                <img
-                  src={imagePreview ?? pieceData.imagenes?.[0]?.imagen}
-                  alt="Vista previa de la pieza"
-                  className="mt-2 h-32 w-auto rounded border object-contain bg-white"
-                />
-              </div>
-            )}
+            <label className="block text-sm font-medium mb-2">Imágenes de la pieza</label>
+            <div className="space-y-2">
+              {pieceImages.length > 0 ? (
+                pieceImages.map((img, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="relative">
+                      <img
+                        src={img.imagen}
+                        alt={`Imagen ${idx + 1}`}
+                        className="h-24 w-24 object-cover rounded border bg-white"
+                      />
+                      <span className="absolute -bottom-2 left-0 rounded-full bg-primary px-2 text-[10px] font-medium text-white">
+                        Imagen {String(idx).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      className="w-full rounded border px-2 py-1"
+                      placeholder="Descripción"
+                      value={img.descripcion ?? ""}
+                      onChange={e => {
+                        const next = [...pieceImages];
+                        next[idx] = { ...next[idx], descripcion: e.target.value };
+                        setPieceImages(next);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        const next = [...pieceImages];
+                        const [removed] = next.splice(idx, 1);
+                        revokeImagePreviews([removed]);
+                        setPieceImages(next);
+                      }}
+                    >
+                      Quitar
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No hay imágenes asociadas.</p>
+              )}
+              <input type="file" accept=".jpg" multiple onChange={handlePieceImagesChange} />
+              <small className="text-gray-600">Agrega o elimina imágenes; se mantendrán en el orden mostrado.</small>
+            </div>
           </div>
 
           <div className="mt-6 flex items-center gap-4">

@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft } from "lucide-react";
 import { getComponentDisplayLetter } from "@/utils/componentLabel";
-import { ComponentImageForm, prepareComponentPayload } from "@/utils/componentImages";
+import { ComponentImageForm, prepareComponentPayload, preparePieceImagesPayload } from "@/utils/componentImages";
 
 type ComponentForm = {
   id?: string;
@@ -219,13 +219,11 @@ export default function CrearPieza() {
   const navigate = useNavigate();
 
   const [pieceData, setPieceData] = useState<PieceForm>({ ...initialPieceData });
-
+  const [pieceImages, setPieceImages] = useState<ComponentImageForm[]>([]);
   const [components, setComponents] = useState<ComponentForm[]>([]);
   const [compForm, setCompForm] = useState<ComponentForm>(initialComp);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [showCompModal, setShowCompModal] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Catálogos para autocompletar
   const [authors, setAuthors] = useState<string[]>([]);
@@ -236,13 +234,6 @@ export default function CrearPieza() {
   const [tipologias, setTipologias] = useState<string[]>([]);
   const [exposiciones, setExposiciones] = useState<string[]>([]);
 
-  useEffect(() => {
-    return () => {
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
-      }
-    };
-  }, [imagePreview]);
 
   const revokeImagePreviews = (images?: ComponentImageForm[]) => {
     images?.forEach(img => {
@@ -251,6 +242,12 @@ export default function CrearPieza() {
       }
     });
   };
+
+  useEffect(() => {
+    return () => {
+      revokeImagePreviews(pieceImages);
+    };
+  }, [pieceImages]);
 
   useEffect(() => {
     const fetchCatalogs = async () => {
@@ -295,13 +292,15 @@ export default function CrearPieza() {
     setPieceData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextFile = e.target.files?.[0] ?? null;
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-    }
-    setFile(nextFile);
-    setImagePreview(nextFile ? URL.createObjectURL(nextFile) : null);
+  const handlePieceImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const newImgs = files.map(f => ({
+      imagen: URL.createObjectURL(f),
+      descripcion: "",
+      file: f,
+      file_name: undefined,
+    }));
+    setPieceImages(prev => [...prev, ...newImgs]);
   };
 
   const handleAddComponentModal = () => {
@@ -372,11 +371,13 @@ export default function CrearPieza() {
       Object.entries(pieceData).forEach(([key, value]) => {
         formData.append(key, value ?? "");
       });
+      const preparedPieceImages = preparePieceImagesPayload(pieceImages);
+      formData.append("imagenes", JSON.stringify(preparedPieceImages.payload));
       const preparedComponents = prepareComponentPayload(components);
       formData.append("componentes", JSON.stringify(preparedComponents.payload));
-      if (file) {
-        formData.append("imagen", file);
-      }
+      preparedPieceImages.files.forEach(({ field, file }) => {
+        formData.append(field, file);
+      });
       preparedComponents.files.forEach(({ field, file: compFile }) => {
         formData.append(field, compFile);
       });
@@ -1031,22 +1032,53 @@ export default function CrearPieza() {
             </Button>
 
             <div className="mt-6">
-              <label className="block text-sm font-medium mb-1">Imagen (.jpg opcional)</label>
-              <input
-                type="file"
-                accept=".jpg"
-                 onChange={handleMainImageChange}
-              />
-              {imagePreview && (
-                <div className="mt-3">
-                  <p className="text-sm text-muted-foreground">Vista previa</p>
-                  <img
-                    src={imagePreview}
-                    alt="Vista previa de la pieza"
-                    className="mt-2 h-32 w-auto rounded border object-contain bg-white"
-                  />
-                </div>
-              )}
+               <label className="block text-sm font-medium mb-2">Imágenes de la pieza</label>
+              <div className="space-y-2">
+                {pieceImages.length > 0 ? (
+                  pieceImages.map((img, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="relative">
+                        <img
+                          src={img.imagen}
+                          alt={`Imagen ${idx + 1}`}
+                          className="h-24 w-24 object-cover rounded border bg-white"
+                        />
+                        <span className="absolute -bottom-2 left-0 rounded-full bg-primary px-2 text-[10px] font-medium text-white">
+                          Imagen {String(idx).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        className="w-full rounded border px-2 py-1"
+                        placeholder="Descripción"
+                        value={img.descripcion ?? ""}
+                        onChange={e => {
+                          const newImgs = [...pieceImages];
+                          newImgs[idx] = { ...newImgs[idx], descripcion: e.target.value };
+                          setPieceImages(newImgs);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          const next = [...pieceImages];
+                          const [removed] = next.splice(idx, 1);
+                          revokeImagePreviews([removed]);
+                          setPieceImages(next);
+                        }}
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No hay imágenes asociadas.</p>
+                )}
+                <input type="file" accept=".jpg" multiple onChange={handlePieceImagesChange} />
+                <small className="text-gray-600">Puedes adjuntar varias vistas; se guardarán con su orden.</small>
+              </div>
             </div>
 
             <div className="mt-6 flex items-center gap-4">
