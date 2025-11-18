@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { LayoutGrid, List, Check } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { formatInventoryNumberWithComponents } from "@/utils/inventoryNumber";
+import { getComponentDisplayLetter } from "@/utils/componentLabel";
 
 interface ItemGridProps {
   items: CollectionItem[];
@@ -99,19 +100,36 @@ const ItemGrid = ({
         >
           <div className="flex-shrink-0 mr-3">
             <div className="relative h-16 w-16 rounded-md bg-muted/10 flex items-center justify-center">
-              {item.imagenes && item.imagenes.length > 0 ? (
-                <img
-                  src={item.imagenes[0].imagen}
-                  alt={item.imagenes[0].descripcion || ""}
-                  className="max-h-full max-w-full object-contain p-1"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center p-2">
-                  <span className="text-xs text-muted-foreground text-center">
-                    Sin imagen
-                  </span>
-                </div>
-              )}
+               {(() => {
+                const componentImages = (item.componentes ?? []).flatMap((component, idx) =>
+                  (component.imagenes ?? []).map((img) => ({
+                    ...img,
+                    descripcion:
+                      img.descripcion ||
+                      `${item.inventoryNumber}${getComponentDisplayLetter(component.letra, idx).toLowerCase()}`,
+                  }))
+                );
+
+                const displayImages = [...(item.imagenes ?? []), ...componentImages];
+
+                if (displayImages.length > 0) {
+                  return (
+                    <img
+                      src={displayImages[0].imagen}
+                      alt={displayImages[0].descripcion || ""}
+                      className="max-h-full max-w-full object-contain p-1"
+                    />
+                  );
+                }
+
+                return (
+                  <div className="flex h-full w-full items-center justify-center p-2">
+                    <span className="text-xs text-muted-foreground text-center">
+                      Sin imagen
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
           <div className="flex-1 min-w-0">

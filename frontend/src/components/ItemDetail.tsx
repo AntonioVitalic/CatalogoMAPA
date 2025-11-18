@@ -43,6 +43,19 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
     item.componentes
   );
 
+  const componentImages = (item.componentes ?? []).flatMap((component, idx) =>
+    (component.imagenes ?? []).map((img) => ({
+      ...img,
+      descripcion:
+        img.descripcion || `${item.inventoryNumber}${getComponentDisplayLetter(component.letra, idx).toLowerCase()}`,
+    }))
+  );
+
+  const additionalImages = [
+    ...(item.imagenes?.slice(1) ?? []),
+    ...componentImages,
+  ];
+
   const FIELD_LABELS: Record<string, string> = {
     inventoryNumber: "N° de inventario",
     pieza_numero_inventario: "N° de inventario",
@@ -275,13 +288,13 @@ const ItemDetail = ({ item }: ItemDetailProps) => {
             </Button>
           </div>
 
-          {item.imagenes && item.imagenes.length > 1 && (
+          {additionalImages.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">
                 Otras imágenes
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {item.imagenes.slice(1).map((img, index) => (
+                {additionalImages.map((img, index) => (
                   <div
                     key={`${img.imagen}-${index}`}
                     className="relative w-full overflow-hidden rounded-md bg-muted/20"

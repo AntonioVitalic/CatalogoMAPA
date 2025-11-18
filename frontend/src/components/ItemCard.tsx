@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye } from "lucide-react";
 import { formatInventoryNumberWithComponents } from "@/utils/inventoryNumber";
+import { getComponentDisplayLetter } from "@/utils/componentLabel";
 interface ItemCardProps {
   item: CollectionItem;
   onSelect: (item: CollectionItem) => void;
@@ -29,8 +30,16 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
   };
 
   const images = item.imagenes ?? [];
-  const hasImages = images.length > 0;
-  const showGrid = images.length > 1;
+  const componentImages = (item.componentes ?? []).flatMap((component, idx) =>
+    (component.imagenes ?? []).map((img) => ({
+      ...img,
+      descripcion:
+        img.descripcion || `${item.inventoryNumber}${getComponentDisplayLetter(component.letra, idx).toLowerCase()}`,
+    }))
+  );
+  const displayImages = [...images, ...componentImages];
+  const hasImages = displayImages.length > 0;
+  const showGrid = displayImages.length > 1;
   const maxGridImages = 4;
 
   return (
@@ -39,10 +48,10 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
         {hasImages ? (
           showGrid ? (
             <div className="grid grid-cols-2 grid-rows-2 gap-0.5 w-full h-full p-1">
-              {images.slice(0, maxGridImages).map((img, index) => {
-                const remaining = Math.max(images.length - maxGridImages, 0);
+              {displayImages.slice(0, maxGridImages).map((img, index) => {
+                const remaining = Math.max(displayImages.length - maxGridImages, 0);
                 const isLastVisible =
-                  index === Math.min(images.length, maxGridImages) - 1;
+                  index === Math.min(displayImages.length, maxGridImages) - 1;
 
                 return (
                   <div key={`${img.imagen}-${index}`} className="relative w-full h-full overflow-hidden rounded-sm bg-background">
@@ -62,8 +71,8 @@ const ItemCard = ({ item, onSelect, isSelected }: ItemCardProps) => {
             </div>
           ) : (
             <img
-              src={images[0].imagen}
-              alt={images[0].descripcion || item.nombre_comun || "Sin imagen"}
+              src={displayImages[0].imagen}
+              alt={displayImages[0].descripcion || item.nombre_comun || "Sin imagen"}
               className="max-h-full max-w-full object-contain p-2"
             />
           )

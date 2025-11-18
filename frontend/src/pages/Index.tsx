@@ -137,6 +137,18 @@ export default function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [params]);
 
+  const normalizeImage = (img: any) => {
+    if (!img) return img;
+
+    return {
+      ...img,
+      imagen:
+        typeof img.imagen === "string" && img.imagen.startsWith("http")
+          ? img.imagen
+          : `${API_URL}${img.imagen}`,
+    };
+  };
+
   const mapResultToItem = (p: any): CollectionItem => {
     const imgPath = p.imagenes?.[0]?.imagen;
     const imageUrl = imgPath ? (imgPath.startsWith("http") ? imgPath : `${API_URL}${imgPath}`) : "";
@@ -189,8 +201,17 @@ export default function Index() {
       fecha_ingreso: p.fecha_ingreso ?? "",
       responsable_coleccion: p.responsable_coleccion ?? "",
       fecha_ultima_modificacion: p.fecha_ultima_modificacion ?? "",
-      componentes: p.componentes ?? [],
-      imagenes: p.imagenes ?? [],
+      componentes: Array.isArray(p.componentes)
+        ? p.componentes.map((component: any) => ({
+            ...component,
+            imagenes: Array.isArray(component.imagenes)
+              ? component.imagenes.map(normalizeImage)
+              : [],
+          }))
+        : [],
+      imagenes: Array.isArray(p.imagenes)
+        ? p.imagenes.map(normalizeImage)
+        : [],
     };
   };
 

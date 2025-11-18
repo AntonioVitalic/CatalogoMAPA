@@ -1594,6 +1594,7 @@ export default function CrearPieza() {
                           const newImgs = files.map(f => ({
                             imagen: URL.createObjectURL(f),
                             descripcion: "",
+                            file: f,
                             file_name: undefined,
                           }));
                           setCompForm(prev => ({
