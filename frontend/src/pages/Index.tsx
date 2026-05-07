@@ -379,7 +379,7 @@ export default function Index() {
       {/* HEADER */}
       <Header onLoginClick={() => setShowLogin(true)} />
 
-      <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 px-4 py-4 md:px-6 md:py-5 space-y-4">
         {/* Título y subtítulo */}
         <div className="space-y-1">
           <h1 className="text-3xl font-bold">Inventario MAPA</h1>
@@ -401,19 +401,32 @@ export default function Index() {
           <ActiveFilters filters={searchFilters} onResetFilters={handleResetFilters} />
         )}
 
+        {/* Filtros en mobile: encima del contenido */}
+        {showFilters && (
+          <div className="lg:hidden mb-4">
+            <FilterPanel
+              initialFilters={searchFilters}
+              onApplyFilters={handleApplyFilters}
+              onReset={handleResetFilters}
+            />
+          </div>
+        )}
+
         {/* Layout con/ sin panel de filtros */}
-        <div className={`grid grid-cols-1 ${showFilters ? "lg:grid-cols-4 gap-8" : ""}`}>
+        <div className="flex gap-6">
           {showFilters && (
-            <aside className="lg:col-span-1">
-              <FilterPanel
-                initialFilters={searchFilters}
-                onApplyFilters={handleApplyFilters}
-                onReset={handleResetFilters}
-              />
+            <aside className="hidden lg:block w-56 flex-shrink-0 overflow-hidden">
+              <div className="sticky top-4">
+                <FilterPanel
+                  initialFilters={searchFilters}
+                  onApplyFilters={handleApplyFilters}
+                  onReset={handleResetFilters}
+                />
+              </div>
             </aside>
           )}
 
-          <div className={showFilters ? "lg:col-span-3" : "lg:col-span-4"}>
+          <div className="flex-1 min-w-0 overflow-hidden">
             {/* Resumen + Exportar */}
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-muted-foreground">
