@@ -26,4 +26,4 @@ RUN python manage.py collectstatic --noinput 2>/dev/null || true
 
 EXPOSE 8000
 
-CMD sh -c "python manage.py migrate 2>&1 && echo 'Starting gunicorn on port 8000...' && exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --log-level info --access-logfile - --error-logfile -"
+CMD sh -c "python manage.py migrate 2>&1 && python manage.py ensure_admin 2>&1 && echo 'Starting gunicorn on port 8000...' && exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --log-level info --access-logfile - --error-logfile -"
