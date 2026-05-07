@@ -206,8 +206,11 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '60/minute',
-        'user': '300/minute',
+        # anon = navegación pública del catálogo. Cada page load del frontend
+        # dispara ~5-10 requests (paginación + filtros), por eso 180/min ≈ 18
+        # page loads/min, holgado para uso real y aún corta abuso/scrapers.
+        'anon': '180/minute',
+        'user': '600/minute',
         'login': '5/minute',
         'password_reset': '3/minute',
     },

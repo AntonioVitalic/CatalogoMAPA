@@ -112,8 +112,12 @@ class Componente(StructuredNode):
 class Pieza(StructuredNode):
     uid = UniqueIdProperty()
 
-    # Clave pública que usaremos como “id” para el API (entero)
-    numero_inventario = StringProperty(index=True)
+    # Clave pública que usaremos como "id" para el API (entero).
+    # unique_index=True crea CONSTRAINT UNIQUE en Neo4j: dos POST simultáneos
+    # con el mismo número fallan a nivel de DB en vez de crear duplicados
+    # (que romperían retrieve/update/delete con MultipleNodesReturned).
+    # Después de cambiar este campo: python manage.py install_labels
+    numero_inventario = StringProperty(unique_index=True)
     numero_inventario_int = IntegerProperty(index=True)  # para ordenar rápido
     created_at = DateTimeProperty(default_now=True)
 

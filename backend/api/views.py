@@ -10,11 +10,14 @@ from django.core.files.storage import default_storage
 from django.utils.text import get_valid_filename
 from neomodel import db
 from datetime import datetime, timedelta, timezone
+import logging
 import subprocess
 import time
 import json
 import copy
 import re
+
+logger = logging.getLogger(__name__)
 import openpyxl
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment
@@ -968,21 +971,31 @@ class PiezaViewSet(viewsets.ViewSet):
         # 5) Imágenes de pieza (opcionales)
         _sync_images(pieza, data.get('imagenes'), request.FILES)
 
-        # 6) Auditoría
+        # 6) Serializar respuesta ANTES del audit. Si el serializer falla acá,
+        # @db.transaction hace rollback de Neo4j y no hay audit row escrito —
+        # estado consistente.
+        response_data = PiezaOutSerializer(pieza, context={'request': request}).data
+
+        # 7) Auditoría: best-effort, después de serializar. Si falla la escritura
+        # del audit (ej. DB caída), Neo4j igual commitea la pieza al retornar y
+        # el error queda logueado. Audit es complemento, no fuente de verdad.
         after_obj = {
             "numero_inventario": pieza.numero_inventario,
             "nombre_especifico": pieza.nombre_especifico,
             "descripcion_col": pieza.descripcion_col,
             "coleccion": _get('coleccion', data),
         }
-        RegistroCambioPieza.objects.create(
-            usuario=request.user,
-            pieza_id=pieza.numero_inventario,
-            accion="CREAR",
-            detalle=json.dumps({"before": None, "after": after_obj})
-        )
+        try:
+            RegistroCambioPieza.objects.create(
+                usuario=request.user,
+                pieza_id=pieza.numero_inventario,
+                accion="CREAR",
+                detalle=json.dumps({"before": None, "after": after_obj})
+            )
+        except Exception:
+            logger.exception("Audit CREAR falló para pieza %s", pieza.numero_inventario)
 
-        return Response(PiezaOutSerializer(pieza, context={'request': request}).data, status=status.HTTP_201_CREATED)
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     @db.transaction
     def update(self, request, pk=None):
@@ -1273,22 +1286,32 @@ class PiezaViewSet(viewsets.ViewSet):
             if before_imgs != after_imgs:
                 add_cambio_pieza("imagenes", before_imgs, after_imgs)
 
-        if cambios_pieza or cambios_componentes:
-            RegistroCambioPieza.objects.create(
-                usuario=request.user,
-                pieza_id=pieza.numero_inventario,
-                accion="EDITAR",
-                detalle=json.dumps({
-                    "cambios_pieza": cambios_pieza,
-                    "cambios_componentes": cambios_componentes,
-                }, ensure_ascii=False, indent=2)
-            )
         numero_int_actual = _numero_inventario_to_int(pieza.numero_inventario)
         if numero_int_actual is not None and pieza.numero_inventario_int != numero_int_actual:
             pieza.numero_inventario_int = numero_int_actual
             pieza.save()
 
-        return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
+        # Serializar antes del audit para que un fallo de serialización haga
+        # rollback de Neo4j sin dejar audit huérfano.
+        response_data = PiezaOutSerializer(pieza, context={'request': request}).data
+
+        # Audit best-effort: si falla la DB del audit, no impedimos que la
+        # edición de la pieza commitee.
+        if cambios_pieza or cambios_componentes:
+            try:
+                RegistroCambioPieza.objects.create(
+                    usuario=request.user,
+                    pieza_id=pieza.numero_inventario,
+                    accion="EDITAR",
+                    detalle=json.dumps({
+                        "cambios_pieza": cambios_pieza,
+                        "cambios_componentes": cambios_componentes,
+                    }, ensure_ascii=False, indent=2)
+                )
+            except Exception:
+                logger.exception("Audit EDITAR falló para pieza %s", pieza.numero_inventario)
+
+        return Response(response_data)
 
 
     def destroy(self, request, pk=None):
@@ -1330,13 +1353,17 @@ class PiezaViewSet(viewsets.ViewSet):
 
         pieza.delete()
 
-        # Auditoría
-        RegistroCambioPieza.objects.create(
-            usuario=request.user,
-            pieza_id=numero_inventario,
-            accion="ELIMINAR",
-            detalle=json.dumps({"eliminado": True})
-        )
+        # Audit best-effort: si falla la DB de auditoría, la pieza ya quedó
+        # eliminada en Neo4j; no podemos hacer rollback. Logueamos y seguimos.
+        try:
+            RegistroCambioPieza.objects.create(
+                usuario=request.user,
+                pieza_id=numero_inventario,
+                accion="ELIMINAR",
+                detalle=json.dumps({"eliminado": True})
+            )
+        except Exception:
+            logger.exception("Audit ELIMINAR falló para pieza %s", numero_inventario)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 # ------- COMPONENTES -------
@@ -1669,7 +1696,9 @@ def importacion_masiva(request):
     import os
     import tempfile
 
-    images_dir = "/imagenes"
+    # MEDIA_ROOT = directorio canónico para imágenes; se lee de settings para
+    # no acoplar la ruta al filesystem del contenedor.
+    images_dir = str(settings.MEDIA_ROOT)
     target_root = os.path.realpath(images_dir)
     os.makedirs(target_root, exist_ok=True)
 

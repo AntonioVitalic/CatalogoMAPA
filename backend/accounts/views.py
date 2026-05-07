@@ -143,8 +143,12 @@ class LogoutView(APIView):
     """
     Blacklistea el refresh token enviado, invalidando la sesión.
     Cuerpo esperado: {"refresh": "<refresh_token>"}
+
+    No requiere IsAuthenticated: la firma JWT del refresh token ya autoriza
+    su propia revocación, y exigir un access válido fallaría justo cuando el
+    usuario más necesita cerrar sesión (con el access expirado).
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         refresh_raw = request.data.get('refresh', '')

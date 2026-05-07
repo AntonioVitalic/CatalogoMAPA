@@ -59,6 +59,11 @@ api.interceptors.response.use(
         const { data } = await axios.post(`${API_BASE}/accounts/refresh/`, { refresh });
         const newAccess = data.access;
         localStorage.setItem("access", newAccess);
+        // Si el backend rota el refresh (ROTATE_REFRESH_TOKENS=True), el viejo
+        // queda blacklisteado. Hay que guardar el nuevo o el próximo refresh falla.
+        if (data.refresh) {
+          localStorage.setItem("refresh", data.refresh);
+        }
         processQueue(null, newAccess);
         if (original.headers) {
           original.headers.Authorization = `Bearer ${newAccess}`;
