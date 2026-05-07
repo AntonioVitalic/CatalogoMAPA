@@ -47,7 +47,7 @@ services:
       dockerfile: Dockerfile    # y el Dockerfile sigue dentro de frontend/
     container_name: catalogomapa-front
     ports:
-      - "8080:8080"
+      - "3000:8080"
     volumes:
       - ./frontend:/app
       - /app/node_modules

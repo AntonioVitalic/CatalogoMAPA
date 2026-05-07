@@ -21,8 +21,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia el resto del código Django
 COPY . .
 
+# Recopilar archivos estáticos
+RUN python manage.py collectstatic --noinput 2>/dev/null || true
+
 # Expone el puerto que usa Django
 EXPOSE 8000
 
-# Este comando hará que el container arranque el servidor de Django y no salga
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# En producción usa Gunicorn; en desarrollo puedes sobreescribir con docker-compose
+CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
