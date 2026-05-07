@@ -24,9 +24,6 @@ COPY . .
 # Recopilar archivos estáticos
 RUN python manage.py collectstatic --noinput 2>/dev/null || true
 
-# Expone el puerto que usa Django
 EXPOSE 8000
 
-# Script de inicio: migra y arranca con gunicorn
-# Railway inyecta $PORT; si no existe, usa 8000
-CMD sh -c "python manage.py migrate && gunicorn core.wsgi:application --bind 0.0.0.0:\${PORT:-8000} --workers 2 --timeout 120 --log-level info"
+CMD sh -c "python manage.py migrate 2>&1 && echo 'Starting gunicorn on port 8000...' && exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --log-level info --access-logfile - --error-logfile -"
