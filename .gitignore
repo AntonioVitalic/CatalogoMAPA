@@ -163,6 +163,8 @@ cython_debug/
 backend/asd.py
 backend/uploaded_images/*
 imagenes/*
+import_to_aura.py
+upload_to_cloudinary.py
 
 #### Frontend
 # Logs

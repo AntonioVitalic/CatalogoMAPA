@@ -1345,24 +1345,24 @@ class ImagenViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         img = Imagen.nodes.get(id=int(pk))
-        rel = f"{settings.MEDIA_URL}{img.file_name}"
-        url = request.build_absolute_uri(rel)
+        from .serializers import _build_image_url
+        url = _build_image_url(img.file_name, request)
         data = {'id': int(pk), 'imagen': url, 'descripcion': img.descripcion or None}
         return Response(data)
 
     def create(self, request):
         data = request.data
         img = Imagen(file_name=data.get('file_name'), descripcion=data.get('descripcion', '')).save()
-        rel = f"{settings.MEDIA_URL}{img.file_name}"
-        url = request.build_absolute_uri(rel)
+        from .serializers import _build_image_url
+        url = _build_image_url(img.file_name, request)
         return Response({'id': 0, 'imagen': url, 'descripcion': img.descripcion or None}, status=status.HTTP_201_CREATED)
 
     def update(self, request, pk=None):
         img = Imagen.nodes.get(id=int(pk))
         img.descripcion = request.data.get('descripcion', img.descripcion)
         img.save()
-        rel = f"{settings.MEDIA_URL}{img.file_name}"
-        url = request.build_absolute_uri(rel)
+        from .serializers import _build_image_url
+        url = _build_image_url(img.file_name, request)
         return Response({'id': int(pk), 'imagen': url, 'descripcion': img.descripcion or None})
 
     def destroy(self, request, pk=None):

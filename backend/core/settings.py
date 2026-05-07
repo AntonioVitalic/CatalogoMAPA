@@ -22,6 +22,10 @@ MEDIA_URL  = '/imagenes/'
 MEDIA_ROOT = PROJECT_DIR / 'imagenes'   # <— ahora Django subirá *dentro* de la carpeta raíz/imagenes
 MEDIA_UPLOAD_SUBDIR = 'uploads'  # subcarpeta para cargas manuales
 
+# Cloudinary: si está configurado, las URLs de imagen apuntan a Cloudinary en vez de MEDIA_URL local.
+# Ejemplo: "https://res.cloudinary.com/tu-cloud-name/image/upload/mapa/"
+CLOUDINARY_BASE_URL = os.environ.get('CLOUDINARY_BASE_URL', '')
+
 # usa la URL base + credenciales
 bolt_url = os.getenv('NEO4J_URI', 'bolt://neo4j:7687')
 user    = os.getenv('NEO4J_USER', 'neo4j')

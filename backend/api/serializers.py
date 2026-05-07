@@ -6,6 +6,20 @@ from .models import (
     Coleccion, Material, Tecnica
 )
 
+
+def _build_image_url(file_name, request=None):
+    """Construye la URL de una imagen.
+
+    Si CLOUDINARY_BASE_URL está configurado (producción), devuelve una URL
+    de Cloudinary.  De lo contrario, construye la URL local habitual usando
+    MEDIA_URL + request.build_absolute_uri.
+    """
+    cloud_base = getattr(settings, 'CLOUDINARY_BASE_URL', '')
+    if cloud_base:
+        return f"{cloud_base}{file_name}"
+    rel = f"{settings.MEDIA_URL}{file_name}"
+    return request.build_absolute_uri(rel) if request else rel
+
 # Tenemos en cuenta que en import_mapa se usa el siguiente diccionario, que contiene las columnas del excel de inventario:
 # inventario_cols = dict(
 #     numero_inventario='numero_de_inventario',
@@ -133,8 +147,7 @@ class ImagenOutSerializer(serializers.Serializer):
 
     def get_imagen(self, obj):
         request = self.context.get('request')
-        rel = f"{settings.MEDIA_URL}{obj.file_name}"
-        return request.build_absolute_uri(rel) if request else rel
+        return _build_image_url(obj.file_name, request)
 
 
 # -----------------------------
@@ -221,10 +234,9 @@ class ComponenteOutSerializer(serializers.Serializer):
         )
         for i in ordered_imgs:
             img_id += 1
-            rel = f"{settings.MEDIA_URL}{i.file_name}"
             imgs.append({
                 'id': img_id,
-                'imagen': request.build_absolute_uri(rel) if request else rel,
+                'imagen': _build_image_url(i.file_name, request),
                 'descripcion': i.descripcion if (i.descripcion or None) else None
             })
         base['imagenes'] = imgs
@@ -355,10 +367,9 @@ class PiezaOutSerializer(serializers.Serializer):
         ordered_imgs = sorted(p.imagenes.all(), key=lambda img: _imagen_sort_key(getattr(img, 'file_name', ''), p.numero_inventario))
         for i in ordered_imgs:
             img_id += 1
-            rel = f"{settings.MEDIA_URL}{i.file_name}"
             imgs.append({
                 'id': img_id,
-                'imagen': request.build_absolute_uri(rel) if request else rel,
+                'imagen': _build_image_url(i.file_name, request),
                 'descripcion': i.descripcion if (i.descripcion or None) else None
             })
         ordered['imagenes'] = imgs
@@ -402,8 +413,7 @@ class PiezaExportSerializer(serializers.Serializer):
         if not imgs:
             return ""
         request = self.context.get('request')
-        rel = f"{settings.MEDIA_URL}{imgs[0].file_name}"
-        return request.build_absolute_uri(rel) if request else rel
+        return _build_image_url(imgs[0].file_name, request)
 
 class ImagenListSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
@@ -417,5 +427,4 @@ class ImagenListSerializer(serializers.Serializer):
 
     def get_imagen(self, obj):
         request = self.context.get('request')
-        rel = f"{settings.MEDIA_URL}{obj.file_name}"
-        return request.build_absolute_uri(rel) if request else rel
+        return _build_image_url(obj.file_name, request)
