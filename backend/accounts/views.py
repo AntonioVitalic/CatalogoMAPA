@@ -118,8 +118,10 @@ class PasswordResetConfirmView(APIView):
         except ValidationError as exc:
             return Response({'error': ' '.join(exc.messages)}, status=400)
 
+        from django.utils import timezone
         user.set_password(password)
-        user.save(update_fields=['password'])
+        user.last_login = timezone.now()
+        user.save(update_fields=['password', 'last_login'])
 
         return Response({'detail': 'Contraseña actualizada correctamente.'})
 

@@ -51,7 +51,7 @@ except Exception as e:
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 

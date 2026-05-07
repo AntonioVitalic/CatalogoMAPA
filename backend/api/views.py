@@ -693,8 +693,11 @@ class PiezaViewSet(viewsets.ViewSet):
         q = self._cypher_base()
 
         search = request.query_params.get("search", "").strip()
-        page = int(request.query_params.get("page", 1))
-        page_size = int(request.query_params.get("page_size", settings.REST_FRAMEWORK['PAGE_SIZE']))
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+            page_size = min(200, max(1, int(request.query_params.get("page_size", settings.REST_FRAMEWORK['PAGE_SIZE']))))
+        except (ValueError, TypeError):
+            return Response({"detail": "page y page_size deben ser enteros positivos."}, status=400)
         skip = (page - 1) * page_size
         fecha_from = params.get("fecha_from")
         fecha_to = params.get("fecha_to")
@@ -727,9 +730,9 @@ class PiezaViewSet(viewsets.ViewSet):
                 q_page = q.replace(_NUM_ORDER_CLAUSE, f"{_NUM_ORDER_CLAUSE} SKIP {skip} LIMIT {page_size}")
                 rows, _ = db.cypher_query(q_page, params)
                 piezas = [Pieza.inflate(r[0]) for r in rows]
-                q_count = q.replace(_NUM_ORDER_CLAUSE, "")
+                q_count = q.replace(_NUM_ORDER_CLAUSE, "RETURN count(p) AS total")
                 count_rows, _ = db.cypher_query(q_count, params)
-                total_count = len(count_rows)
+                total_count = count_rows[0][0] if count_rows else 0
 
         ser = PiezaOutSerializer(piezas, many=True, context={'request': request})
 
@@ -1643,7 +1646,7 @@ def importacion_masiva(request):
     )
     elapsed = time.monotonic() - t0
     if proc.returncode != 0:
-        return Response({"detail": "Error en importación", "output": proc.stderr}, status=500)
+        return Response({"detail": "Error en importación"}, status=500)
     # Buscar resumen en la salida
     resumen = ""
     for line in proc.stdout.splitlines():
@@ -1731,10 +1734,13 @@ def exportar_excel_con_imagenes(request):
         if imagenes and len(imagenes) > 0:
             img_url = imagenes[0].get("imagen")
             if img_url:
-                # Extraer nombre de archivo desde la URL
-                # Ejemplo: http://localhost:8002/imagenes/04600.00.jpg -> 04600.00.jpg
-                file_name = img_url.split("/imagenes/")[-1]
-                img_path = os.path.join("/imagenes", file_name)
+                rel_name = _extract_media_file_name(img_url)
+                if not rel_name:
+                    continue
+                img_path = os.path.join(str(settings.MEDIA_ROOT), rel_name)
+                real_img = os.path.realpath(img_path)
+                if not real_img.startswith(str(settings.MEDIA_ROOT)):
+                    continue
                 
                 if os.path.exists(img_path):
                     try:
