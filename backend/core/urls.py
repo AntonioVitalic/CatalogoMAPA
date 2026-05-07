@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework.routers import DefaultRouter
 from api.views import (
     PiezaViewSet, ComponenteViewSet, ImagenViewSet, 
@@ -40,6 +41,7 @@ router.register(r'tipologias', TipologiaViewSet, basename='tipologia')
 router.register(r'exposiciones', ExposicionViewSet, basename='exposicion')
 
 urlpatterns = [
+    path('health/', lambda r: JsonResponse({"status": "ok"})),
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)), # los endpoints de Neo4j
     path('accounts/', include('accounts.urls')), # los endpoints de auth + usuarios + registro cambios
