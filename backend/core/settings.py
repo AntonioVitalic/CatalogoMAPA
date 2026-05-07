@@ -26,14 +26,19 @@ MEDIA_UPLOAD_SUBDIR = 'uploads'  # subcarpeta para cargas manuales
 bolt_url = os.getenv('NEO4J_URI', 'bolt://neo4j:7687')
 user    = os.getenv('NEO4J_USER', 'neo4j')
 pwd     = os.getenv('NEO4J_PASSWORD', 'neo4j')
+print(f"[SETTINGS] NEO4J_URI scheme: {bolt_url.split('://')[0] if '://' in bolt_url else 'NONE'}")
 # inyecta usuario y contraseña en la URL
 if '://' in bolt_url and '@' not in bolt_url:
     scheme, rest = bolt_url.split('://', 1)
     bolt_url = f"{scheme}://{user}:{pwd}@{rest}"
 NEO4J_BOLT_URL = bolt_url
 
-from neomodel import config
-config.DATABASE_URL = bolt_url
+try:
+    from neomodel import config as neomodel_config
+    neomodel_config.DATABASE_URL = bolt_url
+    print("[SETTINGS] neomodel config set OK")
+except Exception as e:
+    print(f"[SETTINGS] neomodel config error: {e}")
 
 
 
