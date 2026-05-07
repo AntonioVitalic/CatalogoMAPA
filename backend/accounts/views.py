@@ -11,9 +11,10 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from .models import Usuario, RegistroCambioPieza
 from .serializers import UsuarioPublicSerializer, RegistroCambioPiezaSerializer
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 
@@ -62,6 +63,8 @@ class RegisterView(APIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
 
     def post(self, request):
         email = request.data.get('email', '').strip().lower()
@@ -131,8 +134,29 @@ class LoginView(TokenObtainPairView):
     Usa el serializer por defecto de SimpleJWT (email como username).
     Cuerpo esperado: {"email": "...", "password": "..."}
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
     # Para usar email en lugar de username, SimpleJWT mira USERNAME_FIELD del modelo (ya es 'email')
-    # Así que no hace falta serializer custom si mantienes ese contrato.
+
+
+class LogoutView(APIView):
+    """
+    Blacklistea el refresh token enviado, invalidando la sesión.
+    Cuerpo esperado: {"refresh": "<refresh_token>"}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh_raw = request.data.get('refresh', '')
+        if not refresh_raw:
+            return Response({'detail': 'Falta el refresh token.'}, status=400)
+        try:
+            token = RefreshToken(refresh_raw)
+            token.blacklist()
+        except TokenError:
+            return Response({'detail': 'Refresh token inválido o ya revocado.'}, status=400)
+        return Response(status=204)
+
 
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]

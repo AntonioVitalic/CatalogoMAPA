@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     RegisterView,
     LoginView,
+    LogoutView,
     MeView,
     UsersListView,
     UserUpdateView,
@@ -15,6 +16,7 @@ from .views import (
 urlpatterns = [
     path('register/', RegisterView.as_view()),
     path('login/',    LoginView.as_view()),      # devuelve access + refresh
+    path('logout/',   LogoutView.as_view()),     # blacklistea el refresh token
     path('refresh/',  TokenRefreshView.as_view()),
     path('me/',       MeView.as_view()),
     path('users/',    UsersListView.as_view()),

@@ -49,9 +49,16 @@ except Exception as e:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+_SECRET_KEY_DEV_DEFAULT = "dev-secret-key-change-me"
+SECRET_KEY = os.environ.get("SECRET_KEY", _SECRET_KEY_DEV_DEFAULT)
 
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+
+if not DEBUG and SECRET_KEY == _SECRET_KEY_DEV_DEFAULT:
+    raise RuntimeError(
+        "SECRET_KEY no configurada en producción. "
+        "Defina la variable de entorno SECRET_KEY antes de iniciar."
+    )
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -72,6 +79,7 @@ INSTALLED_APPS = [
     'django_filters',
 
     'rest_framework_simplejwt',      # ← JWT
+    'rest_framework_simplejwt.token_blacklist',  # blacklist para revocar refresh tokens
     'accounts', # la app para administrar las cuentas de usuarios
 
     # la aplicación que contiene los modelos
@@ -97,7 +105,9 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:3000,http://localhost:8080,http://localhost:5173"
 ).split(",")
-CORS_ALLOW_ALL_ORIGINS = DEBUG  # Solo en desarrollo
+# CORS_ALLOW_ALL_ORIGINS desacoplado de DEBUG: si querés abrir todos los orígenes
+# en desarrollo, hacelo explícito vía la env var, no via el flag de debug.
+CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False").lower() in ("true", "1", "yes")
 
 ROOT_URLCONF = 'core.urls'
 
@@ -189,13 +199,29 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    # Rate limiting (anon = no autenticado, user = autenticado)
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',
+        'user': '300/minute',
+        'login': '5/minute',
+        'password_reset': '3/minute',
+    },
 }
 
 from datetime import timedelta
 SIMPLE_JWT = {
+    # Refresh bajado de 7d a 1d para mitigar el riesgo de localStorage en el frontend.
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "AUTH_HEADER_TYPES": ("Bearer",),
+    # Rotar el refresh en cada uso y blacklistear el viejo.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 # Usuario personalzido

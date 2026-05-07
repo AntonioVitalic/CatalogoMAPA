@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, api_view, permission_classes
 from django.conf import settings
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated, AllowAny
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import default_storage
@@ -601,6 +601,17 @@ def extract_year(fecha: str) -> int | None:
     return None
 
 class PiezaViewSet(viewsets.ViewSet):
+    # Permisos por acción: el catálogo se puede leer sin login (list/retrieve/export/next-numero),
+    # pero crear/editar requiere editor o admin, y borrar requiere admin.
+    def get_permissions(self):
+        action = getattr(self, "action", None)
+        if action in ("list", "retrieve", "export_all", "next_numero"):
+            return [AllowAny()]
+        if action == "destroy":
+            return [IsAdminRole()]
+        # create, update, partial_update y cualquier otra acción de escritura
+        return [IsEditorOrAdmin()]
+
     def _parse_filters(self, request):
         colecciones = request.query_params.getlist('coleccion__nombre')
         paises      = request.query_params.getlist('pais__nombre')
@@ -704,17 +715,20 @@ class PiezaViewSet(viewsets.ViewSet):
         use_fecha_filter = bool(fecha_from or fecha_to)
 
         if search:
-            # Consulta simple, ignora filtros avanzados
+            # Consulta simple, ignora filtros avanzados.
+            # IMPORTANTE: search se pasa como parámetro Cypher ($search / $search_lower)
+            # para evitar Cypher injection. skip/page_size son enteros validados arriba,
+            # por eso se interpolan via f-string sin riesgo.
             q_simple = f"""
             MATCH (p:Pieza)
-            WHERE toString(p.numero_inventario) CONTAINS '{search}'
-            OR toLower(coalesce(p.nombre_comun, '')) CONTAINS '{search.lower()}'
-            OR toLower(coalesce(p.nombre_especifico, '')) CONTAINS '{search.lower()}'
-            OR toLower(coalesce(p.descripcion_col, '')) CONTAINS '{search.lower()}'
+            WHERE toString(p.numero_inventario) CONTAINS $search
+            OR toLower(coalesce(p.nombre_comun, '')) CONTAINS $search_lower
+            OR toLower(coalesce(p.nombre_especifico, '')) CONTAINS $search_lower
+            OR toLower(coalesce(p.descripcion_col, '')) CONTAINS $search_lower
             RETURN p
             {_NUM_ORDER_CLAUSE} SKIP {skip} LIMIT {page_size}
             """
-            rows, _ = db.cypher_query(q_simple)
+            rows, _ = db.cypher_query(q_simple, {"search": search, "search_lower": search.lower()})
             piezas = [Pieza.inflate(r[0]) for r in rows]
             if use_fecha_filter:
                 piezas = self._filter_by_fecha(piezas, fecha_from, fecha_to)
@@ -786,7 +800,11 @@ class PiezaViewSet(viewsets.ViewSet):
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data)
 
+    @db.transaction
     def create(self, request):
+        # Toda la operación corre en una transacción Neo4j: si algún paso
+        # (relaciones, componentes, imágenes, audit) falla, se hace rollback
+        # automático y el catálogo queda intacto.
         data = request.data
         numero_raw = _get('numero_inventario', data)
         numero_int = _numero_inventario_to_int(numero_raw)
@@ -796,6 +814,14 @@ class PiezaViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         numero_inventario = str(numero_int)
+
+        # Evitar duplicados: dos POST simultáneos con el mismo número crearían
+        # dos nodos y romperían retrieve/update/delete con MultipleNodesReturned.
+        if Pieza.nodes.first_or_none(numero_inventario=numero_inventario):
+            return Response(
+                {"detail": f"Ya existe una pieza con número de inventario {numero_inventario}."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         # 1) Campos planos de Pieza (propiedades que SÍ existen como String/Float en el modelo)
         pieza = Pieza(
@@ -957,8 +983,11 @@ class PiezaViewSet(viewsets.ViewSet):
         )
 
         return Response(PiezaOutSerializer(pieza, context={'request': request}).data, status=status.HTTP_201_CREATED)
-    
+
+    @db.transaction
     def update(self, request, pk=None):
+        # Mutaciones Neo4j envueltas en transacción: si falla cualquier paso
+        # (sync de componentes, imágenes, relaciones, audit), se hace rollback.
         data = request.data
         pieza = Pieza.nodes.get(numero_inventario=str(int(pk)))
 
@@ -1616,6 +1645,16 @@ class IsAdminRole(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and getattr(request.user, "role", None) == "admin")
 
+
+class IsEditorOrAdmin(BasePermission):
+    """Permite escritura solo a usuarios autenticados con rol editor o admin."""
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and getattr(request.user, "role", None) in ("editor", "admin")
+        )
+
 @api_view(['POST'])
 @permission_classes([IsAdminRole])
 def importacion_masiva(request):
@@ -1624,36 +1663,57 @@ def importacion_masiva(request):
     if not excel_file or not images_zip:
         return Response({"detail": "Faltan archivos"}, status=400)
 
-    # Guardar archivos en la ruta esperada
-    excel_path = "/app/inventario.xlsx"
-    images_dir = "/imagenes"
-    with open(excel_path, "wb") as f:
-        for chunk in excel_file.chunks():
-            f.write(chunk)
-    # Descomprimir ZIP de imágenes
+    # Excel a un archivo temporal único por request (evita la race condition
+    # entre dos uploads simultáneos pisándose en /app/inventario.xlsx).
     import zipfile
     import os
-    with zipfile.ZipFile(images_zip) as zf:
-        zf.extractall(images_dir)
+    import tempfile
 
-    # Ejecutar el comando de importación
-    t0 = time.monotonic()
-    proc = subprocess.run(
-        ["python", "manage.py", "import_mapa", "--excel", excel_path, "--images_dir", images_dir],
-        cwd="/app",
-        capture_output=True,
-        text=True,
-    )
-    elapsed = time.monotonic() - t0
-    if proc.returncode != 0:
-        return Response({"detail": "Error en importación"}, status=500)
-    # Buscar resumen en la salida
-    resumen = ""
-    for line in proc.stdout.splitlines():
-        if "Import finalizado" in line:
-            resumen = line
-            break
-    return Response({"mensaje": resumen or "Importación finalizada", "tiempo": elapsed})
+    images_dir = "/imagenes"
+    target_root = os.path.realpath(images_dir)
+    os.makedirs(target_root, exist_ok=True)
+
+    excel_fd, excel_path = tempfile.mkstemp(suffix=".xlsx", prefix="import_")
+    try:
+        with os.fdopen(excel_fd, "wb") as f:
+            for chunk in excel_file.chunks():
+                f.write(chunk)
+
+        # Descomprimir el ZIP validando cada miembro contra zip-slip:
+        # un nombre con '../' que se resuelva fuera de target_root se descarta.
+        with zipfile.ZipFile(images_zip) as zf:
+            for member in zf.namelist():
+                if not member or member.endswith("/"):
+                    continue
+                dest = os.path.realpath(os.path.join(target_root, member))
+                if dest != target_root and not dest.startswith(target_root + os.sep):
+                    # Path traversal detectado: se ignora silenciosamente.
+                    continue
+                zf.extract(member, target_root)
+
+        # Ejecutar el comando de importación
+        t0 = time.monotonic()
+        proc = subprocess.run(
+            ["python", "manage.py", "import_mapa", "--excel", excel_path, "--images_dir", target_root],
+            cwd="/app",
+            capture_output=True,
+            text=True,
+        )
+        elapsed = time.monotonic() - t0
+        if proc.returncode != 0:
+            return Response({"detail": "Error en importación"}, status=500)
+        # Buscar resumen en la salida
+        resumen = ""
+        for line in proc.stdout.splitlines():
+            if "Import finalizado" in line:
+                resumen = line
+                break
+        return Response({"mensaje": resumen or "Importación finalizada", "tiempo": elapsed})
+    finally:
+        try:
+            os.unlink(excel_path)
+        except OSError:
+            pass
 
 @csrf_exempt
 @api_view(['POST'])

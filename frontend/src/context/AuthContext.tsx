@@ -20,7 +20,7 @@ interface AuthContextType {
   role: Role | null;
   isAuthenticated: boolean;
   refreshProfile: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -29,7 +29,7 @@ export const AuthContext = createContext<AuthContextType>({
   role: null,
   isAuthenticated: false,
   refreshProfile: async () => {},
-  logout: () => {},
+  logout: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -62,7 +62,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })();
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
+    // Blacklistear el refresh token en el backend antes de borrar localStorage:
+    // así, aún si un XSS robó el access, el refresh queda inutilizable.
+    const refresh = localStorage.getItem("refresh");
+    if (refresh) {
+      try {
+        await api.post("/accounts/logout/", { refresh });
+      } catch {
+        // Si falla (token ya expirado, red caída, etc), seguimos limpiando local.
+      }
+    }
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
     localStorage.removeItem("user");
