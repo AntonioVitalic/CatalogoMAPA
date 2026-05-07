@@ -197,3 +197,6 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Claude Code (config local del agente, no versionar)
+.claude/
